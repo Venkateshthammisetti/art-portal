@@ -1,0 +1,772 @@
+/* src/components/AdminDashboard.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* --- GLOBAL RESET --- */
+.admin-container {
+  display: flex;
+  height: 100vh; /* Takes full screen height */
+  width: 100vw;
+  background-color: #f4f7f6;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden; /* Prevents double scrollbars */
+}
+
+/* --- SIDEBAR (Left) --- */
+.admin-sidebar {
+  width: 260px;
+  background-color: #050449; /* Deep Blue */
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 25px;
+  box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 50px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.brand-logo-circle {
+  width: 40px; height: 40px;
+  background: #00bfa5;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-size: 18px;
+}
+
+.sidebar-brand h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-nav button {
+  background: transparent;
+  border: none;
+  color: #b0b0d0;
+  width: 100%;
+  padding: 12px 15px;
+  text-align: left;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.sidebar-nav button:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+  transform: translateX(5px);
+}
+
+.sidebar-nav button.active {
+  background-color: #00bfa5; /* Teal Active State */
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 191, 165, 0.3);
+}
+
+.sidebar-footer {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+}
+
+/* --- MAIN AREA (Right) --- */
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+}
+
+/* --- TOP HEADER --- */
+.top-header {
+  height: 80px;
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.header-title h2 { margin: 0; font-size: 22px; color: #333; }
+.header-title p { margin: 0; font-size: 13px; color: #888; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0f2f5;
+  padding: 6px 15px 6px 6px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.user-profile-pill img {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+}
+
+.header-logout-btn {
+  background: #ffe5e5;
+  border: none;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #ff4d4d;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.header-logout-btn:hover {
+  background: #ff4d4d;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* --- SCROLLABLE CONTENT AREA --- */
+.content-scrollable {
+  padding: 30px 40px;
+  overflow-y: auto;
+  height: calc(100vh - 80px);
+}
+
+/* --- DASHBOARD STATS (Overview Tab) --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 25px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  transition: transform 0.3s;
+  border-left-width: 5px;
+  border-left-style: solid;
+}
+
+.stat-card:hover { transform: translateY(-5px); }
+.stat-card h3 { margin: 0; font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-number { font-size: 36px; font-weight: 700; margin: 10px 0 0; color: #333; }
+
+/* Stats Colors */
+.stat-card.blue { border-left-color: #00bfa5; }
+.stat-card.green { border-left-color: #27ae60; }
+.stat-card.purple { border-left-color: #9b59b6; }
+
+/* --- FORM STYLING (Register User Tab) --- */
+.form-wrapper {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  max-width: 600px;
+  margin: 0 auto;
+  border: 1px solid #f0f0f0;
+}
+
+.admin-form .form-group {
+  margin-bottom: 25px;
+}
+
+.admin-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.admin-form input, 
+.admin-form select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
+  font-size: 15px;
+  color: #333;
+  background-color: #fcfcfc;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.admin-form input:focus, 
+.admin-form select:focus {
+  border-color: #00bfa5;
+  background-color: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 191, 165, 0.1);
+}
+
+.save-btn {
+  background-color: #00bfa5;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-top: 10px;
+  box-shadow: 0 4px 6px rgba(0, 191, 165, 0.2);
+}
+
+.save-btn:hover {
+  background-color: #009e89;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 191, 165, 0.3);
+}
+
+.status-msg {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  font-weight: 500;
+  text-align: center;
+  font-size: 14px;
+  background-color: #f0fdf4;
+  border: 1px solid #dcfce7;
+}
+
+/* src/components/AdminDashboard.css */
+
+/* --- TABLE STYLES --- */
+.table-container {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+  overflow-x: auto;
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.custom-table th {
+  text-align: left;
+  padding: 15px;
+  color: #888;
+  font-weight: 600;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.custom-table td {
+  padding: 15px;
+  border-bottom: 1px solid #f9f9f9;
+  color: #333;
+}
+
+/* Hover Effect on Rows */
+.custom-table tbody tr:hover {
+  background-color: #f8fcfb; /* Subtle teal tint */
+}
+
+/* Role Badges */
+.role-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-badge.admin { background: #fee2e2; color: #ef4444; } /* Red */
+.role-badge.teacher { background: #e0f2fe; color: #0284c7; } /* Blue */
+.role-badge.parent { background: #dcfce7; color: #16a34a; } /* Green */
+
+.status-active {
+  color: #16a34a;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 5px;
+}
+.status-active::before {
+  content: ''; width: 8px; height: 8px; background: #16a34a; border-radius: 50%;
+}
+
+/* src/components/AdminDashboard.css */
+
+/* --- FILTER BAR STYLES --- */
+.table-wrapper {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+}
+
+/* src/components/AdminDashboard.css */
+
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 20px;
+  flex-wrap: wrap; /* Allows wrapping on mobile */
+}
+
+/* Group the dropdowns together on the right */
+.filter-actions {
+  display: flex;
+  gap: 15px; /* Space between Filter dropdown and Sort dropdown */
+}
+
+.search-box {
+  flex: 1; 
+  min-width: 250px;
+  /* ... keep existing styles ... */
+}
+
+.filter-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8f9fa; /* Light grey background for dropdown container */
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid #e1e4e8;
+}
+
+.filter-dropdown select {
+  border: none;
+  background: transparent;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+}
+
+/* 1. Search Box */
+.search-box {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1px solid #e1e4e8;
+  padding: 10px 15px;
+  border-radius: 10px;
+  flex: 1; /* Search bar takes available space */
+  max-width: 400px;
+}
+
+.search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  margin-left: 10px;
+  width: 100%;
+  font-size: 14px;
+  color: #333;
+}
+
+/* 2. Role Dropdown */
+.filter-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-dropdown label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+}
+
+.filter-dropdown select {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #e1e4e8;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+  font-size: 14px;
+}
+
+.filter-dropdown select:focus {
+  border-color: #00bfa5;
+}
+
+/* Adjust the table container to remove its own white background 
+   since we wrapped everything in .table-wrapper */
+.table-container {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+
+/* src/components/AdminDashboard.css */
+
+/* ... (existing table styles) ... */
+
+.delete-btn {
+  background: #ffe5e5; /* Light Red Background */
+  border: none;
+  width: 35px;
+  height: 35px;
+  border-radius: 8px;
+  color: #ff4d4d; /* Red Icon */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background: #ff4d4d; /* Solid Red on Hover */
+  color: white; /* White Icon */
+  transform: scale(1.1); /* Slight Pop Effect */
+}
+
+/* Optional: Make the trash icon look sharper */
+.delete-btn svg {
+  stroke-width: 2.5;
+}
+
+
+/* src/components/AdminDashboard.css */
+
+/* --- 2-COLUMN FORM LAYOUT --- */
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+.form-row .form-group {
+  flex: 1; /* Both inputs take equal width */
+}
+
+/* --- VIEW BUTTON (Blue) --- */
+.view-btn {
+  background: #e0f2fe;
+  border: none;
+  width: 35px; height: 35px;
+  border-radius: 8px;
+  color: #0284c7;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.view-btn:hover { background: #0284c7; color: white; }
+
+/* --- MODAL POPUP --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); /* Dim background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  width: 500px;
+  max-width: 90%;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  animation: slideUpFade 0.3s ease-out;
+}
+
+.close-modal {
+  position: absolute;
+  top: 15px; right: 20px;
+  background: none; border: none;
+  font-size: 24px; cursor: pointer; color: #888;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.detail-item {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #555;
+}
+
+/* src/components/AdminDashboard.css */
+
+/* ... other styles ... */
+
+/* --- STATUS BUTTON STYLING --- */
+.status-btn {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;       /* Makes it a pill shape */
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 80px;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow */
+}
+
+/* ACTIVE STATE (Green Pill) */
+.status-btn.active {
+  background-color: #dcfce7; /* Light Green Bg */
+  color: #16a34a;            /* Dark Green Text */
+  border: 1px solid #86efac;
+}
+
+.status-btn.active:hover {
+  background-color: #fee2e2; /* Turns Red on Hover */
+  color: #ef4444;
+}
+
+/* INACTIVE STATE (Grey/Red Pill) */
+.status-btn.inactive {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.status-btn.inactive:hover {
+  background-color: #dcfce7; /* Turns Green on Hover */
+  color: #16a34a;
+}
+
+.detail-item strong { display: block; color: #333; margin-bottom: 4px; }
+.detail-item.highlight { background: #e0f2fe; color: #0369a1; grid-column: span 2; font-weight: bold; text-align: center; }
+
+
+/* --- MODAL POPUP FIX --- */
+.modal-overlay {
+  position: fixed;   /* Lock to screen */
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); /* Darker dim */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;     /* Very high priority */
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  width: 500px;
+  max-width: 90%;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUpFade 0.3s ease-out;
+}
+
+/* src/components/AdminDashboard.css */
+
+/* --- TOAST NOTIFICATION --- */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  padding: 15px 25px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  z-index: 99999;
+  transform: translateX(120%); /* Hidden off-screen */
+  transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  border-left: 5px solid #ccc;
+}
+
+.toast-notification.show {
+  transform: translateX(0); /* Slides in */
+}
+
+.toast-notification.success { border-left-color: #16a34a; color: #16a34a; }
+.toast-notification.error { border-left-color: #ef4444; color: #ef4444; }
+
+
+/* --- DELETE MODAL SPECIFIC --- */
+.delete-modal-content {
+  text-align: center;
+  width: 400px; /* Smaller than profile modal */
+}
+
+.delete-icon-wrapper {
+  background: #fee2e2;
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px auto;
+}
+
+.delete-modal-content h3 { margin: 0 0 10px 0; color: #333; }
+.delete-modal-content p { color: #666; margin-bottom: 25px; font-size: 14px; }
+
+.modal-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.cancel-btn {
+  background: #f3f4f6;
+  color: #333;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.cancel-btn:hover { background: #e5e7eb; }
+
+.confirm-delete-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s;
+}
+.confirm-delete-btn:hover { background: #dc2626; transform: translateY(-2px); }
+
+
+
+/* --- CLICKABLE TABLE ROWS --- */
+.user-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.user-row:hover {
+  background-color: #f0f9ff !important; /* Light blue hover */
+}
+
+/* --- OBJECT PAGE LAYOUT --- */
+.object-page {
+  background: #f8f9fa;
+  min-height: 100%;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Header */
+.object-header {
+  background: white;
+  padding: 30px;
+  border-bottom: 1px solid #e1e4e8;
+  border-radius: 10px 10px 0 0;
+}
+
+.back-btn {
+  background: none; border: none;
+  color: #666; font-size: 14px; cursor: pointer;
+  margin-bottom: 20px; font-weight: 600;
+}
+.back-btn:hover { text-decoration: underline; color: #00bfa5; }
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+.header-avatar {
+  width: 80px; height: 80px;
+  background: #00bfa5; color: white;
+  font-size: 32px; font-weight: bold;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.header-content h1 { margin: 0 0 10px 0; color: #333; }
+.joined-date { color: #888; font-size: 13px; margin-left: 15px; }
+
+.delete-btn-large {
+  margin-left: auto; /* Push to right */
+  background: #fee2e2; color: #ef4444;
+  border: none; padding: 10px 20px;
+  border-radius: 8px; font-weight: 600; cursor: pointer;
+}
+.delete-btn-large:hover { background: #ef4444; color: white; }
+
+/* Body Grid */
+.object-body {
+  padding: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 25px;
+}
+
+.detail-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+}
+
+.detail-card h3 {
+  margin-top: 0;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f4f7f6;
+  color: #555; font-size: 16px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f9f9f9;
+}
+
+.info-row label { color: #888; font-weight: 500; }
+.info-row span { color: #333; font-weight: 600; }
+

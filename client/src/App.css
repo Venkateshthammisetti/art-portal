@@ -1,0 +1,176 @@
+/* client/src/App.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  overflow-x: hidden;
+}
+
+/* --- 1. ANIMATED BACKGROUND --- */
+.login-page {
+  height: 100vh;
+  width: 100vw;
+  background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Floating Shapes for "Artistic" Feel */
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  z-index: 1;
+  animation: float 6s infinite ease-in-out;
+}
+
+.shape-1 {
+  width: 200px;
+  height: 200px;
+  background: #a18cd1;
+  top: 10%;
+  left: 20%;
+}
+
+.shape-2 {
+  width: 300px;
+  height: 300px;
+  background: #fbc2eb;
+  bottom: 10%;
+  right: 15%;
+  animation-delay: 1s;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+}
+
+/* --- 2. GLASSMORPHISM CARD --- */
+.login-card {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 40px;
+  width: 350px;
+  z-index: 10;
+  text-align: center;
+  animation: slideUp 0.8s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 3. TYPOGRAPHY & LOGO --- */
+.brand-header h1 {
+  color: #fff;
+  font-size: 2.2rem;
+  margin: 10px 0 5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.subtitle {
+  color: #fff;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  margin-bottom: 30px;
+  opacity: 0.9;
+}
+
+.logo-img {
+  width: 80px;
+  height: auto;
+}
+
+/* --- 4. ANIMATED INPUTS --- */
+.input-group {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px 0;
+  font-size: 16px;
+  color: #fff;
+  margin-bottom: 5px;
+  border: none;
+  border-bottom: 1px solid #fff;
+  outline: none;
+  background: transparent;
+}
+
+.input-group label {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  color: #eee;
+  pointer-events: none;
+  transition: 0.3s ease all;
+}
+
+/* Animation: When clicked or filled, move label up */
+.input-group input:focus ~ label,
+.input-group input:valid ~ label {
+  top: -20px;
+  font-size: 12px;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* --- 5. BUTTON --- */
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  color: #d86a7d;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.login-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.arrow {
+  margin-left: 10px;
+  transition: margin-left 0.3s;
+}
+
+.login-btn:hover .arrow {
+  margin-left: 15px;
+}
+
+/* --- 6. UTILS --- */
+.error-msg {
+  color: #ff4d4d;
+  background: rgba(255,255,255,0.8);
+  padding: 5px;
+  border-radius: 5px;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.footer-links {
+  margin-top: 20px;
+  color: #fff;
+  font-size: 12px;
+  opacity: 0.7;
+}
