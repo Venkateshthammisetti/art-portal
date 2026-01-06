@@ -110,17 +110,24 @@ app.delete('/api/users/:id', async (req, res) => {
 // ✨ NEW: Simple Stats Route
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
-    // 1. Count Parents (Students)
+    // 1. Count Users
     const studentCount = await User.countDocuments({ role: 'parent' });
-    
-    // 2. Count Teachers
     const teacherCount = await User.countDocuments({ role: 'teacher' });
+
+    // 2. ✨ REAL MATH: Sum of 'monthlyFee' from database
+    const revenueResult = await User.aggregate([
+      { $match: { role: 'parent' } },  // Find only parents
+      { $group: { _id: null, totalRevenue: { $sum: "$monthlyFee" } } } // Add up their fees
+    ]);
+
+    // If result is empty (no students), default to 0
+    const realRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
 
     // 3. Send the numbers back
     res.json({ 
       students: studentCount, 
       teachers: teacherCount, 
-      revenue: studentCount * 500 // Example: $500 per student (Simulated Revenue)
+      revenue: realRevenue // <--- Now sends the SUM (e.g., 6000)
     });
   } catch (err) {
     console.error(err);
