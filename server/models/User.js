@@ -1,45 +1,48 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  // Login Info
+  // --- LOGIN CREDENTIALS ---
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, required: true }, // 'admin', 'teacher', 'parent'
+  role: { type: String, required: true }, // 'parent' (Student), 'teacher', 'admin'
   
-  // Personal Info (Editable)
-  fullName: String,
-  email: String,
-  phone: String,
+  // --- PARENT / ACCOUNT HOLDER DETAILS ---
+  fullName: String,   // Parent Name
+  email: String,      // Parent Email
+  phone: String,      // Parent Phone
   location: String,
   zoomId: String,
   referredBy: String,
+  joiningDate: { type: Date },
 
-  // Student Info (Parent Role)
-  childName: String,
+  // --- STUDENT DETAILS ---
+  firstName: String, 
+  lastName: String,  
+  gender: String,
+  admissionId: String,
+  shortBio: String,
+  
+  // Student Contact (Separate from Parent)
+  studentEmail: String, // ✨ NEW
+  studentPhone: String, // ✨ NEW
+
+  // Legacy/Computed fields
+  childName: String, // Will store "FirstName LastName"
   childAge: String,
   childDob: { type: Date },
   childClass: String,
   
-
-  joiningDate: { type: Date },
-  
-  // Financials (Used for Fee OR Salary)
+  // --- ACADEMIC / FINANCIAL ---
   monthlyFee: { type: Number, default: 0 }, 
-
-  // Teacher Info
-  specialization: String,
+  specialization: String, // For Teachers
   
-  // Progress Tracking
-  progress: String,
-  feedback: String,
-
-  // System Info
+  // --- SYSTEM ---
+  assignedClass: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', default: null },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
-
-  // ✨ NEW: Track which class the student belongs to
-  // If null, they are not assigned. If populated, they are assigned.
-  assignedClass: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', default: null }
+  
+  // Admin Specific
+  dob: Date 
 });
 
 module.exports = mongoose.model('User', UserSchema);

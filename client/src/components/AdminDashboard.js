@@ -673,22 +673,167 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
   );
 };
 
+// --- TAB 3: ADD USER (With Separate Student & Parent Sections) ---
 const AddUserTab = () => {
-  const [formData, setFormData] = useState({ username: "", password: "", role: "parent", fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", childName: "", childAge: "", childDob: "", childClass: "", monthlyFee: "", specialization: "", joiningDate: "" });
+  const [formData, setFormData] = useState({ 
+    // Login
+    username: "", password: "", role: "parent", 
+    // Student
+    firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
+    studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
+    // Parent
+    fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
+    // Academic
+    childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" 
+  });
+  
   const [msg, setMsg] = useState("");
-  const handleRegister = async (e) => { e.preventDefault(); try { await axios.post("http://localhost:5000/api/register", formData); setMsg("✅ User Registered Successfully!"); setFormData({ username: "", password: "", role: "parent", fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", childName: "", childAge: "", childDob: "", childClass: "", monthlyFee: "", specialization: "", joiningDate: "" }); } catch (err) { setMsg("❌ Error: Username taken or server issue."); } };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    
+    // Auto-generate childName for backward compatibility
+    const studentFullName = `${formData.firstName} ${formData.lastName}`.trim();
+    
+    const payload = {
+      ...formData,
+      // If role is parent(student), childName is the student's name
+      childName: formData.role === 'parent' ? studentFullName : "",
+      // If role is NOT parent, fullName is the person's name. 
+      // If role IS parent, formData.fullName is already the Parent Name.
+    };
+
+    try {
+      await axios.post("http://localhost:5000/api/register", payload);
+      setMsg("✅ User Registered Successfully!");
+      // Reset Form
+      setFormData({ 
+        username: "", password: "", role: "parent", 
+        firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
+        studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
+        fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
+        childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" 
+      });
+    } catch (err) {
+      setMsg("❌ Error: Username taken or server issue.");
+    }
+  };
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
   return (
     <div className="form-wrapper">
       <h3>Register New Profile</h3>
       <form onSubmit={handleRegister} className="admin-form">
-        <div className="form-row"><div className="form-group"><label>Username *</label><input name="username" value={formData.username} onChange={handleChange} required placeholder="Login ID" /></div><div className="form-group"><label>Password *</label><input name="password" type="password" value={formData.password} onChange={handleChange} required placeholder="Secret Password" /></div></div>
-        <div className="form-row"><div className="form-group"><label>Role</label><select name="role" value={formData.role} onChange={handleChange}><option value="parent">Parent</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="e.g. Rahul Dravid" /></div></div>
-        <div className="form-row"><div className="form-group"><label>Email</label><input name="email" value={formData.email} onChange={handleChange} placeholder="user@gmail.com" /></div><div className="form-group"><label>Phone No</label><input name="phone" value={formData.phone} onChange={handleChange} placeholder="+91 987..." /></div></div>
-        <div className="form-row"><div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} placeholder="City" /></div><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} placeholder="Meeting ID" /></div></div>
-        <div className="form-row"><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} placeholder="Source" /></div><div className="form-group"></div></div>
-        {formData.role === "parent" && (<div style={{ marginTop: "20px", padding: "20px", background: "#f0f9ff", borderRadius: "10px", border: "1px solid #bae6fd" }}><h4 style={{ marginTop: 0, color: "#0284c7" }}>Student Details</h4><div className="form-row"><div className="form-group"><label>Student Name</label><input name="childName" value={formData.childName} onChange={handleChange} placeholder="Kid Name" /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div><div className="form-row"><div className="form-group"><label>Student Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} placeholder="e.g. 10" /></div><div className="form-group"><label>Class / Grade</label><input name="childClass" value={formData.childClass} onChange={handleChange} placeholder="Grade" /></div></div><div className="form-row"><div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#16a34a'}} placeholder="4000" /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} /></div></div></div>)}
-        {formData.role === "teacher" && (<div style={{ marginTop: "20px", padding: "20px", background: "#fdf4ff", borderRadius: "10px", border: "1px solid #f0abfc" }}><h4 style={{ marginTop: 0, color: "#c026d3" }}>Teacher Details</h4><div className="form-row"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} placeholder="Art Style" /></div><div className="form-group"><label>Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#9333ea'}} placeholder="15000" /></div></div><div className="form-row"><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} /></div></div></div>)}
+        
+        {/* 1. LOGIN CREDENTIALS */}
+        <div className="form-section">
+          <h4 className="section-title">Login Credentials</h4>
+          <div className="form-row">
+            <div className="form-group"><label>Username *</label><input name="username" value={formData.username} onChange={handleChange} required placeholder="Login ID" /></div>
+            <div className="form-group"><label>Password *</label><input name="password" type="password" value={formData.password} onChange={handleChange} required placeholder="Secret Password" /></div>
+          </div>
+          <div className="form-group"><label>Role</label><select name="role" value={formData.role} onChange={handleChange}><option value="parent">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
+        </div>
+
+        {/* 2. STUDENT DETAILS (Only if Role is Student) */}
+        {formData.role === "parent" && (
+          <div className="form-section student-section">
+            <h4 className="section-title" style={{color: '#0284c7'}}>Student Details</h4>
+            
+            <div className="form-row">
+              <div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Rahul" /></div>
+              <div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Dravid" /></div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Gender *</label>
+                <select name="gender" value={formData.gender} onChange={handleChange}>
+                  <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} placeholder="ADM-001" /></div>
+              <div className="form-group"><label>Student Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} placeholder="e.g. 10" /></div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group"><label>Student Email (Optional)</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} placeholder="student@mail.com" /></div>
+              <div className="form-group"><label>Student Phone (Optional)</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} placeholder="For older students" /></div>
+            </div>
+
+            <div className="form-group">
+              <label>Short Bio</label>
+              <textarea name="shortBio" value={formData.shortBio} onChange={handleChange} placeholder="Interests, hobbies..." style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} />
+            </div>
+          </div>
+        )}
+
+        {/* 3. PARENT DETAILS (Restored for Student Role) */}
+        {formData.role === "parent" && (
+          <div className="form-section parent-section">
+            <h4 className="section-title" style={{color: '#ea580c'}}>Parent / Guardian Details</h4>
+            
+            <div className="form-row">
+              <div className="form-group"><label>Parent Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Guardian Name" /></div>
+              <div className="form-group"><label>Relation</label><input placeholder="e.g. Father/Mother" disabled style={{background:'#f1f5f9'}} /></div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group"><label>Parent Email</label><input name="email" value={formData.email} onChange={handleChange} placeholder="parent@mail.com" /></div>
+              <div className="form-group"><label>Parent Phone</label><input name="phone" value={formData.phone} onChange={handleChange} placeholder="+91 987..." /></div>
+            </div>
+
+            <div className="form-row">
+               <div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} placeholder="City" /></div>
+               <div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} /></div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. ACADEMIC / TEACHER / ADMIN SPECIFICS */}
+        <div className="form-section">
+           <h4 className="section-title">Academic & Official</h4>
+           
+           {/* Student Academic */}
+           {formData.role === "parent" && (
+             <div className="form-row">
+               <div className="form-group"><label>Class / Grade</label><input name="childClass" value={formData.childClass} onChange={handleChange} placeholder="e.g. Grade 5" /></div>
+               <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
+             </div>
+           )}
+
+           {/* Teacher Specific */}
+           {formData.role === "teacher" && (
+             <>
+               <div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} /></div></div>
+               <div className="form-row">
+                 <div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} /></div>
+                 <div className="form-group"><label>Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} /></div>
+               </div>
+               <div className="form-row"><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
+             </>
+           )}
+
+           {/* Admin Specific */}
+           {formData.role === "admin" && (
+             <div className="form-row">
+                <div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div>
+                <div className="form-group"><label>DOB</label><input type="date" name="dob" value={formData.dob} onChange={handleChange} /></div>
+             </div>
+           )}
+
+           {/* Common Joining Date */}
+           <div className="form-group" style={{marginTop:'15px'}}>
+             <label>Joining Date</label>
+             <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} />
+           </div>
+        </div>
+
         <button type="submit" className="save-btn" style={{ marginTop: "20px" }}>Register User</button>
       </form>
       {msg && <p className="status-msg">{msg}</p>}
