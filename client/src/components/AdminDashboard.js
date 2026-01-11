@@ -267,8 +267,18 @@ const ClassManagementTab = () => {
   );
 };
 
-// --- COMPONENT: CLASS DETAILS VIEW ---
+// --- COMPONENT: CLASS DETAILS VIEW (Updated with Copy Link) ---
 const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
+  const [copyStatus, setCopyStatus] = useState("Copy Meeting Link 📋");
+
+  const handleCopyLink = () => {
+    if (cls.meetingLink) {
+      navigator.clipboard.writeText(cls.meetingLink);
+      setCopyStatus("Link Copied! ✅");
+      setTimeout(() => setCopyStatus("Copy Meeting Link 📋"), 2000);
+    }
+  };
+
   return (
     <div className="object-page">
       <div className="object-header">
@@ -291,35 +301,63 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
 
       <div className="object-body-grid">
         <div className="top-row-grid">
+           
+           {/* ✨ SCHEDULE & LINK CARD */}
            <div className="detail-card">
-             <h3>Class Information</h3>
-             <div className="info-row"><label>Teacher:</label> <span>{cls.teacher ? (cls.teacher.fullName || cls.teacher.username) : "Unassigned"}</span></div>
-             <div className="info-row"><label>Total Students:</label> <span>{cls.students.length}</span></div>
-             <div className="info-row"><label>Created On:</label> <span>{new Date(cls.createdAt).toLocaleDateString()}</span></div>
+             <h3>Schedule & Link</h3>
+             <div style={{marginBottom:'15px'}}>
+                {cls.schedule && cls.schedule.length > 0 ? (
+                    cls.schedule.map((slot, i) => (
+                        <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f1f5f9'}}>
+                            <span style={{fontWeight:'600', color:'#334155'}}>{slot.day}</span>
+                            <span style={{color:'#64748b'}}>{slot.time}</span>
+                        </div>
+                    ))
+                ) : <span style={{color:'#94a3b8'}}>No schedule set</span>}
+             </div>
+             
+             {/* ✨ NEW COPY BUTTON LOGIC */}
+             {cls.meetingLink ? (
+                 <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+                    <div style={{background:'#f1f5f9', padding:'8px', borderRadius:'4px', fontSize:'0.85rem', color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                      {cls.meetingLink}
+                    </div>
+                    <button 
+                      onClick={handleCopyLink} 
+                      className="save-btn" 
+                      style={{
+                        display:'block', 
+                        width:'100%', 
+                        textAlign:'center', 
+                        backgroundColor: copyStatus.includes('✅') ? '#10b981' : '#0284c7', // Green if copied
+                        transition: 'background-color 0.2s'
+                      }}
+                    >
+                      {copyStatus}
+                    </button>
+                 </div>
+             ) : <div style={{color:'#94a3b8', fontStyle:'italic'}}>No meeting link provided</div>}
            </div>
            
-           <div className="detail-card" style={{display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', background:'#f0f9ff', border:'1px dashed #bae6fd'}}>
-              <h3 style={{color:'#0284c7'}}>Manage Students</h3>
-              <p style={{textAlign:'center', color:'#64748b', marginBottom:'20px'}}>Add or remove students from this class.</p>
-              <button className="save-btn" style={{width:'auto'}} onClick={onAssign}>Assign / Edit Students</button>
+           <div className="detail-card">
+             <h3>Class Info</h3>
+             <div className="info-row"><label>Teacher:</label> <span>{cls.teacher ? (cls.teacher.fullName || cls.teacher.username) : "Unassigned"}</span></div>
+             <div className="info-row"><label>Total Students:</label> <span>{cls.students.length}</span></div>
+             <div className="info-row"><label>Created:</label> <span>{new Date(cls.createdAt).toLocaleDateString()}</span></div>
            </div>
         </div>
 
         <div className="detail-card full-width-card">
-          <h3>Enrolled Students</h3>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+             <h3>Enrolled Students</h3>
+             <button className="save-btn" style={{width:'auto', fontSize:'0.9rem'}} onClick={onAssign}>Manage Students</button>
+          </div>
           {cls.students.length === 0 ? (
-            <p style={{color:'#94a3b8', padding:'20px', textAlign:'center'}}>No students assigned to this class yet.</p>
+            <p style={{color:'#94a3b8', padding:'20px', textAlign:'center'}}>No students assigned.</p>
           ) : (
             <div className="table-container">
               <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Parent Name</th>
-                    <th>Age</th>
-                    <th>Joining Date</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Student Name</th><th>Parent Name</th><th>Age</th><th>Joining Date</th></tr></thead>
                 <tbody>
                   {cls.students.map(student => (
                     <tr key={student._id}>
@@ -339,19 +377,29 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
   );
 };
 
-// --- COMPONENT: CLASS MODAL (Real-Time Validation) ---
+// --- LIST VIEW UPDATE (Optional but helpful) ---
+// Inside ClassManagementTab > return > table:
+// You can add a column for "Schedule" if you want to see days at a glance.
+// Example for the `map` inside table:
+// <td>
+//    {cls.schedule.map(s => s.day.substring(0,3)).join(', ')}
+// </td>
+// --- COMPONENT: CLASS MODAL (With Schedule & Link) ---
 const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({ 
     className: initialData ? initialData.className : '', 
     level: initialData ? initialData.level : '', 
     subLevel: initialData ? initialData.subLevel : '', 
-    teacherId: initialData && initialData.teacher ? initialData.teacher._id : '' 
+    teacherId: initialData && initialData.teacher ? initialData.teacher._id : '',
+    meetingLink: initialData ? initialData.meetingLink : '', // ✨ NEW
+    schedule: initialData && initialData.schedule && initialData.schedule.length > 0 
+      ? initialData.schedule 
+      : [{ day: 'Saturday', time: '10:00' }, { day: 'Wednesday', time: '17:00' }] // ✨ Default: 2 slots
   });
 
   const [availableSubLevels, setAvailableSubLevels] = useState([]);
-  const [duplicateError, setDuplicateError] = useState(""); // ✨ State for error message
+  const [duplicateError, setDuplicateError] = useState(""); 
 
-  // 1. Update Sub-Levels when Main Level changes
   useEffect(() => {
     if (formData.level && LEVEL_STRUCTURE[formData.level]) {
         setAvailableSubLevels(LEVEL_STRUCTURE[formData.level]);
@@ -360,150 +408,104 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     }
   }, [formData.level]);
 
-  // 2. ✨ REAL-TIME CHECK EFFECT
+  // Real-time duplicate check (Same as before)
   useEffect(() => {
+    const checkDuplicate = () => {
+      if (!formData.className || !formData.level) { setDuplicateError(""); return; }
+      const normalize = (str) => (str || "").toString().trim().toLowerCase();
+      const isDuplicate = existingClasses.some(cls => {
+          if (initialData && cls._id === initialData._id) return false;
+          return normalize(cls.className) === normalize(formData.className) &&
+                 normalize(cls.level) === normalize(formData.level) &&
+                 normalize(cls.subLevel) === normalize(formData.subLevel);
+      });
+      if (isDuplicate) setDuplicateError(`A class named "${formData.className}" already exists in this level.`);
+      else setDuplicateError("");
+    };
     checkDuplicate();
-  }, [formData.className, formData.level, formData.subLevel]);
+  }, [formData.className, formData.level, formData.subLevel, existingClasses, initialData]);
 
-  const checkDuplicate = () => {
-    // Don't check if fields are empty
-    if (!formData.className || !formData.level) {
-        setDuplicateError("");
-        return;
-    }
-
-    const normalize = (str) => (str || "").toString().trim().toLowerCase();
-
-    const isDuplicate = existingClasses.some(cls => {
-        // Skip comparing with itself if editing
-        if (initialData && cls._id === initialData._id) return false;
-
-        const nameMatch = normalize(cls.className) === normalize(formData.className);
-        const levelMatch = normalize(cls.level) === normalize(formData.level);
-        const subLevelMatch = normalize(cls.subLevel) === normalize(formData.subLevel);
-
-        return nameMatch && levelMatch && subLevelMatch;
-    });
-
-    if (isDuplicate) {
-        setDuplicateError(`A class named "${formData.className}" already exists in this level.`);
-    } else {
-        setDuplicateError("");
-    }
+  // ✨ Handle Schedule Changes
+  const handleScheduleChange = (index, field, value) => {
+    const newSchedule = [...formData.schedule];
+    newSchedule[index][field] = value;
+    setFormData({ ...formData, schedule: newSchedule });
   };
 
-  const handleLevelChange = (e) => {
-    setFormData({
-        ...formData,
-        level: e.target.value,
-        subLevel: "" // Reset sub-level
-    });
+  const addScheduleSlot = () => {
+    setFormData({ ...formData, schedule: [...formData.schedule, { day: 'Monday', time: '17:00' }] });
+  };
+
+  const removeScheduleSlot = (index) => {
+    const newSchedule = formData.schedule.filter((_, i) => i !== index);
+    setFormData({ ...formData, schedule: newSchedule });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Final safety check
     if (duplicateError) return;
-
     try {
-      if (initialData) {
-        await axios.put(`http://localhost:5000/api/classes/${initialData._id}`, formData);
-      } else {
-        await axios.post('http://localhost:5000/api/classes', formData);
-      }
+      if (initialData) await axios.put(`http://localhost:5000/api/classes/${initialData._id}`, formData);
+      else await axios.post('http://localhost:5000/api/classes', formData);
       onSuccess();
-    } catch (err) {
-      const errorMsg = err.response && err.response.data && err.response.data.message 
-        ? err.response.data.message 
-        : "Error saving class";
-      alert("⚠️ " + errorMsg);
-    }
+    } catch (err) { alert("Error saving class"); }
   };
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>{initialData ? 'Edit Class' : 'Create New Class'}</h3>
-          <button className="close-modal" onClick={onClose}>×</button>
-        </div>
-        
+      <div className="modal-content" style={{maxWidth:'600px'}}>
+        <div className="modal-header"><h3>{initialData ? 'Edit Class' : 'Create New Class'}</h3><button className="close-modal" onClick={onClose}>×</button></div>
         <form onSubmit={handleSubmit}>
           
-          {/* CLASS NAME INPUT */}
-          <div className="form-group">
-            <label>Class Name</label>
-            <input 
-              required 
-              placeholder="e.g. Weekend Batch A" 
-              value={formData.className} 
-              onChange={e => setFormData({...formData, className: e.target.value})} 
-              className={duplicateError ? "input-error" : ""} // ✨ Apply Red Border
-            />
+          {/* --- BASIC INFO --- */}
+          <div className="form-group"><label>Class Name</label><input required value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})} className={duplicateError ? "input-error" : ""} /></div>
+          
+          <div className="form-row">
+            <div className="form-group">
+                <label>Level</label>
+                <select required value={formData.level} onChange={e => setFormData({...formData, level: e.target.value, subLevel: ""})} className={duplicateError ? "input-error" : ""}>
+                <option value="">Select Level</option>{Object.keys(LEVEL_STRUCTURE).map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
+                </select>
+            </div>
+            <div className="form-group">
+                <label>Sub-Level</label>
+                <select required value={formData.subLevel} onChange={e => setFormData({...formData, subLevel: e.target.value})} disabled={!formData.level} className={duplicateError ? "input-error" : ""}>
+                <option value="">Select Sub-Level</option>{availableSubLevels.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                </select>
+            </div>
           </div>
           
-          {/* LEVEL DROPDOWNS */}
-          <div className="form-group">
-            <label>Level</label>
-            <select required value={formData.level} onChange={handleLevelChange} className={duplicateError ? "input-error" : ""}>
-              <option value="">Select Level</option>
-              {Object.keys(LEVEL_STRUCTURE).map(lvl => (
-                  <option key={lvl} value={lvl}>{lvl}</option>
-              ))}
-            </select>
+          {duplicateError && <div className="error-msg">{duplicateError}</div>}
+
+          {/* --- ✨ SCHEDULE SECTION --- */}
+          <div className="form-group" style={{background:'#f8fafc', padding:'15px', borderRadius:'8px', marginTop:'15px', border:'1px solid #e2e8f0'}}>
+            <label style={{color:'#334155', fontWeight:'600'}}>Class Schedule (2 Classes/Week)</label>
+            {formData.schedule.map((slot, index) => (
+                <div key={index} style={{display:'flex', gap:'10px', marginTop:'10px', alignItems:'center'}}>
+                    <select value={slot.day} onChange={(e) => handleScheduleChange(index, 'day', e.target.value)} style={{flex:1}}>
+                        {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <input type="time" value={slot.time} onChange={(e) => handleScheduleChange(index, 'time', e.target.value)} style={{flex:1}} />
+                    <button type="button" onClick={() => removeScheduleSlot(index)} style={{background:'none', border:'none', color:'#ef4444', cursor:'pointer'}}>✕</button>
+                </div>
+            ))}
+            <button type="button" onClick={addScheduleSlot} style={{marginTop:'10px', fontSize:'0.85rem', color:'#0284c7', background:'none', border:'none', cursor:'pointer'}}>+ Add Another Day</button>
           </div>
 
-          <div className="form-group">
-            <label>Sub-Level</label>
-            <select 
-                required 
-                value={formData.subLevel} 
-                onChange={e => setFormData({...formData, subLevel: e.target.value})} 
-                disabled={!formData.level}
-                className={duplicateError ? "input-error" : ""}
-            >
-              <option value="">Select Sub-Level</option>
-              {availableSubLevels.map(sub => (
-                  <option key={sub} value={sub}>{sub}</option>
-              ))}
-            </select>
+          {/* --- ✨ MEETING LINK --- */}
+          <div className="form-group" style={{marginTop:'15px'}}>
+            <label>Meeting Link (Zoom / Meet)</label>
+            <input placeholder="https://zoom.us/j/..." value={formData.meetingLink} onChange={e => setFormData({...formData, meetingLink: e.target.value})} />
           </div>
 
-          {/* ✨ ERROR MESSAGE DISPLAY */}
-          {duplicateError && (
-            <div className="error-msg">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                {duplicateError}
-            </div>
-          )}
-
-          <div className="form-group" style={{marginTop: '15px'}}>
-            <label>Assign Teacher</label>
-            <select required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})}>
-              <option value="">Select Teacher</option>
-              {teachers.map(t => (
-                <option key={t._id} value={t._id}>{t.fullName || t.username} ({t.specialization})</option>
-              ))}
-            </select>
-          </div>
-
-          {/* ✨ DISABLE BUTTON IF ERROR */}
-          <button 
-            type="submit" 
-            className="save-btn" 
-            style={{marginTop:'15px'}}
-            disabled={!!duplicateError} 
-            title={duplicateError ? "Fix errors before saving" : ""}
-          >
-            {initialData ? 'Save Changes' : 'Create Class'}
-          </button>
+          <div className="form-group"><label>Assign Teacher</label><select required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})}><option value="">Select Teacher</option>{teachers.map(t => (<option key={t._id} value={t._id}>{t.fullName || t.username}</option>))}</select></div>
+          
+          <button type="submit" className="save-btn" style={{marginTop:'15px'}} disabled={!!duplicateError}>{initialData ? 'Save Changes' : 'Create Class'}</button>
         </form>
       </div>
     </div>
   );
 };
-
 // --- COMPONENT: ASSIGN STUDENTS MODAL (Same logic as before) ---
 const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
   const [students, setStudents] = useState([]);
@@ -673,40 +675,104 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
   );
 };
 
-// --- TAB 3: ADD USER (With Separate Student & Parent Sections) ---
+// --- TAB 3: ADD USER (With Sibling Support + Zoom ID Fixed) ---
 const AddUserTab = () => {
+  // --- STUDENT 1 & PARENT DATA ---
   const [formData, setFormData] = useState({ 
-    // Login
     username: "", password: "", role: "parent", 
-    // Student
     firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
     studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
-    // Parent
     fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
-    // Academic
     childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" 
+  });
+
+  // --- STUDENT 2 DATA (Sibling) ---
+  const [showSibling, setShowSibling] = useState(false);
+  const [siblingData, setSiblingData] = useState({
+    username: "", password: "", 
+    firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "",
+    childAge: "", childDob: "", childClass: "", monthlyFee: ""
   });
   
   const [msg, setMsg] = useState("");
+  const [autoFillMsg, setAutoFillMsg] = useState("");
+
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleSiblingChange = (e) => setSiblingData({ ...siblingData, [e.target.name]: e.target.value });
+
+  // Auto-fill Parent Logic
+  const handlePhoneBlur = async () => {
+    if (formData.role === 'parent' && formData.phone.length > 9) {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/users/parent/${formData.phone}`);
+        if (res.data) {
+          setFormData(prev => ({
+            ...prev,
+            fullName: res.data.fullName || "",
+            email: res.data.email || "",
+            location: res.data.location || "",
+            zoomId: res.data.zoomId || "",
+            referredBy: res.data.referredBy || ""
+          }));
+          setAutoFillMsg("✅ Parent found! Details auto-filled.");
+          setTimeout(() => setAutoFillMsg(""), 3000);
+        }
+      } catch (err) {}
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    
-    // Auto-generate childName for backward compatibility
-    const studentFullName = `${formData.firstName} ${formData.lastName}`.trim();
-    
-    const payload = {
+    setMsg("Processing...");
+
+    const student1Name = `${formData.firstName} ${formData.lastName}`.trim();
+    const payload1 = {
       ...formData,
-      // If role is parent(student), childName is the student's name
-      childName: formData.role === 'parent' ? studentFullName : "",
-      // If role is NOT parent, fullName is the person's name. 
-      // If role IS parent, formData.fullName is already the Parent Name.
+      childName: formData.role === 'parent' ? student1Name : "",
     };
 
     try {
-      await axios.post("http://localhost:5000/api/register", payload);
-      setMsg("✅ User Registered Successfully!");
-      // Reset Form
+      // 1. Register Student 1
+      await axios.post("http://localhost:5000/api/register", payload1);
+
+      // 2. Register Student 2 (If Sibling Checked)
+      if (formData.role === 'parent' && showSibling) {
+        const student2Name = `${siblingData.firstName} ${siblingData.lastName}`.trim();
+        
+        const payload2 = {
+          username: siblingData.username,
+          password: siblingData.password,
+          role: "parent",
+          firstName: siblingData.firstName,
+          lastName: siblingData.lastName,
+          gender: siblingData.gender,
+          admissionId: siblingData.admissionId,
+          shortBio: siblingData.shortBio,
+          childName: student2Name,
+          childAge: siblingData.childAge,
+          childDob: siblingData.childDob,
+          childClass: siblingData.childClass,
+          monthlyFee: siblingData.monthlyFee,
+          
+          // Shared Parent Details
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          location: formData.location,
+          zoomId: formData.zoomId,
+          referredBy: formData.referredBy,
+          joiningDate: formData.joiningDate,
+          studentEmail: formData.studentEmail,
+          studentPhone: formData.studentPhone
+        };
+
+        await axios.post("http://localhost:5000/api/register", payload2);
+        setMsg("✅ Success! Both siblings registered.");
+      } else {
+        setMsg("✅ User Registered Successfully!");
+      }
+
+      // Reset
       setFormData({ 
         username: "", password: "", role: "parent", 
         firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
@@ -714,12 +780,17 @@ const AddUserTab = () => {
         fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
         childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" 
       });
+      setSiblingData({
+        username: "", password: "", firstName: "", lastName: "", gender: "", 
+        admissionId: "", shortBio: "", childAge: "", childDob: "", childClass: "", monthlyFee: ""
+      });
+      setShowSibling(false);
+
     } catch (err) {
+      console.error(err);
       setMsg("❌ Error: Username taken or server issue.");
     }
   };
-
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   return (
     <div className="form-wrapper">
@@ -728,113 +799,106 @@ const AddUserTab = () => {
         
         {/* 1. LOGIN CREDENTIALS */}
         <div className="form-section">
-          <h4 className="section-title">Login Credentials</h4>
+          <h4 className="section-title">Login Credentials {showSibling && "(Student 1)"}</h4>
           <div className="form-row">
-            <div className="form-group"><label>Username *</label><input name="username" value={formData.username} onChange={handleChange} required placeholder="Login ID" /></div>
+            <div className="form-group"><label>Username *</label><input name="username" value={formData.username} onChange={handleChange} required placeholder="Unique Login ID" /></div>
             <div className="form-group"><label>Password *</label><input name="password" type="password" value={formData.password} onChange={handleChange} required placeholder="Secret Password" /></div>
           </div>
           <div className="form-group"><label>Role</label><select name="role" value={formData.role} onChange={handleChange}><option value="parent">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
         </div>
 
-        {/* 2. STUDENT DETAILS (Only if Role is Student) */}
+        {/* 2. STUDENT 1 DETAILS */}
         {formData.role === "parent" && (
           <div className="form-section student-section">
-            <h4 className="section-title" style={{color: '#0284c7'}}>Student Details</h4>
-            
+            <h4 className="section-title" style={{color: '#0284c7'}}>Student 1 Details</h4>
             <div className="form-row">
               <div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Rahul" /></div>
               <div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Dravid" /></div>
             </div>
-
             <div className="form-row">
-              <div className="form-group">
-                <label>Gender *</label>
-                <select name="gender" value={formData.gender} onChange={handleChange}>
-                  <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option>
-                </select>
-              </div>
+              <div className="form-group"><label>Gender *</label><select name="gender" value={formData.gender} onChange={handleChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
               <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div>
             </div>
-
             <div className="form-row">
               <div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} placeholder="ADM-001" /></div>
-              <div className="form-group"><label>Student Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} placeholder="e.g. 10" /></div>
+              <div className="form-group"><label>Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} placeholder="e.g. 10" /></div>
             </div>
-
             <div className="form-row">
-              <div className="form-group"><label>Student Email (Optional)</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} placeholder="student@mail.com" /></div>
-              <div className="form-group"><label>Student Phone (Optional)</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} placeholder="For older students" /></div>
+              <div className="form-group"><label>Student Email</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} placeholder="Optional" /></div>
+              <div className="form-group"><label>Student Phone</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} placeholder="Optional" /></div>
             </div>
-
-            <div className="form-group">
-              <label>Short Bio</label>
-              <textarea name="shortBio" value={formData.shortBio} onChange={handleChange} placeholder="Interests, hobbies..." style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} />
-            </div>
+            <div className="form-group"><label>Short Bio</label><textarea name="shortBio" value={formData.shortBio} onChange={handleChange} placeholder="Interests..." style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} /></div>
           </div>
         )}
 
-        {/* 3. PARENT DETAILS (Restored for Student Role) */}
+        {/* 3. PARENT DETAILS (SHARED) - ✨ ZOOM ID RESTORED */}
         {formData.role === "parent" && (
           <div className="form-section parent-section">
-            <h4 className="section-title" style={{color: '#ea580c'}}>Parent / Guardian Details</h4>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
+               <h4 className="section-title" style={{color: '#ea580c', margin:0}}>Parent / Guardian Details (Shared)</h4>
+               {autoFillMsg && <span style={{fontSize:'0.85rem', color:'#16a34a', fontWeight:'bold'}}>{autoFillMsg}</span>}
+            </div>
             
             <div className="form-row">
+              <div className="form-group"><label>Parent Phone *</label><input name="phone" value={formData.phone} onChange={handleChange} onBlur={handlePhoneBlur} placeholder="Enter to Search..." style={{border: '2px solid #fdba74'}} /></div>
               <div className="form-group"><label>Parent Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Guardian Name" /></div>
-              <div className="form-group"><label>Relation</label><input placeholder="e.g. Father/Mother" disabled style={{background:'#f1f5f9'}} /></div>
             </div>
 
             <div className="form-row">
               <div className="form-group"><label>Parent Email</label><input name="email" value={formData.email} onChange={handleChange} placeholder="parent@mail.com" /></div>
-              <div className="form-group"><label>Parent Phone</label><input name="phone" value={formData.phone} onChange={handleChange} placeholder="+91 987..." /></div>
+              <div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} placeholder="City" /></div>
             </div>
 
+            {/* ✨ RESTORED FIELDS */}
             <div className="form-row">
-               <div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} placeholder="City" /></div>
-               <div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} /></div>
+               <div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} placeholder="Zoom Meeting ID" /></div>
+               <div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} placeholder="Source" /></div>
             </div>
           </div>
         )}
 
-        {/* 4. ACADEMIC / TEACHER / ADMIN SPECIFICS */}
-        <div className="form-section">
-           <h4 className="section-title">Academic & Official</h4>
-           
-           {/* Student Academic */}
-           {formData.role === "parent" && (
-             <div className="form-row">
-               <div className="form-group"><label>Class / Grade</label><input name="childClass" value={formData.childClass} onChange={handleChange} placeholder="e.g. Grade 5" /></div>
-               <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
-             </div>
-           )}
+        {/* 4. SIBLING TOGGLE */}
+        {formData.role === "parent" && (
+            <div style={{marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '8px', border: '1px dashed #0284c7', display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <input type="checkbox" id="siblingCheck" checked={showSibling} onChange={(e) => setShowSibling(e.target.checked)} style={{width:'20px', height:'20px', cursor:'pointer'}}/>
+                <label htmlFor="siblingCheck" style={{cursor:'pointer', fontWeight:'600', color:'#0369a1', fontSize:'1rem'}}>Register a Sibling (Second Child)?</label>
+            </div>
+        )}
 
-           {/* Teacher Specific */}
-           {formData.role === "teacher" && (
-             <>
-               <div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} /></div></div>
-               <div className="form-row">
-                 <div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} /></div>
-                 <div className="form-group"><label>Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} /></div>
-               </div>
-               <div className="form-row"><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
-             </>
-           )}
+        {/* 5. STUDENT 2 FORM (SIBLING) */}
+        {showSibling && formData.role === "parent" && (
+            <div className="form-section student-section" style={{borderLeft: '5px solid #0284c7'}}>
+                <h4 className="section-title" style={{color: '#0284c7'}}>Student 2 Details (Sibling)</h4>
+                <div className="form-row" style={{background: '#fff', padding:'10px', borderRadius:'6px', marginBottom:'15px', border:'1px solid #ddd'}}>
+                    <div className="form-group"><label>Sibling Username *</label><input name="username" value={siblingData.username} onChange={handleSiblingChange} required placeholder="Unique Login ID" /></div>
+                    <div className="form-group"><label>Sibling Password *</label><input name="password" type="password" value={siblingData.password} onChange={handleSiblingChange} required placeholder="Password" /></div>
+                </div>
+                <div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={siblingData.firstName} onChange={handleSiblingChange} /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={siblingData.lastName} onChange={handleSiblingChange} /></div></div>
+                <div className="form-row"><div className="form-group"><label>Gender</label><select name="gender" value={siblingData.gender} onChange={handleSiblingChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={siblingData.childDob} onChange={handleSiblingChange} /></div></div>
+                <div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={siblingData.admissionId} onChange={handleSiblingChange} /></div><div className="form-group"><label>Class / Grade</label><input name="childClass" value={siblingData.childClass} onChange={handleSiblingChange} /></div></div>
+                <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={siblingData.monthlyFee} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
+            </div>
+        )}
 
-           {/* Admin Specific */}
-           {formData.role === "admin" && (
-             <div className="form-row">
-                <div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div>
-                <div className="form-group"><label>DOB</label><input type="date" name="dob" value={formData.dob} onChange={handleChange} /></div>
-             </div>
-           )}
-
-           {/* Common Joining Date */}
-           <div className="form-group" style={{marginTop:'15px'}}>
-             <label>Joining Date</label>
-             <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} />
+        {/* 6. OTHER ROLES */}
+        {formData.role !== "parent" && (
+           <div className="form-section">
+             <h4 className="section-title">Details</h4>
+             {formData.role === "teacher" && (
+               <>
+                 <div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} /></div></div>
+                 <div className="form-row"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} /></div><div className="form-group"><label>Salary</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} /></div></div>
+                 <div className="form-row"><div className="form-group"><label>DOB</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
+               </>
+             )}
+             {formData.role === "admin" && (
+               <div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>DOB</label><input type="date" name="dob" value={formData.dob} onChange={handleChange} /></div></div>
+             )}
+             <div className="form-group" style={{marginTop:'15px'}}><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} /></div>
            </div>
-        </div>
+        )}
 
-        <button type="submit" className="save-btn" style={{ marginTop: "20px" }}>Register User</button>
+        <button type="submit" className="save-btn" style={{ marginTop: "20px" }}>{showSibling ? "Register Both Siblings" : "Register User"}</button>
       </form>
       {msg && <p className="status-msg">{msg}</p>}
     </div>

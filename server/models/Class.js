@@ -4,6 +4,15 @@ const ClassSchema = new mongoose.Schema({
   className: { type: String, required: true },
   level: { type: String, required: true }, // e.g., Beginner, Intermediate
   subLevel: { type: String, required: true },
+
+  // ✨ NEW: Schedule & Link
+  schedule: [{ 
+    day: { type: String, required: true }, 
+    time: { type: String, required: true } 
+  }],
+  meetingLink: { type: String },
+
+  
   teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Link to Teacher User
   students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // List of Students
   createdAt: { type: Date, default: Date.now }

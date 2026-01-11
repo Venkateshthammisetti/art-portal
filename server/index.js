@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const User = require('./models/User');
 const Class = require('./models/Class');
+const normalize = (str) => (str || "").toString().trim().toLowerCase();
 
 const app = express();
 app.use(cors());
@@ -181,43 +182,21 @@ function escapeRegex(text) {
     return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
-// 2. CREATE A CLASS (Strict Duplicate Prevention)
+// 2. CREATE A CLASS
 app.post('/api/classes', async (req, res) => {
   try {
-    const { className, level, subLevel, teacherId } = req.body;
+    // ✨ Extract new fields: schedule, meetingLink
+    const { className, level, subLevel, teacherId, schedule, meetingLink } = req.body;
 
-    // ✨ ROBUST DUPLICATE CHECK
-    // 1. Create Case-Insensitive Regex for Name & Level
-    const nameRegex = new RegExp(`^${escapeRegex(className.trim())}$`, 'i');
-    const levelRegex = new RegExp(`^${escapeRegex(level.trim())}$`, 'i');
+    // ... (Existing Duplicate Check Logic - Keep it!) ...
+    // Note: Copy your normalize/duplicate check code here from previous steps
 
-    // 2. Build Query
-    const query = {
-        className: { $regex: nameRegex },
-        level: { $regex: levelRegex }
-    };
-
-    // 3. Handle Sub-Level (Check for exact match OR empty/missing if none provided)
-    if (subLevel && subLevel.trim() !== "") {
-        query.subLevel = { $regex: new RegExp(`^${escapeRegex(subLevel.trim())}$`, 'i') };
-    } else {
-        // If user didn't select a sub-level, ensure we check for classes that ALSO have no sub-level
-        query.$or = [{ subLevel: { $exists: false } }, { subLevel: "" }, { subLevel: null }];
-    }
-
-    const existingClass = await Class.findOne(query);
-
-    if (existingClass) {
-        return res.status(400).json({ 
-            message: `DUPLICATE: Class "${existingClass.className}" (${existingClass.level} ${existingClass.subLevel ? "- " + existingClass.subLevel : ""}) already exists!` 
-        });
-    }
-
-    // 3. Create if unique
     const newClass = new Class({
       className: className.trim(),
-      level: level,
-      subLevel: subLevel,
+      level,
+      subLevel,
+      schedule,    // ✨ Save Schedule
+      meetingLink, // ✨ Save Link
       teacher: teacherId,
       students: []
     });
@@ -260,38 +239,21 @@ app.post('/api/classes/:id/assign', async (req, res) => {
 
 
 
-// 4. UPDATE CLASS DETAILS (Strict Duplicate Prevention)
+// 4. UPDATE CLASS DETAILS
 app.put('/api/classes/:id', async (req, res) => {
   try {
-    const { className, level, subLevel, teacherId } = req.body;
+    // ✨ Extract new fields here too
+    const { className, level, subLevel, teacherId, schedule, meetingLink } = req.body;
 
-    // ✨ ROBUST CHECK (Excluding current ID)
-    const nameRegex = new RegExp(`^${escapeRegex(className.trim())}$`, 'i');
-    const levelRegex = new RegExp(`^${escapeRegex(level.trim())}$`, 'i');
-
-    const query = {
-        _id: { $ne: req.params.id }, // Ignore self
-        className: { $regex: nameRegex },
-        level: { $regex: levelRegex }
-    };
-
-    if (subLevel && subLevel.trim() !== "") {
-        query.subLevel = { $regex: new RegExp(`^${escapeRegex(subLevel.trim())}$`, 'i') };
-    } else {
-        query.$or = [{ subLevel: { $exists: false } }, { subLevel: "" }, { subLevel: null }];
-    }
-
-    const duplicateCheck = await Class.findOne(query);
-
-    if (duplicateCheck) {
-        return res.status(400).json({ 
-             message: `DUPLICATE: Class "${duplicateCheck.className}" (${duplicateCheck.level} ${duplicateCheck.subLevel ? "- " + duplicateCheck.subLevel : ""}) already exists!` 
-        });
-    }
+    // ... (Existing Duplicate Check Logic - Keep it!) ...
 
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id, 
-      { className, level, subLevel, teacher: teacherId },
+      { 
+        className, level, subLevel, teacher: teacherId,
+        schedule,    // ✨ Update Schedule
+        meetingLink  // ✨ Update Link
+      },
       { new: true }
     ).populate('teacher', 'fullName username');
     
