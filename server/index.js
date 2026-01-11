@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const User = require('./models/User');
 const Class = require('./models/Class');
-const normalize = (str) => (str || "").toString().trim().toLowerCase();
 
 const app = express();
 app.use(cors());
@@ -15,15 +14,21 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ Connected to MongoDB"))
     .catch(err => console.error("❌ DB Error:", err));
 
+// --- HELPER FUNCTIONS ---
+function escapeRegex(text) {
+    if (!text) return "";
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+const normalize = (str) => (str || "").toString().trim().toLowerCase();
+
 // ===========================
-//         ROUTES
+//         AUTH & USERS
 // ===========================
 
 // 1. LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username, password });
-    
     if (user) {
         res.json(user); 
     } else {
@@ -31,21 +36,16 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 2. REGISTER NEW USER (Create)
+// 2. REGISTER NEW USER
 app.post('/api/register', async (req, res) => {
   try {
     const { username } = req.body;
-
-    // Check if user exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ message: 'Username already taken' });
     }
-
-    // Create User
     const newUser = new User(req.body); 
     await newUser.save();
-
     res.json({ message: 'User registered successfully!' });
   } catch (err) {
     console.error(err);
@@ -53,10 +53,24 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// 3. GET ALL USERS (Read)
+// 3. ✨ NEW: GET PARENT BY PHONE (For Auto-fill)
+app.get('/api/users/parent/:phone', async (req, res) => {
+  try {
+    const parent = await User.findOne({ phone: req.params.phone, role: 'parent' })
+                             .select('fullName email location zoomId referredBy');
+    if (parent) {
+      res.json(parent);
+    } else {
+      res.status(404).json({ message: "Parent not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// 4. GET ALL USERS
 app.get('/api/users', async (req, res) => {
   try {
-    // Find all users, exclude passwords for security
     const users = await User.find({}).select('-password');
     res.json(users);
   } catch (err) {
@@ -64,43 +78,31 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// 4. ✨ NEW: UPDATE USER DETAILS (Edit)
+// 5. UPDATE USER DETAILS
 app.put('/api/users/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    // Find user by ID and update with new data
-    // { new: true } returns the updated document instead of the old one
-    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true });
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
     res.json(updatedUser);
   } catch (err) {
-    console.error("Update Error:", err);
     res.status(500).json({ message: "Server error updating user" });
   }
 });
 
-// 5. UPDATE STATUS (Toggle Active/Inactive)
+// 6. UPDATE STATUS
 app.put('/api/users/:id/status', async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ message: "User not found" });
-
-        user.isActive = !user.isActive; // Toggle status
+        user.isActive = !user.isActive; 
         await user.save();
-        
         res.json({ message: "Status updated", isActive: user.isActive });
     } catch (err) {
         res.status(500).json({ message: "Server Error" });
     }
 });
 
-// 6. DELETE USER
+// 7. DELETE USER
 app.delete('/api/users/:id', async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -110,50 +112,27 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
-// 7. DASHBOARD STATS (Consolidated)
+// 8. DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
     const totalStudents = await User.countDocuments({ role: 'parent' });
     const totalTeachers = await User.countDocuments({ role: 'teacher' });
-    
-    // Sum of 'monthlyFee' for parents (Revenue)
     const revenueResult = await User.aggregate([
       { $match: { role: 'parent' } }, 
       { $group: { _id: null, totalRevenue: { $sum: "$monthlyFee" } } }
     ]);
-    
     const calculatedRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
-
-    res.json({
-      students: totalStudents,
-      teachers: totalTeachers,
-      revenue: calculatedRevenue
-    });
+    res.json({ students: totalStudents, teachers: totalTeachers, revenue: calculatedRevenue });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: 'Error fetching stats' });
   }
 });
 
-// 8. UPDATE PROGRESS (For Teachers)
-app.post('/api/update-progress', async (req, res) => {
-    const { username, progress, feedback } = req.body;
-    await User.findOneAndUpdate(
-        { username: username }, 
-        { progress: progress, feedback: feedback }
-    );
-    res.json({ success: true, message: "Progress updated!" });
-});
-
-
-
-// 9.  NEW: GET USER CREDENTIALS (For Admin "Eye" Button)
+// 9. GET USER CREDENTIALS
 app.get('/api/users/:id/credentials', async (req, res) => {
   try {
-    // Specifically select ONLY username and password
     const user = await User.findById(req.params.id).select('username password');
     if (!user) return res.status(404).json({ message: "User not found" });
-    
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: "Server Error" });
@@ -161,42 +140,42 @@ app.get('/api/users/:id/credentials', async (req, res) => {
 });
 
 // ===========================
-//      CLASS MANAGEMENT ROUTES
+//      CLASS MANAGEMENT
 // ===========================
 
-// 1. GET ALL CLASSES (With Teacher & Student details populated)
+// 1. GET ALL CLASSES
 app.get('/api/classes', async (req, res) => {
   try {
     const classes = await Class.find()
-      .populate('teacher', 'fullName username') // Get teacher name
-      .populate('students', 'childName fullName username childAge joiningDate'); // Get student names
+      .populate('teacher', 'fullName username')
+      .populate('students', 'childName fullName username childAge joiningDate');
     res.json(classes);
   } catch (err) {
     res.status(500).json({ message: "Error fetching classes" });
   }
 });
 
-// --- HELPER: Escape special characters for Regex ---
-function escapeRegex(text) {
-    if (!text) return "";
-    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-}
-
-// 2. CREATE A CLASS
+// 2. CREATE A CLASS (Strict Name Uniqueness)
 app.post('/api/classes', async (req, res) => {
   try {
-    // ✨ Extract new fields: schedule, meetingLink
-    const { className, level, subLevel, teacherId, schedule, meetingLink } = req.body;
+    const { className, level, subLevel, teacherId, schedule, meetingLink, maxCapacity } = req.body;
 
-    // ... (Existing Duplicate Check Logic - Keep it!) ...
-    // Note: Copy your normalize/duplicate check code here from previous steps
+    // ✨ CHECK 1: GLOBAL NAME CHECK
+    // Search for any class with this exact name (case-insensitive)
+    const nameRegex = new RegExp(`^${escapeRegex(className.trim())}$`, 'i');
+    const existingName = await Class.findOne({ className: { $regex: nameRegex } });
 
+    if (existingName) {
+      return res.status(400).json({ 
+        message: `DUPLICATE NAME: A class named "${existingName.className}" already exists. Please choose a unique name.` 
+      });
+    }
+
+    // Create
     const newClass = new Class({
       className: className.trim(),
-      level,
-      subLevel,
-      schedule,    // ✨ Save Schedule
-      meetingLink, // ✨ Save Link
+      level, subLevel, schedule, meetingLink,
+      maxCapacity: maxCapacity || 10,
       teacher: teacherId,
       students: []
     });
@@ -209,24 +188,54 @@ app.post('/api/classes', async (req, res) => {
   }
 });
 
-// 3. ASSIGN STUDENTS TO CLASS
+// 3. UPDATE CLASS (Strict Name Uniqueness)
+app.put('/api/classes/:id', async (req, res) => {
+  try {
+    const { className, level, subLevel, teacherId, schedule, meetingLink, maxCapacity } = req.body;
+
+    // ✨ CHECK: Name unique (excluding current class)
+    const nameRegex = new RegExp(`^${escapeRegex(className.trim())}$`, 'i');
+    const duplicate = await Class.findOne({ 
+      _id: { $ne: req.params.id }, // Ignore self
+      className: { $regex: nameRegex } 
+    });
+
+    if (duplicate) {
+      return res.status(400).json({ 
+        message: `DUPLICATE NAME: A class named "${duplicate.className}" already exists.` 
+      });
+    }
+
+    const updatedClass = await Class.findByIdAndUpdate(
+      req.params.id, 
+      { className, level, subLevel, teacher: teacherId, schedule, meetingLink, maxCapacity },
+      { new: true }
+    ).populate('teacher', 'fullName username');
+    
+    res.json(updatedClass);
+  } catch (err) {
+    res.status(500).json({ message: "Error updating class" });
+  }
+});
+
+// 4. ASSIGN STUDENTS
 app.post('/api/classes/:id/assign', async (req, res) => {
   try {
     const classId = req.params.id;
-    const { studentIds } = req.body; // Array of User ObjectIds
+    const { studentIds } = req.body; 
 
-    // 1. Find the Class
+    if (!studentIds || !Array.isArray(studentIds)) {
+        return res.status(400).json({ message: "Invalid student IDs" });
+    }
+
     const classDoc = await Class.findById(classId);
     if (!classDoc) return res.status(404).json({ message: "Class not found" });
 
-    // 2. Update Students: Set their assignedClass to this classId
-    // We update ALL selected students to point to this class
     await User.updateMany(
       { _id: { $in: studentIds } },
       { $set: { assignedClass: classId } }
     );
 
-    // 3. Update Class: Replace student list with new selection
     classDoc.students = studentIds;
     await classDoc.save();
 
@@ -237,46 +246,15 @@ app.post('/api/classes/:id/assign', async (req, res) => {
   }
 });
 
-
-
-// 4. UPDATE CLASS DETAILS
-app.put('/api/classes/:id', async (req, res) => {
-  try {
-    // ✨ Extract new fields here too
-    const { className, level, subLevel, teacherId, schedule, meetingLink } = req.body;
-
-    // ... (Existing Duplicate Check Logic - Keep it!) ...
-
-    const updatedClass = await Class.findByIdAndUpdate(
-      req.params.id, 
-      { 
-        className, level, subLevel, teacher: teacherId,
-        schedule,    // ✨ Update Schedule
-        meetingLink  // ✨ Update Link
-      },
-      { new: true }
-    ).populate('teacher', 'fullName username');
-    
-    res.json(updatedClass);
-  } catch (err) {
-    res.status(500).json({ message: "Error updating class" });
-  }
-});
-
-// 5. ✨ DELETE CLASS (And Unassign Students)
+// 5. DELETE CLASS
 app.delete('/api/classes/:id', async (req, res) => {
   try {
     const classId = req.params.id;
-
-    // 1. Delete the Class
     await Class.findByIdAndDelete(classId);
-
-    // 2. Find all students in this class and set their assignedClass to NULL
     await User.updateMany(
       { assignedClass: classId },
       { $set: { assignedClass: null } }
     );
-
     res.json({ message: "Class deleted and students unassigned" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting class" });
@@ -287,22 +265,18 @@ app.delete('/api/classes/:id', async (req, res) => {
 //       FEE MANAGEMENT
 // ===========================
 
-// ✨ 10. MARK FEE STATUS (Paid / Pending)
+// 1. MARK FEE STATUS
 app.post('/api/fees/update', async (req, res) => {
   try {
     const { userId, month, status, amount } = req.body; 
-    // month format: "2026-01"
     
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "Student not found" });
 
-    // Check if a payment record already exists for this month
     const existingPaymentIndex = user.payments.findIndex(p => p.month === month);
 
     if (existingPaymentIndex > -1) {
-      // UPDATE existing record
       if (status === 'Pending') {
-         // If setting to pending, remove the record or mark pending
          user.payments.splice(existingPaymentIndex, 1);
       } else {
          user.payments[existingPaymentIndex].status = status;
@@ -310,7 +284,6 @@ app.post('/api/fees/update', async (req, res) => {
          user.payments[existingPaymentIndex].paidDate = new Date();
       }
     } else {
-      // CREATE new record (Only if status is Paid)
       if (status === 'Paid') {
         user.payments.push({
           month,
@@ -328,8 +301,6 @@ app.post('/api/fees/update', async (req, res) => {
     res.status(500).json({ message: "Error updating fee status" });
   }
 });
-
-
 
 // Start Server
 app.listen(5000, () => console.log("✅ Server running on port 5000"));
