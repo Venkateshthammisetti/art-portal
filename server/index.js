@@ -283,6 +283,52 @@ app.delete('/api/classes/:id', async (req, res) => {
   }
 });
 
+// ===========================
+//       FEE MANAGEMENT
+// ===========================
+
+// ✨ 10. MARK FEE STATUS (Paid / Pending)
+app.post('/api/fees/update', async (req, res) => {
+  try {
+    const { userId, month, status, amount } = req.body; 
+    // month format: "2026-01"
+    
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Student not found" });
+
+    // Check if a payment record already exists for this month
+    const existingPaymentIndex = user.payments.findIndex(p => p.month === month);
+
+    if (existingPaymentIndex > -1) {
+      // UPDATE existing record
+      if (status === 'Pending') {
+         // If setting to pending, remove the record or mark pending
+         user.payments.splice(existingPaymentIndex, 1);
+      } else {
+         user.payments[existingPaymentIndex].status = status;
+         user.payments[existingPaymentIndex].amount = amount;
+         user.payments[existingPaymentIndex].paidDate = new Date();
+      }
+    } else {
+      // CREATE new record (Only if status is Paid)
+      if (status === 'Paid') {
+        user.payments.push({
+          month,
+          status: 'Paid',
+          amount: amount,
+          paidDate: new Date()
+        });
+      }
+    }
+
+    await user.save();
+    res.json({ success: true, payments: user.payments });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error updating fee status" });
+  }
+});
+
 
 
 // Start Server

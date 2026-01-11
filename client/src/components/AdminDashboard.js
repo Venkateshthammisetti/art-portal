@@ -11,10 +11,7 @@ const LEVEL_STRUCTURE = {
   "Advanced": ["Level 1", "Level 2", "Level 3"]
 };
 
-// ... (Icon Components and AdminDashboard Shell remain the same) ...
-// Copy Icons and the main AdminDashboard shell from your existing code or previous answers.
-// I will focus on the updated Tabs and Modals below.
-
+// --- MAIN DASHBOARD COMPONENT ---
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
@@ -25,6 +22,7 @@ const AdminDashboard = ({ onLogout }) => {
   const IconUsers = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
   const IconClasses = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>);
   const IconLogout = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>);
+  const IconFee = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5"></path></svg>);
 
   const fetchStats = () => {
     axios.get('http://localhost:5000/api/dashboard/stats')
@@ -43,13 +41,14 @@ const AdminDashboard = ({ onLogout }) => {
           <button className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}><IconUsers /> <span>User Management</span></button>
           <button className={activeTab === "classes" ? "active" : ""} onClick={() => setActiveTab("classes")}><IconClasses /> <span>Class Management</span></button>
           <button className={activeTab === "add-user" ? "active" : ""} onClick={() => setActiveTab("add-user")}><IconAdd /> <span>Register User</span></button>
+          <button className={activeTab === "fees" ? "active" : ""} onClick={() => setActiveTab("fees")}><IconFee /> <span>Fee Tracker</span></button>
         </nav>
         <div className="sidebar-footer"><p>Admin Portal v1.0</p></div>
       </aside>
       <main className="admin-main">
         <header className="top-header">
           <div className="header-title">
-            <h2>{activeTab === "overview" ? "Overview" : activeTab === "users" ? "All Users" : activeTab === "classes" ? "Class Management" : "Register User"}</h2>
+            <h2>{activeTab === "overview" ? "Overview" : activeTab === "users" ? "All Users" : activeTab === "classes" ? "Class Management" : activeTab === "fees" ? "Fee Tracker" : "Register User"}</h2>
             <p>Welcome back, Admin</p>
           </div>
           <div className="header-actions">
@@ -62,12 +61,14 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "users" && <UserManagementTab />}
           {activeTab === "classes" && <ClassManagementTab />}
           {activeTab === "add-user" && <AddUserTab />}
+          {activeTab === "fees" && <FeeTrackerTab />}
         </div>
       </main>
     </div>
   );
 };
 
+// --- TAB 1: OVERVIEW ---
 const OverviewTab = ({ stats }) => (
   <div className="stats-grid">
     <div className="stat-card blue"><h3>Total Students</h3><div className="stat-value-row"><span className="stat-number">{stats.students}</span><div className="stat-icon-bg">🎓</div></div></div>
@@ -76,7 +77,7 @@ const OverviewTab = ({ stats }) => (
   </div>
 );
 
-// --- TAB 4: CLASS MANAGEMENT (UPDATED) ---
+// --- TAB 4: CLASS MANAGEMENT ---
 const ClassManagementTab = () => {
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -88,9 +89,7 @@ const ClassManagementTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('newest'); 
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -220,11 +219,10 @@ const ClassManagementTab = () => {
         </div>
       )}
 
-      {/* MODALS */}
       {showClassModal.show && (
         <ClassModal 
           teachers={teachers} 
-          existingClasses={classes} /* ✨ CRITICAL: PASSING THE LIST FOR VALIDATION */
+          existingClasses={classes} 
           initialData={showClassModal.isEdit ? selectedClass : null}
           onClose={() => setShowClassModal({ show: false, isEdit: false })} 
           onSuccess={handleClassSaved} 
@@ -267,7 +265,7 @@ const ClassManagementTab = () => {
   );
 };
 
-// --- COMPONENT: CLASS DETAILS VIEW (Updated with Copy Link) ---
+// --- COMPONENT: CLASS DETAILS VIEW (With Schedule & Copy Link) ---
 const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
   const [copyStatus, setCopyStatus] = useState("Copy Meeting Link 📋");
 
@@ -302,7 +300,6 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
       <div className="object-body-grid">
         <div className="top-row-grid">
            
-           {/* ✨ SCHEDULE & LINK CARD */}
            <div className="detail-card">
              <h3>Schedule & Link</h3>
              <div style={{marginBottom:'15px'}}>
@@ -316,7 +313,6 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                 ) : <span style={{color:'#94a3b8'}}>No schedule set</span>}
              </div>
              
-             {/* ✨ NEW COPY BUTTON LOGIC */}
              {cls.meetingLink ? (
                  <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
                     <div style={{background:'#f1f5f9', padding:'8px', borderRadius:'4px', fontSize:'0.85rem', color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
@@ -329,7 +325,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                         display:'block', 
                         width:'100%', 
                         textAlign:'center', 
-                        backgroundColor: copyStatus.includes('✅') ? '#10b981' : '#0284c7', // Green if copied
+                        backgroundColor: copyStatus.includes('✅') ? '#10b981' : '#0284c7', 
                         transition: 'background-color 0.2s'
                       }}
                     >
@@ -377,24 +373,17 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
   );
 };
 
-// --- LIST VIEW UPDATE (Optional but helpful) ---
-// Inside ClassManagementTab > return > table:
-// You can add a column for "Schedule" if you want to see days at a glance.
-// Example for the `map` inside table:
-// <td>
-//    {cls.schedule.map(s => s.day.substring(0,3)).join(', ')}
-// </td>
-// --- COMPONENT: CLASS MODAL (With Schedule & Link) ---
+// --- COMPONENT: CLASS MODAL (Strict Validation + Schedule + Link) ---
 const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({ 
     className: initialData ? initialData.className : '', 
     level: initialData ? initialData.level : '', 
     subLevel: initialData ? initialData.subLevel : '', 
     teacherId: initialData && initialData.teacher ? initialData.teacher._id : '',
-    meetingLink: initialData ? initialData.meetingLink : '', // ✨ NEW
+    meetingLink: initialData ? initialData.meetingLink : '',
     schedule: initialData && initialData.schedule && initialData.schedule.length > 0 
       ? initialData.schedule 
-      : [{ day: 'Saturday', time: '10:00' }, { day: 'Wednesday', time: '17:00' }] // ✨ Default: 2 slots
+      : [{ day: 'Saturday', time: '10:00' }, { day: 'Wednesday', time: '17:00' }]
   });
 
   const [availableSubLevels, setAvailableSubLevels] = useState([]);
@@ -408,7 +397,6 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     }
   }, [formData.level]);
 
-  // Real-time duplicate check (Same as before)
   useEffect(() => {
     const checkDuplicate = () => {
       if (!formData.className || !formData.level) { setDuplicateError(""); return; }
@@ -425,7 +413,6 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     checkDuplicate();
   }, [formData.className, formData.level, formData.subLevel, existingClasses, initialData]);
 
-  // ✨ Handle Schedule Changes
   const handleScheduleChange = (index, field, value) => {
     const newSchedule = [...formData.schedule];
     newSchedule[index][field] = value;
@@ -457,7 +444,6 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
         <div className="modal-header"><h3>{initialData ? 'Edit Class' : 'Create New Class'}</h3><button className="close-modal" onClick={onClose}>×</button></div>
         <form onSubmit={handleSubmit}>
           
-          {/* --- BASIC INFO --- */}
           <div className="form-group"><label>Class Name</label><input required value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})} className={duplicateError ? "input-error" : ""} /></div>
           
           <div className="form-row">
@@ -477,7 +463,6 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
           
           {duplicateError && <div className="error-msg">{duplicateError}</div>}
 
-          {/* --- ✨ SCHEDULE SECTION --- */}
           <div className="form-group" style={{background:'#f8fafc', padding:'15px', borderRadius:'8px', marginTop:'15px', border:'1px solid #e2e8f0'}}>
             <label style={{color:'#334155', fontWeight:'600'}}>Class Schedule (2 Classes/Week)</label>
             {formData.schedule.map((slot, index) => (
@@ -492,7 +477,6 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
             <button type="button" onClick={addScheduleSlot} style={{marginTop:'10px', fontSize:'0.85rem', color:'#0284c7', background:'none', border:'none', cursor:'pointer'}}>+ Add Another Day</button>
           </div>
 
-          {/* --- ✨ MEETING LINK --- */}
           <div className="form-group" style={{marginTop:'15px'}}>
             <label>Meeting Link (Zoom / Meet)</label>
             <input placeholder="https://zoom.us/j/..." value={formData.meetingLink} onChange={e => setFormData({...formData, meetingLink: e.target.value})} />
@@ -506,7 +490,8 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     </div>
   );
 };
-// --- COMPONENT: ASSIGN STUDENTS MODAL (Same logic as before) ---
+
+// --- COMPONENT: ASSIGN STUDENTS MODAL ---
 const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
   const [students, setStudents] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -559,10 +544,6 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
     </div>
   );
 };
-
-// --- RE-USE EXISTING COMPONENTS ---
-// UserManagementTab, UserDetailsView, AddUserTab, EditUserModal remain unchanged from previous versions.
-// Ensure they are included in your final file.
 
 // --- TAB 2: USER MANAGEMENT ---
 const UserManagementTab = () => {
@@ -646,11 +627,11 @@ const UserManagementTab = () => {
 const formatDateForInput = (isoDate) => { if (!isoDate) return ""; const date = new Date(isoDate); return date.toISOString().split('T')[0]; };
 
 const EditUserModal = ({ user, onClose, onSave }) => {
-  const [formData, setFormData] = useState({ ...user, joiningDate: formatDateForInput(user.joiningDate), childDob: formatDateForInput(user.childDob) });
+  const [formData, setFormData] = useState({ ...user, joiningDate: formatDateForInput(user.joiningDate), childDob: formatDateForInput(user.childDob), dob: formatDateForInput(user.dob) });
   const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
   const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
   return (
-    <div className="modal-overlay"><div className="modal-content" style={{ maxWidth: '600px' }}><div className="modal-header"><h3>Edit Details: {user.username}</h3><button className="close-modal" onClick={onClose} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button></div><form onSubmit={handleSubmit}><div className="edit-form-grid"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></div><div className="form-group"><label>Phone Number</label><input name="phone" value={formData.phone || ''} onChange={handleChange} /></div><div className="form-group"><label>Email</label><input name="email" value={formData.email || ''} onChange={handleChange} /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location || ''} onChange={handleChange} /></div><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId || ''} onChange={handleChange} /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy || ''} onChange={handleChange} /></div></div><div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>{user.role === 'parent' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#0284c7' }}>Student Info</h4><div className="edit-form-grid"><div className="form-group"><label>Child Name</label><input name="childName" value={formData.childName || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#16a34a' }} /></div><div className="form-group"><label>Child Age</label><input name="childAge" value={formData.childAge || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Class/Grade</label><input name="childClass" value={formData.childClass || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : user.role === 'teacher' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#9333ea' }}>Teacher Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#9333ea' }} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : (<p>Admin details are managed internally.</p>)}</div><div className="modal-actions" style={{justifyContent: 'flex-end'}}><button type="button" className="cancel-btn" onClick={onClose} style={{marginRight:'10px'}}>Cancel</button><button type="submit" className="save-btn" style={{width: 'auto', padding: '10px 25px'}}>Save Changes</button></div></form></div></div>
+    <div className="modal-overlay"><div className="modal-content" style={{ maxWidth: '600px' }}><div className="modal-header"><h3>Edit Details: {user.username}</h3><button className="close-modal" onClick={onClose} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button></div><form onSubmit={handleSubmit}><div className="edit-form-grid"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></div><div className="form-group"><label>Phone Number</label><input name="phone" value={formData.phone || ''} onChange={handleChange} /></div><div className="form-group"><label>Email</label><input name="email" value={formData.email || ''} onChange={handleChange} /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location || ''} onChange={handleChange} /></div>{user.role !== 'admin' && <><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId || ''} onChange={handleChange} /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy || ''} onChange={handleChange} /></div></>}</div><div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>{user.role === 'parent' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#0284c7' }}>Student Info</h4><div className="edit-form-grid"><div className="form-group"><label>Child Name</label><input name="childName" value={formData.childName || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#16a34a' }} /></div><div className="form-group"><label>Child Age</label><input name="childAge" value={formData.childAge || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Class/Grade</label><input name="childClass" value={formData.childClass || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : user.role === 'teacher' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#9333ea' }}>Teacher Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#9333ea' }} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : (<><h4 style={{ margin: '0 0 10px 0', color: '#334155' }}>Admin Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization / Role</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>)}</div><div className="modal-actions" style={{justifyContent: 'flex-end'}}><button type="button" className="cancel-btn" onClick={onClose} style={{marginRight:'10px'}}>Cancel</button><button type="submit" className="save-btn" style={{width: 'auto', padding: '10px 25px'}}>Save Changes</button></div></form></div></div>
   );
 };
 
@@ -661,6 +642,7 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
   const [copyMsg, setCopyMsg] = useState("");
   const handleToggleCredentials = async () => { if (!credentials) { setLoadingCreds(true); try { const res = await axios.get(`http://localhost:5000/api/users/${user._id}/credentials`); setCredentials(res.data); setShowPassword(true); } catch (err) { console.error("Error fetching creds", err); } finally { setLoadingCreds(false); } } else { setShowPassword(!showPassword); } };
   const handleCopy = (text) => { navigator.clipboard.writeText(text); setCopyMsg("Copied!"); setTimeout(() => setCopyMsg(""), 2000); };
+  const displayDob = user.role === 'admin' ? user.dob : user.childDob;
   return (
     <div className="object-page">
       <div className="object-header"><button className="back-btn" onClick={onBack}>← Back to List</button><div className="header-content"><div className="header-avatar">{user.username.charAt(0).toUpperCase()}</div><div><h1>{user.fullName || user.username}</h1><span className={`role-badge ${user.role}`}>{user.role}</span><span className="joined-date">Joined: {user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : new Date(user.createdAt).toLocaleDateString()}</span></div><button className="delete-btn-large" onClick={onDelete}>Delete User</button></div></div>
@@ -669,7 +651,7 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
             <div className="detail-card" style={{ borderLeft: "4px solid #3b82f6" }}><div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h3>Login Credentials</h3>{copyMsg && <span style={{fontSize:'12px', color:'#10b981', fontWeight:'bold'}}>{copyMsg}</span>}</div><div className="credential-box" style={{ background: "#f8fafc", padding: "15px", borderRadius: "8px" }}><div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between" }}><div><span style={{ fontSize: "12px", color: "#64748b" }}>Username</span><strong style={{ display:'block', fontSize: "16px", color: "#334155" }}>{user.username}</strong></div><button onClick={() => handleCopy(user.username)} className="icon-btn" title="Copy Username">📋</button></div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><span style={{ fontSize: "12px", color: "#64748b" }}>Password</span>{loadingCreds ? <span style={{fontSize:'12px', color:'#999'}}>Fetching...</span> : showPassword && credentials ? <strong style={{ display:'block', fontSize: "16px", fontFamily: 'monospace' }}>{credentials.password}</strong> : <strong style={{ display:'block', fontSize: "16px", letterSpacing: "2px" }}>••••••••</strong>}</div><div style={{ display: 'flex', gap: '5px' }}><button onClick={handleToggleCredentials} className="icon-btn" style={{ color: '#0284c7' }}>{showPassword ? "👁️‍🗨️" : "👁️"}</button>{showPassword && credentials && <button onClick={() => handleCopy(credentials.password)} className="icon-btn" title="Copy Password">📋</button>}</div></div></div></div>
             <div className="detail-card"><h3>Contact Information</h3><div className="info-row"><label>Email:</label> <span>{user.email || "N/A"}</span></div><div className="info-row"><label>Phone:</label> <span>{user.phone || "N/A"}</span></div><div className="info-row"><label>Location:</label> <span>{user.location || "N/A"}</span></div><div className="info-row"><label>Zoom ID:</label> <span>{user.zoomId || "N/A"}</span></div></div>
         </div>
-        <div className="detail-card full-width-card"><h3>{user.role === "parent" ? "Student Details" : "Professional Details"}</h3><div className="details-grid-layout"><div className="info-col"><div className="info-row"><label>Joining Date:</label> <span style={{ fontWeight: 'bold' }}>{user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : 'N/A'}</span></div>{user.role === "parent" ? (<><div className="info-row"><label>Child Name:</label> <span>{user.childName || "N/A"}</span></div><div className="info-row"><label>Date of Birth:</label> <span>{user.childDob ? new Date(user.childDob).toLocaleDateString() : 'N/A'}</span></div></>) : (<><div className="info-row"><label>Specialization:</label> <span>{user.specialization || "N/A"}</span></div><div className="info-row"><label>Date of Birth:</label> <span>{user.childDob ? new Date(user.childDob).toLocaleDateString() : 'N/A'}</span></div></>)}</div><div className="info-col">{user.role === "parent" ? (<><div className="info-row"><label>Age:</label> <span>{user.childAge || "N/A"}</span></div><div className="info-row"><label>Class:</label> <span>{user.childClass || "N/A"}</span></div><div className="info-row"><label>Monthly Fee:</label><span style={{ color: "#16a34a", fontWeight: "bold", fontSize: "16px" }}>₹{user.monthlyFee || 0}</span></div></>) : (<div className="info-row"><label>Monthly Salary:</label><span style={{ color: "#9333ea", fontWeight: "bold", fontSize: "16px" }}>₹{user.monthlyFee || 0}</span></div>)}<div className="info-row"><label>Referred By:</label> <span>{user.referredBy || "N/A"}</span></div></div></div></div>
+        <div className="detail-card full-width-card"><h3>{user.role === "parent" ? "Student Details" : "Professional Details"}</h3><div className="details-grid-layout"><div className="info-col"><div className="info-row"><label>Joining Date:</label> <span style={{ fontWeight: 'bold' }}>{user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : 'N/A'}</span></div>{user.role === "parent" ? (<><div className="info-row"><label>Child Name:</label> <span>{user.childName || "N/A"}</span></div><div className="info-row"><label>Date of Birth:</label> <span>{user.childDob ? new Date(user.childDob).toLocaleDateString() : 'N/A'}</span></div></>) : (<><div className="info-row"><label>Specialization:</label> <span>{user.specialization || "N/A"}</span></div><div className="info-row"><label>Date of Birth:</label> <span>{displayDob ? new Date(displayDob).toLocaleDateString() : 'N/A'}</span></div></>)}</div><div className="info-col">{user.role === "parent" ? (<><div className="info-row"><label>Age:</label> <span>{user.childAge || "N/A"}</span></div><div className="info-row"><label>Class:</label> <span>{user.childClass || "N/A"}</span></div><div className="info-row"><label>Monthly Fee:</label><span style={{ color: "#16a34a", fontWeight: "bold", fontSize: "16px" }}>₹{user.monthlyFee || 0}</span></div></>) : user.role === "teacher" ? (<div className="info-row"><label>Monthly Salary:</label><span style={{ color: "#9333ea", fontWeight: "bold", fontSize: "16px" }}>₹{user.monthlyFee || 0}</span></div>) : (<div className="info-row"><label>Role Type:</label> <span>Administrator</span></div>)}{user.role !== "admin" && <div className="info-row"><label>Referred By:</label> <span>{user.referredBy || "N/A"}</span></div>}</div></div></div>
       </div>
     </div>
   );
@@ -677,7 +659,6 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
 
 // --- TAB 3: ADD USER (With Sibling Support + Zoom ID Fixed) ---
 const AddUserTab = () => {
-  // --- STUDENT 1 & PARENT DATA ---
   const [formData, setFormData] = useState({ 
     username: "", password: "", role: "parent", 
     firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
@@ -686,7 +667,6 @@ const AddUserTab = () => {
     childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" 
   });
 
-  // --- STUDENT 2 DATA (Sibling) ---
   const [showSibling, setShowSibling] = useState(false);
   const [siblingData, setSiblingData] = useState({
     username: "", password: "", 
@@ -700,20 +680,12 @@ const AddUserTab = () => {
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleSiblingChange = (e) => setSiblingData({ ...siblingData, [e.target.name]: e.target.value });
 
-  // Auto-fill Parent Logic
   const handlePhoneBlur = async () => {
     if (formData.role === 'parent' && formData.phone.length > 9) {
       try {
         const res = await axios.get(`http://localhost:5000/api/users/parent/${formData.phone}`);
         if (res.data) {
-          setFormData(prev => ({
-            ...prev,
-            fullName: res.data.fullName || "",
-            email: res.data.email || "",
-            location: res.data.location || "",
-            zoomId: res.data.zoomId || "",
-            referredBy: res.data.referredBy || ""
-          }));
+          setFormData(prev => ({ ...prev, fullName: res.data.fullName || "", email: res.data.email || "", location: res.data.location || "", zoomId: res.data.zoomId || "", referredBy: res.data.referredBy || "" }));
           setAutoFillMsg("✅ Parent found! Details auto-filled.");
           setTimeout(() => setAutoFillMsg(""), 3000);
         }
@@ -724,183 +696,170 @@ const AddUserTab = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setMsg("Processing...");
-
     const student1Name = `${formData.firstName} ${formData.lastName}`.trim();
-    const payload1 = {
-      ...formData,
-      childName: formData.role === 'parent' ? student1Name : "",
-    };
+    const payload1 = { ...formData, childName: formData.role === 'parent' ? student1Name : "" };
 
     try {
-      // 1. Register Student 1
       await axios.post("http://localhost:5000/api/register", payload1);
-
-      // 2. Register Student 2 (If Sibling Checked)
       if (formData.role === 'parent' && showSibling) {
         const student2Name = `${siblingData.firstName} ${siblingData.lastName}`.trim();
-        
-        const payload2 = {
-          username: siblingData.username,
-          password: siblingData.password,
-          role: "parent",
-          firstName: siblingData.firstName,
-          lastName: siblingData.lastName,
-          gender: siblingData.gender,
-          admissionId: siblingData.admissionId,
-          shortBio: siblingData.shortBio,
-          childName: student2Name,
-          childAge: siblingData.childAge,
-          childDob: siblingData.childDob,
-          childClass: siblingData.childClass,
-          monthlyFee: siblingData.monthlyFee,
-          
-          // Shared Parent Details
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          location: formData.location,
-          zoomId: formData.zoomId,
-          referredBy: formData.referredBy,
-          joiningDate: formData.joiningDate,
-          studentEmail: formData.studentEmail,
-          studentPhone: formData.studentPhone
-        };
-
+        const payload2 = { ...siblingData, role: "parent", username: siblingData.username, password: siblingData.password, firstName: siblingData.firstName, lastName: siblingData.lastName, gender: siblingData.gender, admissionId: siblingData.admissionId, shortBio: siblingData.shortBio, childName: student2Name, childAge: siblingData.childAge, childDob: siblingData.childDob, childClass: siblingData.childClass, monthlyFee: siblingData.monthlyFee, fullName: formData.fullName, email: formData.email, phone: formData.phone, location: formData.location, zoomId: formData.zoomId, referredBy: formData.referredBy, joiningDate: formData.joiningDate, studentEmail: formData.studentEmail, studentPhone: formData.studentPhone };
         await axios.post("http://localhost:5000/api/register", payload2);
         setMsg("✅ Success! Both siblings registered.");
       } else {
         setMsg("✅ User Registered Successfully!");
       }
-
-      // Reset
-      setFormData({ 
-        username: "", password: "", role: "parent", 
-        firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
-        studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
-        fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
-        childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" 
-      });
-      setSiblingData({
-        username: "", password: "", firstName: "", lastName: "", gender: "", 
-        admissionId: "", shortBio: "", childAge: "", childDob: "", childClass: "", monthlyFee: ""
-      });
+      setFormData({ username: "", password: "", role: "parent", firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", studentEmail: "", studentPhone: "", childAge: "", childDob: "", fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", childClass: "", monthlyFee: "", specialization: "", joiningDate: "", dob: "" });
+      setSiblingData({ username: "", password: "", firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", childAge: "", childDob: "", childClass: "", monthlyFee: "" });
       setShowSibling(false);
-
-    } catch (err) {
-      console.error(err);
-      setMsg("❌ Error: Username taken or server issue.");
-    }
+    } catch (err) { console.error(err); setMsg("❌ Error: Username taken or server issue."); }
   };
 
   return (
     <div className="form-wrapper">
       <h3>Register New Profile</h3>
       <form onSubmit={handleRegister} className="admin-form">
-        
-        {/* 1. LOGIN CREDENTIALS */}
-        <div className="form-section">
-          <h4 className="section-title">Login Credentials {showSibling && "(Student 1)"}</h4>
-          <div className="form-row">
-            <div className="form-group"><label>Username *</label><input name="username" value={formData.username} onChange={handleChange} required placeholder="Unique Login ID" /></div>
-            <div className="form-group"><label>Password *</label><input name="password" type="password" value={formData.password} onChange={handleChange} required placeholder="Secret Password" /></div>
-          </div>
-          <div className="form-group"><label>Role</label><select name="role" value={formData.role} onChange={handleChange}><option value="parent">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
-        </div>
-
-        {/* 2. STUDENT 1 DETAILS */}
-        {formData.role === "parent" && (
-          <div className="form-section student-section">
-            <h4 className="section-title" style={{color: '#0284c7'}}>Student 1 Details</h4>
-            <div className="form-row">
-              <div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Rahul" /></div>
-              <div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Dravid" /></div>
-            </div>
-            <div className="form-row">
-              <div className="form-group"><label>Gender *</label><select name="gender" value={formData.gender} onChange={handleChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
-              <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div>
-            </div>
-            <div className="form-row">
-              <div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} placeholder="ADM-001" /></div>
-              <div className="form-group"><label>Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} placeholder="e.g. 10" /></div>
-            </div>
-            <div className="form-row">
-              <div className="form-group"><label>Student Email</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} placeholder="Optional" /></div>
-              <div className="form-group"><label>Student Phone</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} placeholder="Optional" /></div>
-            </div>
-            <div className="form-group"><label>Short Bio</label><textarea name="shortBio" value={formData.shortBio} onChange={handleChange} placeholder="Interests..." style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} /></div>
-          </div>
-        )}
-
-        {/* 3. PARENT DETAILS (SHARED) - ✨ ZOOM ID RESTORED */}
-        {formData.role === "parent" && (
-          <div className="form-section parent-section">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
-               <h4 className="section-title" style={{color: '#ea580c', margin:0}}>Parent / Guardian Details (Shared)</h4>
-               {autoFillMsg && <span style={{fontSize:'0.85rem', color:'#16a34a', fontWeight:'bold'}}>{autoFillMsg}</span>}
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group"><label>Parent Phone *</label><input name="phone" value={formData.phone} onChange={handleChange} onBlur={handlePhoneBlur} placeholder="Enter to Search..." style={{border: '2px solid #fdba74'}} /></div>
-              <div className="form-group"><label>Parent Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Guardian Name" /></div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group"><label>Parent Email</label><input name="email" value={formData.email} onChange={handleChange} placeholder="parent@mail.com" /></div>
-              <div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} placeholder="City" /></div>
-            </div>
-
-            {/* ✨ RESTORED FIELDS */}
-            <div className="form-row">
-               <div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} placeholder="Zoom Meeting ID" /></div>
-               <div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} placeholder="Source" /></div>
-            </div>
-          </div>
-        )}
-
-        {/* 4. SIBLING TOGGLE */}
-        {formData.role === "parent" && (
-            <div style={{marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '8px', border: '1px dashed #0284c7', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                <input type="checkbox" id="siblingCheck" checked={showSibling} onChange={(e) => setShowSibling(e.target.checked)} style={{width:'20px', height:'20px', cursor:'pointer'}}/>
-                <label htmlFor="siblingCheck" style={{cursor:'pointer', fontWeight:'600', color:'#0369a1', fontSize:'1rem'}}>Register a Sibling (Second Child)?</label>
-            </div>
-        )}
-
-        {/* 5. STUDENT 2 FORM (SIBLING) */}
-        {showSibling && formData.role === "parent" && (
-            <div className="form-section student-section" style={{borderLeft: '5px solid #0284c7'}}>
-                <h4 className="section-title" style={{color: '#0284c7'}}>Student 2 Details (Sibling)</h4>
-                <div className="form-row" style={{background: '#fff', padding:'10px', borderRadius:'6px', marginBottom:'15px', border:'1px solid #ddd'}}>
-                    <div className="form-group"><label>Sibling Username *</label><input name="username" value={siblingData.username} onChange={handleSiblingChange} required placeholder="Unique Login ID" /></div>
-                    <div className="form-group"><label>Sibling Password *</label><input name="password" type="password" value={siblingData.password} onChange={handleSiblingChange} required placeholder="Password" /></div>
-                </div>
-                <div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={siblingData.firstName} onChange={handleSiblingChange} /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={siblingData.lastName} onChange={handleSiblingChange} /></div></div>
-                <div className="form-row"><div className="form-group"><label>Gender</label><select name="gender" value={siblingData.gender} onChange={handleSiblingChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={siblingData.childDob} onChange={handleSiblingChange} /></div></div>
-                <div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={siblingData.admissionId} onChange={handleSiblingChange} /></div><div className="form-group"><label>Class / Grade</label><input name="childClass" value={siblingData.childClass} onChange={handleSiblingChange} /></div></div>
-                <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={siblingData.monthlyFee} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
-            </div>
-        )}
-
-        {/* 6. OTHER ROLES */}
-        {formData.role !== "parent" && (
-           <div className="form-section">
-             <h4 className="section-title">Details</h4>
-             {formData.role === "teacher" && (
-               <>
-                 <div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} /></div></div>
-                 <div className="form-row"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} /></div><div className="form-group"><label>Salary</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} /></div></div>
-                 <div className="form-row"><div className="form-group"><label>DOB</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
-               </>
-             )}
-             {formData.role === "admin" && (
-               <div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>DOB</label><input type="date" name="dob" value={formData.dob} onChange={handleChange} /></div></div>
-             )}
-             <div className="form-group" style={{marginTop:'15px'}}><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} /></div>
-           </div>
-        )}
-
+        <div className="form-section"><h4 className="section-title">Login Credentials {showSibling && "(Student 1)"}</h4><div className="form-row"><div className="form-group"><label>Username *</label><input name="username" value={formData.username} onChange={handleChange} required placeholder="Unique Login ID" /></div><div className="form-group"><label>Password *</label><input name="password" type="password" value={formData.password} onChange={handleChange} required placeholder="Secret Password" /></div></div><div className="form-group"><label>Role</label><select name="role" value={formData.role} onChange={handleChange}><option value="parent">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div></div>
+        {formData.role === "parent" && (<div className="form-section student-section"><h4 className="section-title" style={{color: '#0284c7'}}>Student 1 Details</h4><div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Rahul" /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Dravid" /></div></div><div className="form-row"><div className="form-group"><label>Gender *</label><select name="gender" value={formData.gender} onChange={handleChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div><div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} placeholder="ADM-001" /></div><div className="form-group"><label>Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} placeholder="e.g. 10" /></div></div><div className="form-row"><div className="form-group"><label>Student Email</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} placeholder="Optional" /></div><div className="form-group"><label>Student Phone</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} placeholder="Optional" /></div></div><div className="form-group"><label>Short Bio</label><textarea name="shortBio" value={formData.shortBio} onChange={handleChange} placeholder="Interests..." style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} /></div></div>)}
+        {formData.role === "parent" && (<div className="form-section parent-section"><div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h4 className="section-title" style={{color: '#ea580c', margin:0}}>Parent / Guardian Details (Shared)</h4>{autoFillMsg && <span style={{fontSize:'0.85rem', color:'#16a34a', fontWeight:'bold'}}>{autoFillMsg}</span>}</div><div className="form-row"><div className="form-group"><label>Parent Phone *</label><input name="phone" value={formData.phone} onChange={handleChange} onBlur={handlePhoneBlur} placeholder="Enter to Search..." style={{border: '2px solid #fdba74'}} /></div><div className="form-group"><label>Parent Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Guardian Name" /></div></div><div className="form-row"><div className="form-group"><label>Parent Email</label><input name="email" value={formData.email} onChange={handleChange} placeholder="parent@mail.com" /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} placeholder="City" /></div></div><div className="form-row"><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} placeholder="Zoom Meeting ID" /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} placeholder="Source" /></div></div></div>)}
+        {formData.role === "parent" && (<div style={{marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '8px', border: '1px dashed #0284c7', display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" id="siblingCheck" checked={showSibling} onChange={(e) => setShowSibling(e.target.checked)} style={{width:'20px', height:'20px', cursor:'pointer'}}/><label htmlFor="siblingCheck" style={{cursor:'pointer', fontWeight:'600', color:'#0369a1', fontSize:'1rem'}}>Register a Sibling (Second Child)?</label></div>)}
+        {showSibling && formData.role === "parent" && (<div className="form-section student-section" style={{borderLeft: '5px solid #0284c7'}}><h4 className="section-title" style={{color: '#0284c7'}}>Student 2 Details (Sibling)</h4><div className="form-row" style={{background: '#fff', padding:'10px', borderRadius:'6px', marginBottom:'15px', border:'1px solid #ddd'}}><div className="form-group"><label>Sibling Username *</label><input name="username" value={siblingData.username} onChange={handleSiblingChange} required placeholder="Unique Login ID" /></div><div className="form-group"><label>Sibling Password *</label><input name="password" type="password" value={siblingData.password} onChange={handleSiblingChange} required placeholder="Password" /></div></div><div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={siblingData.firstName} onChange={handleSiblingChange} /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={siblingData.lastName} onChange={handleSiblingChange} /></div></div><div className="form-row"><div className="form-group"><label>Gender</label><select name="gender" value={siblingData.gender} onChange={handleSiblingChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={siblingData.childDob} onChange={handleSiblingChange} /></div></div><div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={siblingData.admissionId} onChange={handleSiblingChange} /></div><div className="form-group"><label>Class / Grade</label><input name="childClass" value={siblingData.childClass} onChange={handleSiblingChange} /></div></div><div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={siblingData.monthlyFee} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div></div>)}
+        {formData.role !== "parent" && (<div className="form-section"><h4 className="section-title">Details</h4>{formData.role === "teacher" && (<><div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} /></div></div><div className="form-row"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} /></div><div className="form-group"><label>Salary</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} /></div></div><div className="form-row"><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div></>)}{formData.role === "admin" && (<div className="form-row"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div><div className="form-group"><label>DOB</label><input type="date" name="dob" value={formData.dob} onChange={handleChange} /></div></div>)}<div className="form-group" style={{marginTop:'15px'}}><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} /></div></div>)}
         <button type="submit" className="save-btn" style={{ marginTop: "20px" }}>{showSibling ? "Register Both Siblings" : "Register User"}</button>
       </form>
       {msg && <p className="status-msg">{msg}</p>}
+    </div>
+  );
+};
+
+// --- TAB 5: FEE TRACKER (UPDATED WITH ARROWS) ---
+const FeeTrackerTab = () => {
+  const [students, setStudents] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // "YYYY-MM"
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => { fetchStudents(); }, []);
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('http://localhost:5000/api/users');
+      setStudents(res.data.filter(u => u.role === 'parent'));
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleTogglePayment = async (studentId, currentStatus, feeAmount) => {
+    const newStatus = currentStatus === 'Paid' ? 'Pending' : 'Paid';
+    const updatedStudents = students.map(s => {
+      if (s._id === studentId) {
+        let newPayments = [...(s.payments || [])];
+        if (newStatus === 'Paid') { newPayments.push({ month: selectedMonth, status: 'Paid', amount: feeAmount }); } 
+        else { newPayments = newPayments.filter(p => p.month !== selectedMonth); }
+        return { ...s, payments: newPayments };
+      }
+      return s;
+    });
+    setStudents(updatedStudents);
+    try { await axios.post('http://localhost:5000/api/fees/update', { userId: studentId, month: selectedMonth, status: newStatus, amount: feeAmount }); } 
+    catch (err) { alert("Error updating payment"); fetchStudents(); }
+  };
+
+  const getPaymentStatus = (student) => {
+    const record = (student.payments || []).find(p => p.month === selectedMonth);
+    return record ? 'Paid' : 'Pending';
+  };
+
+  // ✨ NEW: Month Navigation Logic
+  const changeMonth = (offset) => {
+    // Create date from current selectedMonth (e.g., "2026-01") + "-01" to ensure valid date
+    const currentDate = new Date(selectedMonth + "-01");
+    currentDate.setMonth(currentDate.getMonth() + offset);
+    
+    // Format back to YYYY-MM manually to avoid timezone shifts
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    setSelectedMonth(`${year}-${month}`);
+  };
+
+  const filteredStudents = students.filter(s => (s.childName || "").toLowerCase().includes(searchTerm.toLowerCase()) || (s.fullName || "").toLowerCase().includes(searchTerm.toLowerCase()));
+  const totalDue = filteredStudents.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
+  const totalCollected = filteredStudents.reduce((acc, s) => { return getPaymentStatus(s) === 'Paid' ? acc + (s.monthlyFee || 0) : acc; }, 0);
+
+  return (
+    <div className="table-wrapper">
+      {/* --- TOP BAR --- */}
+      <div className="filter-bar" style={{flexWrap:'wrap', gap:'15px'}}>
+         <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+            <label style={{fontWeight:'bold', color:'#334155', marginRight:'5px'}}>Select Month:</label>
+            
+            {/* ✨ LEFT ARROW */}
+            <button 
+              onClick={() => changeMonth(-1)} 
+              className="icon-btn" 
+              style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}
+            >
+              &lt;
+            </button>
+
+            <input 
+              type="month" 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{padding:'6px', borderRadius:'4px', border:'1px solid #cbd5e1', fontWeight:'600', color:'#0284c7'}} 
+            />
+
+            {/* ✨ RIGHT ARROW */}
+            <button 
+              onClick={() => changeMonth(1)} 
+              className="icon-btn" 
+              style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}
+            >
+              &gt;
+            </button>
+         </div>
+         
+         <div className="search-box">
+            <input type="text" placeholder="Search Student..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+         </div>
+
+         <div style={{marginLeft:'auto', display:'flex', gap:'20px', alignItems:'center'}}>
+            <div style={{textAlign:'right'}}><div style={{fontSize:'0.85rem', color:'#64748b'}}>Collected</div><div style={{fontSize:'1.1rem', fontWeight:'bold', color:'#16a34a'}}>₹{totalCollected.toLocaleString()}</div></div>
+            <div style={{textAlign:'right'}}><div style={{fontSize:'0.85rem', color:'#64748b'}}>Pending</div><div style={{fontSize:'1.1rem', fontWeight:'bold', color:'#ef4444'}}>₹{(totalDue - totalCollected).toLocaleString()}</div></div>
+         </div>
+      </div>
+
+      {/* --- TABLE --- */}
+      <div className="table-container">
+        <table className="custom-table">
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Parent Name</th>
+              <th>Monthly Fee</th>
+              <th>Status for {new Date(selectedMonth + "-01").toLocaleString('default', { month: 'long', year: 'numeric' })}</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>Loading...</td></tr> : 
+             filteredStudents.length === 0 ? <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>No students found.</td></tr> :
+             filteredStudents.map(student => {
+               const status = getPaymentStatus(student);
+               const isPaid = status === 'Paid';
+               return (
+                 <tr key={student._id}>
+                   <td style={{fontWeight:'600', color:'#334155'}}>{student.childName}</td>
+                   <td style={{color:'#64748b'}}>{student.fullName}</td>
+                   <td style={{fontWeight:'bold'}}>₹{student.monthlyFee}</td>
+                   <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? '✅ Paid' : '⏳ Pending'}</span></td>
+                   <td><button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button></td>
+                 </tr>
+               );
+             })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
