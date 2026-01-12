@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { 
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  AreaChart, Area // ✨ ADDED THIS
+} from 'recharts';import axios from "axios";
 import "./AdminDashboard.css";
 
 // LEVELS CONFIGURATION
@@ -74,14 +77,264 @@ const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="n
   );
 };
 
-// --- TAB 1: OVERVIEW ---
-const OverviewTab = ({ stats }) => (
-  <div className="stats-grid">
-    <div className="stat-card blue"><h3>Total Students</h3><div className="stat-value-row"><span className="stat-number">{stats.students}</span><div className="stat-icon-bg">🎓</div></div></div>
-    <div className="stat-card green"><h3>Active Teachers</h3><div className="stat-value-row"><span className="stat-number">{stats.teachers}</span><div className="stat-icon-bg">🎨</div></div></div>
-    <div className="stat-card purple"><h3>Est. Monthly Revenue</h3><div className="stat-value-row"><span className="stat-number" style={{color: '#16a34a'}}>₹{stats.revenue ? stats.revenue.toLocaleString('en-IN') : 0}</span><div className="stat-icon-bg">💰</div></div></div>
-  </div>
-);
+// --- TAB 1: OVERVIEW (Complete: Added Growth & Teacher Stats) ---
+const OverviewTab = ({ stats }) => {
+  const [users, setUsers] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, classesRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/users'),
+          axios.get('http://localhost:5000/api/classes')
+        ]);
+        setUsers(usersRes.data);
+        setClasses(classesRes.data);
+      } catch (err) { console.error(err); } 
+      finally { setLoading(false); }
+    };
+    fetchData();
+  }, []);
+
+  // --- DATA PROCESSING ---
+  const students = users.filter(u => u.role === 'parent');
+  const teachers = users.filter(u => u.role === 'teacher');
+  const recentStudents = [...students].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
+
+  // 1. Gender Data
+  const maleCount = students.filter(s => s.gender === 'Male').length;
+  const femaleCount = students.filter(s => s.gender === 'Female').length;
+  const genderData = [
+    { name: 'Male', value: maleCount, color: '#3b82f6' },
+    { name: 'Female', value: femaleCount, color: '#ec4899' },
+  ].filter(d => d.value > 0);
+
+  // 2. Fee Data (Current Month)
+  const currentMonth = new Date().toISOString().slice(0, 7); 
+  const paidCount = students.filter(s => (s.payments || []).some(p => p.month === currentMonth && p.status === 'Paid')).length;
+  const pendingCount = students.length - paidCount;
+  const feeData = [
+    { name: 'Paid', value: paidCount, color: '#10b981' },
+    { name: 'Pending', value: pendingCount, color: '#f59e0b' },
+  ].filter(d => d.value > 0);
+
+  // 3. Level Data
+  const levelCounts = {};
+  classes.forEach(cls => {
+    const lvl = cls.level || 'Unknown';
+    levelCounts[lvl] = (levelCounts[lvl] || 0) + cls.students.length;
+  });
+  const levelData = Object.entries(levelCounts)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  // ✨ 4. REVENUE GROWTH DATA (Last 6 Months)
+  const getLast6Months = () => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      months.push(d.toISOString().slice(0, 7)); // "2025-08"
+    }
+    return months;
+  };
+
+  const revenueTrendData = getLast6Months().map(monthStr => {
+    // Calculate total collected for this specific month across all students
+    const totalForMonth = students.reduce((acc, student) => {
+      const payment = (student.payments || []).find(p => p.month === monthStr && p.status === 'Paid');
+      return acc + (payment ? (payment.amount || student.monthlyFee) : 0);
+    }, 0);
+    
+    // Format "2025-08" to "Aug"
+    const dateObj = new Date(monthStr + "-01");
+    const label = dateObj.toLocaleString('default', { month: 'short' });
+    
+    return { name: label, revenue: totalForMonth };
+  });
+
+  // ✨ 5. TEACHER WORKLOAD DATA
+  const teacherLoadData = teachers.map(t => {
+    // Find all classes taught by this teacher
+    const teacherClasses = classes.filter(c => c.teacher && c.teacher._id === t._id);
+    // Sum up students in those classes
+    const studentCount = teacherClasses.reduce((acc, c) => acc + c.students.length, 0);
+    return { name: t.fullName || t.username, students: studentCount };
+  }).sort((a, b) => b.students - a.students).slice(0, 5); // Top 5 Teachers
+
+
+  // --- REUSABLE COMPONENTS ---
+  const ProfessionalDonut = ({ data, totalLabel }) => {
+    const total = data.reduce((a, b) => a + b.value, 0);
+    if (total === 0) return <p style={{color:'#94a3b8', textAlign:'center', padding:'20px'}}>No data yet.</p>;
+
+    return (
+      <div style={{display:'flex', alignItems:'center', gap:'20px', height:'160px'}}>
+        <div style={{flex: 1, height:'100%', position:'relative'}}>
+           <ResponsiveContainer width="100%" height="100%">
+             <PieChart>
+               <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="value" stroke="none">
+                 {data.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} style={{outline: 'none'}}/>)}
+               </Pie>
+               <Tooltip contentStyle={{background:'#fff', borderRadius:'8px'}} itemStyle={{fontWeight:'bold'}} formatter={(value) => [value, totalLabel]} />
+             </PieChart>
+           </ResponsiveContainer>
+           <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)', textAlign:'center', pointerEvents:'none'}}>
+             <div style={{fontSize:'1.2rem', fontWeight:'800', color:'#1e293b'}}>{total}</div>
+           </div>
+        </div>
+        <div style={{display:'flex', flexDirection:'column', gap:'10px', minWidth:'100px'}}>
+          {data.map((entry, i) => (
+             <div key={i} style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                <div style={{width:'10px', height:'10px', borderRadius:'50%', background: entry.color}}></div>
+                <div style={{fontSize:'0.85rem', color:'#64748b', flex:1}}>{entry.name}</div>
+                <div style={{fontWeight:'700', color:'#334155', fontSize:'0.9rem'}}>{entry.value}</div>
+             </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{maxWidth:'1200px', margin:'0 auto', paddingBottom:'30px'}}>
+      
+      {/* 1. WELCOME BANNER */}
+      <div style={{
+        background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+        borderRadius: '16px', padding: '30px', color: 'white',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '30px', boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)'
+      }}>
+        <div>
+          <h2 style={{margin: '0 0 5px 0', fontSize: '1.8rem', fontWeight:'700'}}>Dashboard Overview</h2>
+          <p style={{margin: 0, opacity: 0.9}}>Here is what's happening in your institute today.</p>
+        </div>
+        <div style={{textAlign:'right', background:'rgba(255,255,255,0.1)', padding:'10px 20px', borderRadius:'12px', backdropFilter:'blur(5px)'}}>
+          <div style={{fontSize:'0.85rem', opacity:0.8}}>Today's Date</div>
+          <div style={{fontSize:'1.1rem', fontWeight:'600'}}>{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        </div>
+      </div>
+
+      {/* 2. STATS CARDS */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px', marginBottom:'30px'}}>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#eff6ff', color:'#2563eb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>🎓</div><span style={{fontSize:'0.75rem', fontWeight:'600', color:'#16a34a', background:'#dcfce7', padding:'2px 8px', borderRadius:'10px', height:'fit-content'}}>+ Active</span></div>
+           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{stats.students}</div>
+           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Total Students</div>
+        </div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#f0fdf4', color:'#16a34a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>👨‍🏫</div></div>
+           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{stats.teachers}</div>
+           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Expert Teachers</div>
+        </div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#f5f3ff', color:'#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>💰</div></div>
+           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>₹{(stats.revenue || 0).toLocaleString()}</div>
+           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Monthly Revenue (Est.)</div>
+        </div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#fff7ed', color:'#ea580c', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>⚠️</div></div>
+           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{pendingCount}</div>
+           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Pending Payments</div>
+        </div>
+      </div>
+
+      {/* 3. MIDDLE ROW: Revenue Trend & Donut Charts */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(350px, 1fr))', gap:'20px', marginBottom:'30px'}}>
+        
+        {/* ✨ NEW: Revenue Growth Chart */}
+        <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)', gridColumn: 'span 1'}}>
+            <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Revenue Trend (Last 6 Months)</h3>
+            <div style={{ width: '100%', height: 200, fontSize:'0.75rem' }}>
+              <ResponsiveContainer>
+                <AreaChart data={revenueTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#94a3b8'}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill:'#94a3b8'}} />
+                  <Tooltip contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.1)'}} formatter={(value) => [`₹${value.toLocaleString()}`, "Revenue"]} />
+                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+        </div>
+
+        {/* Demographics */}
+        <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
+           <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Student Demographics</h3>
+           <ProfessionalDonut data={genderData} totalLabel="Students" />
+        </div>
+      </div>
+      
+      {/* 4. BOTTOM ROW: Teacher Load & Level Distribution */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(350px, 1fr))', gap:'20px', marginBottom:'30px'}}>
+        
+        {/* ✨ NEW: Teacher Workload */}
+        <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
+           <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Top Teachers by Student Load</h3>
+           <div style={{ width: '100%', height: 250, fontSize:'0.8rem' }}>
+             <ResponsiveContainer>
+               <BarChart data={teacherLoadData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                 <XAxis type="number" hide />
+                 <YAxis dataKey="name" type="category" width={100} tickLine={false} axisLine={false} tick={{fill:'#475569'}} />
+                 <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius:'8px'}} />
+                 <Bar dataKey="students" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+               </BarChart>
+             </ResponsiveContainer>
+           </div>
+        </div>
+
+        {/* Level Distribution */}
+        <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
+            <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Class Level Distribution</h3>
+            <div style={{ width: '100%', height: 250, fontSize:'0.8rem' }}>
+              <ResponsiveContainer>
+                <BarChart data={levelData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" width={80} tickLine={false} axisLine={false} tick={{fill:'#475569'}} />
+                  <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius:'8px'}} />
+                  <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+        </div>
+        
+      </div>
+      
+      {/* 5. RECENT ACTIVITY LIST (Full Width Bottom) */}
+      <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
+         <h3 style={{margin:'0 0 15px 0', fontSize:'1rem', color:'#0f172a'}}>Recent Student Registrations</h3>
+         <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:'20px'}}>
+           {recentStudents.length === 0 ? <p style={{color:'#94a3b8', fontSize:'0.9rem'}}>No recent registrations.</p> : 
+             recentStudents.map(student => (
+               <div key={student._id} style={{display:'flex', alignItems:'center', gap:'12px', padding:'12px', background:'#f8fafc', borderRadius:'12px', border:'1px solid #f1f5f9'}}>
+                  <div style={{width:'40px', height:'40px', borderRadius:'50%', background:'#fff', border:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', fontWeight:'bold', color:'#3b82f6'}}>
+                    {student.childName.charAt(0)}
+                  </div>
+                  <div>
+                     <div style={{fontSize:'0.9rem', fontWeight:'700', color:'#334155'}}>{student.childName}</div>
+                     <div style={{fontSize:'0.75rem', color:'#64748b'}}>Joined: {new Date(student.createdAt).toLocaleDateString()}</div>
+                  </div>
+               </div>
+             ))
+           }
+         </div>
+      </div>
+
+    </div>
+  );
+};
+
 
 // --- TAB 4: CLASS MANAGEMENT ---
 const ClassManagementTab = () => {
