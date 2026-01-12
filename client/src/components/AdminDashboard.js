@@ -42,8 +42,8 @@ const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="n
           <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><IconHome /> <span>Dashboard</span></button>
           <button className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}><IconUsers /> <span>User Management</span></button>
           <button className={activeTab === "classes" ? "active" : ""} onClick={() => setActiveTab("classes")}><IconClasses /> <span>Class Management</span></button>
-          <button className={activeTab === "add-user" ? "active" : ""} onClick={() => setActiveTab("add-user")}><IconAdd /> <span>Register User</span></button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => setActiveTab("fees")}><IconFee /> <span>Fee Tracker</span></button>
+          <button className={activeTab === "add-user" ? "active" : ""} onClick={() => setActiveTab("add-user")}><IconAdd /> <span>Register User</span></button>
           <button className={activeTab === "slots" ? "active" : ""} onClick={() => setActiveTab("slots")}>
   <IconClock /> <span>Slot Manager</span>
 </button>
@@ -1156,156 +1156,207 @@ const FeeTrackerTab = () => {
 };
 
 
-// --- TAB: SLOT MANAGEMENT (TIMETABLE VIEW) ---
+// --- TAB: SLOT MANAGEMENT (Interactive - Schedule Directly from Slots) ---
 const SlotManagementTab = () => {
   const [classes, setClasses] = useState([]);
-  // Default to the current day of the week
-  const [selectedDay, setSelectedDay] = useState(
-    new Date().getDay() === 0 ? "Saturday" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]
-  ); 
+  const [teachers, setTeachers] = useState([]); // ✨ Needed for the Modal
+  const [selectedDay, setSelectedDay] = useState(new Date().getDay() === 0 ? "Saturday" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]); 
   const [loading, setLoading] = useState(true);
+  
+  // ✨ Modal State
+  const [showClassModal, setShowClassModal] = useState({ show: false, initialData: null });
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  useEffect(() => {
-    fetchClasses();
-  }, []);
+  // --- 1. DEFINE YOUR EXACT SLOTS ---
+  const TIME_SLOTS = {
+    morning: [
+      { id: 'm1', start: '06:00', end: '07:00', label: '06:00 - 07:00 am' },
+      { id: 'm2', start: '07:00', end: '08:00', label: '07:00 - 08:00 am' },
+    ],
+    evening: [
+      { id: 'e1', start: '18:30', end: '19:30', label: '06:30 - 07:30 pm' }, 
+      { id: 'e1b', start: '19:30', end: '20:30', label: '07:30 - 08:30 pm' }, 
+      { id: 'e2', start: '20:30', end: '21:30', label: '08:30 - 09:30 pm' }, 
+      { id: 'e3', start: '21:30', end: '22:30', label: '09:30 - 10:30 pm' }, 
+      { id: 'e4', start: '22:30', end: '23:30', label: '10:30 - 11:30 pm' }, 
+    ]
+  };
 
-  const fetchClasses = async () => {
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/classes');
-      setClasses(res.data);
+      const classRes = await axios.get('http://localhost:5000/api/classes');
+      setClasses(classRes.data);
+      const userRes = await axios.get('http://localhost:5000/api/users');
+      setTeachers(userRes.data.filter(u => u.role === 'teacher'));
     } catch (err) { console.error(err); } 
     finally { setLoading(false); }
   };
 
-  // Filter classes for the selected day
-  const dayClasses = classes.filter(cls => 
-    cls.schedule && cls.schedule.some(s => s.day === selectedDay)
-  );
+  // ✨ CLICK HANDLER: Add New Class to Empty Slot
+  const handleSlotClick = (startTime) => {
+    // Open Modal with Day and Time PRE-FILLED
+    setShowClassModal({
+      show: true,
+      initialData: {
+        className: "", level: "", subLevel: "", teacherId: "", meetingLink: "", maxCapacity: 10,
+        schedule: [{ day: selectedDay, time: startTime }] // <--- Auto-fill this
+      }
+    });
+  };
 
-  // Sort by time (Morning -> Evening)
-  const sortedClasses = dayClasses.sort((a, b) => {
-    const timeA = a.schedule.find(s => s.day === selectedDay).time;
-    const timeB = b.schedule.find(s => s.day === selectedDay).time;
-    return timeA.localeCompare(timeB);
-  });
+  // ✨ CLICK HANDLER: Edit Existing Class
+  const handleEditClick = (cls) => {
+    setShowClassModal({ show: true, initialData: cls });
+  };
+
+  const handleModalSuccess = () => {
+    setShowClassModal({ show: false, initialData: null });
+    fetchData(); // Refresh grid
+    alert("Schedule updated successfully!");
+  };
+
+  // Helper to find a class scheduled for this specific Day & Time
+  const getClassForSlot = (timeStart) => {
+    return classes.find(cls => 
+      cls.schedule.some(s => s.day === selectedDay && s.time === timeStart)
+    );
+  };
+
+  // Logic: Evening slots are blocked on Weekdays (Mon-Fri) based on your image
+  const isEveningBlocked = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].includes(selectedDay);
+
+  const renderSlotCard = (slot, isBlocked) => {
+    const assignedClass = getClassForSlot(slot.start);
+    
+    // 1. BLOCKED SLOT (Grey) - Non-clickable
+    if (isBlocked && !assignedClass) {
+      return (
+        <div key={slot.id} style={{background:'#f1f5f9', border:'1px dashed #cbd5e1', borderRadius:'8px', padding:'15px', opacity:0.6, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100px'}}>
+           <span style={{color:'#94a3b8', fontSize:'0.9rem', fontStyle:'italic'}}>Unavailable</span>
+        </div>
+      );
+    }
+
+    // 2. OCCUPIED SLOT (Class Card) - Click to Edit
+    if (assignedClass) {
+      const enrolled = assignedClass.students.length;
+      const capacity = assignedClass.maxCapacity || 10;
+      const isFull = enrolled >= capacity;
+
+      return (
+        <div 
+            key={slot.id} 
+            className="detail-card" 
+            onClick={() => handleEditClick(assignedClass)} // ✨ Enable Edit
+            style={{margin:0, borderLeft: isFull ? '4px solid #ef4444' : '4px solid #3b82f6', minHeight:'100px', cursor:'pointer', transition:'transform 0.1s'}}
+            title="Click to Edit Class"
+        >
+           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'5px'}}>
+              <span style={{fontWeight:'bold', color:'#334155'}}>{assignedClass.className}</span>
+              <span style={{fontSize:'0.75rem', padding:'2px 6px', borderRadius:'4px', background: isFull ? '#fee2e2' : '#eff6ff', color: isFull ? '#991b1b' : '#1d4ed8', fontWeight:'bold'}}>
+                {isFull ? 'FULL' : `${capacity - enrolled} Open`}
+              </span>
+           </div>
+           <div style={{fontSize:'0.8rem', color:'#64748b', marginBottom:'8px'}}>
+             {assignedClass.level} ({assignedClass.subLevel})
+           </div>
+           <div style={{height:'6px', width:'100%', background:'#e2e8f0', borderRadius:'3px', marginBottom:'8px', overflow:'hidden'}}>
+              <div style={{height:'100%', width: `${(enrolled / capacity) * 100}%`, background: isFull ? '#ef4444' : '#3b82f6'}}></div>
+           </div>
+           <div style={{fontSize:'0.75rem', color:'#334155'}}>
+             Teacher: <strong>{assignedClass.teacher ? assignedClass.teacher.fullName : 'N/A'}</strong>
+           </div>
+        </div>
+      );
+    }
+
+    // 3. AVAILABLE SLOT (Green) - Click to Add
+    return (
+      <div 
+        key={slot.id} 
+        onClick={() => handleSlotClick(slot.start)} // ✨ Enable Add
+        style={{
+            background:'#f0fdf4', border:'1px dashed #16a34a', borderRadius:'8px', padding:'15px', 
+            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', 
+            minHeight:'100px', cursor:'pointer', transition:'background 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.background = '#dcfce7'}
+        onMouseLeave={(e) => e.currentTarget.style.background = '#f0fdf4'}
+      >
+         <div style={{color:'#16a34a', fontWeight:'bold', marginBottom:'5px'}}>Available</div>
+         <div style={{color:'#15803d', fontSize:'0.8rem'}}>+ Schedule Class</div>
+      </div>
+    );
+  };
 
   return (
-    <div className="table-wrapper">
-      {/* Day Selector Buttons */}
-      <div className="filter-bar" style={{overflowX:'auto', paddingBottom:'5px'}}>
-        {days.map(day => (
-          <button 
-            key={day}
-            onClick={() => setSelectedDay(day)}
-            className={selectedDay === day ? 'save-btn' : 'cancel-btn'}
-            style={{
-              borderRadius: '20px', 
-              padding: '8px 16px', 
-              marginRight: '10px',
-              background: selectedDay === day ? '#0284c7' : '#f1f5f9',
-              color: selectedDay === day ? '#fff' : '#64748b',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            {day}
-          </button>
-        ))}
+    <>
+      <div className="table-wrapper">
+        {/* Day Selector */}
+        <div className="filter-bar" style={{overflowX:'auto', paddingBottom:'5px'}}>
+            {days.map(day => (
+            <button 
+                key={day} 
+                onClick={() => setSelectedDay(day)} 
+                className={selectedDay === day ? 'save-btn' : 'cancel-btn'} 
+                style={{
+                borderRadius: '20px', 
+                padding: '8px 16px', 
+                marginRight: '10px', 
+                background: selectedDay === day ? '#0284c7' : '#f1f5f9', 
+                color: selectedDay === day ? '#fff' : '#64748b', 
+                border: 'none', 
+                cursor:'pointer'
+                }}
+            >
+                {day}
+            </button>
+            ))}
+        </div>
+
+        <div style={{padding:'25px'}}>
+            {/* --- MORNING SECTION --- */}
+            <div style={{marginBottom:'30px'}}>
+            <h3 style={{background:'#ffedd5', color:'#c2410c', padding:'10px 15px', borderRadius:'6px', display:'inline-block', margin:'0 0 15px 0', fontSize:'1rem'}}>☀️ Morning Slots (IST)</h3>
+            <div style={{display:'grid', gridTemplateColumns:'200px 1fr', gap:'20px', alignItems:'start'}}>
+                {TIME_SLOTS.morning.map(slot => (
+                    <React.Fragment key={slot.id}>
+                    <div style={{padding:'15px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:'8px', fontWeight:'bold', color:'#334155', display:'flex', alignItems:'center', height:'100px'}}>{slot.label}</div>
+                    {renderSlotCard(slot, false)}
+                    </React.Fragment>
+                ))}
+            </div>
+            </div>
+
+            {/* --- EVENING SECTION --- */}
+            <div>
+            <h3 style={{background:'#e0e7ff', color:'#4338ca', padding:'10px 15px', borderRadius:'6px', display:'inline-block', margin:'0 0 15px 0', fontSize:'1rem'}}>🌙 Evening Slots (IST)</h3>
+            <div style={{display:'grid', gridTemplateColumns:'200px 1fr', gap:'20px', alignItems:'start'}}>
+                {TIME_SLOTS.evening.map(slot => (
+                    <React.Fragment key={slot.id}>
+                    <div style={{padding:'15px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:'8px', fontWeight:'bold', color:'#334155', display:'flex', alignItems:'center', height:'100px'}}>{slot.label}</div>
+                    {renderSlotCard(slot, isEveningBlocked)}
+                    </React.Fragment>
+                ))}
+            </div>
+            </div>
+        </div>
       </div>
-
-      {/* Slots Grid */}
-      <div style={{display:'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap:'20px', padding:'20px'}}>
-        {sortedClasses.length === 0 ? (
-          <div style={{textAlign:'center', gridColumn:'1/-1', color:'#94a3b8', padding:'40px'}}>
-            No classes scheduled for {selectedDay}.
-          </div>
-        ) : (
-          sortedClasses.map(cls => {
-            const slot = cls.schedule.find(s => s.day === selectedDay);
-            const enrolledCount = cls.students.length;
-            const capacity = cls.maxCapacity || 10;
-            const spotsLeft = capacity - enrolledCount;
-            const isFull = spotsLeft <= 0;
-            
-            // Logic for Morning/Evening Tag (16:00 = 4 PM)
-            const hour = parseInt(slot.time.split(':')[0]);
-            const isEvening = hour >= 16; 
-
-            return (
-              <div key={cls._id} className="detail-card" style={{margin:0, borderLeft: isFull ? '4px solid #ef4444' : '4px solid #10b981'}}>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
-                   <div style={{display:'flex', flexDirection:'column'}}>
-                      <span style={{
-                        background: isEvening ? '#f1f5f9' : '#fffbeb', 
-                        padding:'4px 8px', borderRadius:'4px', 
-                        fontWeight:'bold', color:'#334155', border:'1px solid #e2e8f0', fontSize:'1.1rem'
-                      }}>
-                        🕒 {slot.time} <span style={{fontSize:'0.7rem', color:'#64748b', fontWeight:'normal'}}>(IST)</span>
-                      </span>
-                      <span style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'2px'}}>
-                        {isEvening ? '🌙 Evening Batch' : '☀️ Morning Batch'}
-                      </span>
-                   </div>
-                   <span style={{
-                     fontSize:'0.9rem', 
-                     color: isFull ? '#ef4444' : '#16a34a', 
-                     fontWeight:'bold', 
-                     background: isFull ? '#fee2e2' : '#dcfce7', 
-                     padding:'4px 8px', borderRadius:'10px'
-                   }}>
-                     {isFull ? '⛔ FULL' : `✅ ${spotsLeft} Spots Open`}
-                   </span>
-                </div>
-
-                <h3 style={{margin:'15px 0 5px 0', fontSize:'1.1rem', color:'#0f172a'}}>{cls.className}</h3>
-                <div style={{color:'#64748b', fontSize:'0.9rem', marginBottom:'15px'}}>
-                  {cls.level} ({cls.subLevel})
-                </div>
-
-                {/* Capacity Progress Bar */}
-                <div style={{height:'8px', width:'100%', background:'#e2e8f0', borderRadius:'4px', marginBottom:'15px', overflow:'hidden'}}>
-                   <div style={{
-                     height:'100%', 
-                     width: `${Math.min((enrolledCount / capacity) * 100, 100)}%`, 
-                     background: isFull ? '#ef4444' : '#0ea5e9',
-                     transition: 'width 0.3s'
-                   }}></div>
-                </div>
-
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.85rem', marginBottom:'15px'}}>
-                   <div>
-                     Teacher: <strong>{cls.teacher ? (cls.teacher.fullName || cls.teacher.username) : 'N/A'}</strong>
-                   </div>
-                   <div style={{fontWeight:'bold', color:'#334155'}}>
-                     {enrolledCount} / {capacity} Students
-                   </div>
-                </div>
-
-                {/* Student List Preview */}
-                <div style={{paddingTop:'10px', borderTop:'1px dashed #e2e8f0'}}>
-                   <div style={{fontSize:'0.75rem', color:'#94a3b8', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.5px'}}>
-                     Students Enrolled:
-                   </div>
-                   <div style={{display:'flex', flexWrap:'wrap', gap:'5px'}}>
-                      {cls.students.length > 0 ? cls.students.slice(0, 5).map(s => (
-                        <span key={s._id} style={{fontSize:'0.75rem', background:'#f0f9ff', color:'#0369a1', padding:'2px 6px', borderRadius:'4px'}}>
-                          {s.childName}
-                        </span>
-                      )) : <span style={{fontSize:'0.8rem', fontStyle:'italic', color:'#cbd5e1'}}>No students yet</span>}
-                      
-                      {cls.students.length > 5 && (
-                        <span style={{fontSize:'0.75rem', color:'#64748b'}}>+{cls.students.length - 5} more</span>
-                      )}
-                   </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+      
+      {/* ✨ REUSE CLASS MODAL */}
+      {showClassModal.show && (
+        <ClassModal 
+            teachers={teachers} 
+            existingClasses={classes} 
+            initialData={showClassModal.initialData} 
+            onClose={() => setShowClassModal({ show: false, initialData: null })} 
+            onSuccess={handleModalSuccess} 
+        />
+      )}
+    </>
   );
 };
 
