@@ -877,3 +877,34 @@ body {
   background-color: #cbd5e1;
   cursor: not-allowed;
 }
+
+/* --- FORM SECTIONS --- */
+.form-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.student-section {
+  background-color: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.parent-section {
+  background-color: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.section-title {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  padding-bottom: 8px;
+}

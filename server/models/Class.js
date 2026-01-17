@@ -2,10 +2,21 @@ const mongoose = require('mongoose');
 
 const ClassSchema = new mongoose.Schema({
   className: { type: String, required: true },
-  level: { type: String, required: true }, // e.g., Beginner, Intermediate
-  subLevel: { type: String, required: true },
-  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Link to Teacher User
-  students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // List of Students
+  level: { type: String, required: true },
+  subLevel: { type: String, required: true }, // Can be empty string
+  
+  // ✨ NEW: SLOT & LINK MANAGEMENT
+  schedule: [{ 
+    day: { type: String, required: true }, 
+    time: { type: String, required: true } 
+  }],
+  meetingLink: { type: String },
+  maxCapacity: { type: Number, default: 10 }, // Default 10 students
+
+  // Relationships
+  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  
   createdAt: { type: Date, default: Date.now }
 });
 
