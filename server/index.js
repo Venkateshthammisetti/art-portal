@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const User = require('./models/User');
 const Class = require('./models/Class');
+const Attendance = require('./models/Attendance');
+const Feedback = require('./models/Feedback');
 
 const app = express();
 app.use(cors());
@@ -299,6 +301,95 @@ app.post('/api/fees/update', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error updating fee status" });
+  }
+});
+
+
+// ===========================
+//      TEACHER ROUTES
+// ===========================
+
+// 1. GET CLASSES FOR A SPECIFIC TEACHER
+app.get('/api/teacher/:id/classes', async (req, res) => {
+  try {
+    const classes = await Class.find({ teacher: req.params.id })
+      .populate('students', 'childName fullName username childAge');
+    res.json(classes);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching classes" });
+  }
+});
+
+// 2. GET ATTENDANCE (For a specific Class & Date)
+app.get('/api/attendance/:classId/:date', async (req, res) => {
+  try {
+    const { classId, date } = req.params;
+    const record = await Attendance.findOne({ classId, date });
+    if (record) {
+      res.json(record);
+    } else {
+      res.json(null); // No attendance taken yet
+    }
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching attendance" });
+  }
+});
+
+// 3. SAVE ATTENDANCE
+app.post('/api/attendance', async (req, res) => {
+  try {
+    const { date, classId, teacherId, records } = req.body;
+    
+    // Check if record exists, update if so, otherwise create new
+    let attendance = await Attendance.findOne({ date, classId });
+    
+    if (attendance) {
+      attendance.records = records;
+      await attendance.save();
+    } else {
+      attendance = new Attendance({ date, classId, teacherId, records });
+      await attendance.save();
+    }
+    res.json({ success: true, message: "Attendance saved!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error saving attendance" });
+  }
+});
+
+// 4. SUBMIT FEEDBACK
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { studentId, teacherId, month, feedbackText, rating } = req.body;
+    
+    const newFeedback = new Feedback({
+      studentId, teacherId, month, feedbackText, rating
+    });
+    
+    await newFeedback.save();
+    res.json({ success: true, message: "Feedback submitted successfully!" });
+  } catch (err) {
+    res.status(500).json({ message: "Error submitting feedback" });
+  }
+});
+
+// 5. GET TEACHER'S STUDENTS (For Dropdown in Feedback)
+app.get('/api/teacher/:id/students', async (req, res) => {
+  try {
+    // Find all classes by this teacher
+    const classes = await Class.find({ teacher: req.params.id }).populate('students', 'childName _id');
+    
+    // Extract unique students
+    const studentMap = new Map();
+    classes.forEach(cls => {
+      cls.students.forEach(std => {
+        studentMap.set(std._id.toString(), std);
+      });
+    });
+    
+    res.json(Array.from(studentMap.values()));
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching students" });
   }
 });
 
