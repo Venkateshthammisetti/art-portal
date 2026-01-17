@@ -364,3 +364,234 @@
   padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;
 }
 .force-btn:hover { background: #fee2e2; }
+
+/* src/components/TeacherDashboard.css */
+/* ... (Keep all existing styles for Overview, Sidebar, Time Table) ... */
+
+/* === UPDATED MONTHLY SHEET STYLES === */
+
+.monthly-sheet-container {
+  background: white; border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; box-shadow: var(--shadow);
+}
+
+.sheet-wrapper { overflow-x: auto; max-width: 100%; }
+.sheet-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+.sticky-col { position: sticky; left: 0; background: white; z-index: 2; border-right: 2px solid #e2e8f0; }
+.sheet-table th.sticky-col { z-index: 3; }
+
+.sheet-table th {
+  background: #f8fafc; padding: 12px 6px; font-size: 0.75rem; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); text-align: center; font-weight: 600;
+}
+
+.sheet-table td {
+  padding: 10px 4px; border-bottom: 1px solid #f1f5f9;
+  text-align: center; font-size: 0.85rem; font-weight: 700;
+}
+
+/* Weekend & Today Highlights */
+.weekend-col { background-color: #f1f5f9; color: #94a3b8; }
+.weekend-cell { background-color: #f8fafc; }
+.today-col { border: 2px solid var(--primary); color: var(--primary); }
+
+.name-col { text-align: left !important; padding-left: 20px !important; min-width: 150px; font-weight: 600; color: var(--text-main); }
+.date-col { min-width: 35px; }
+
+/* Text Status Styles (Replaces Dots) */
+.cell-status.P { color: #16a34a; background-color: #f0fdf4; border-radius: 4px; }
+.cell-status.A { color: #dc2626; background-color: #fef2f2; border-radius: 4px; }
+
+/* Summaries */
+.summary-col { background: #fdfdfd; border-left: 1px solid #e2e8f0; font-weight: 700; min-width: 40px; }
+.summary-col.present { color: #166534; background: #dcfce7; }
+.summary-col.absent { color: #991b1b; background: #fee2e2; }
+.present-val { color: #16a34a; background: #f0fdf4; }
+.absent-val { color: #dc2626; background: #fef2f2; }
+
+/* ... (Keep Warning Box and Daily View styles) ... */
+.schedule-warning-box {
+  background: white; border: 1px solid #fecaca; border-left: 5px solid #ef4444;
+  border-radius: 12px; padding: 40px; text-align: center;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 20px;
+}
+.warning-icon { font-size: 3rem; margin-bottom: 10px; }
+.schedule-warning-box h3 { margin: 0; color: #991b1b; font-size: 1.2rem; }
+.schedule-warning-box p { color: #4b5563; margin: 10px 0 20px 0; font-size: 0.95rem; }
+.force-btn {
+  background: #fff1f2; color: #991b1b; border: 1px solid #fecaca;
+  padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.force-btn:hover { background: #fee2e2; }
+
+
+/* src/components/TeacherDashboard.css */
+/* ... (Keep Overview, Schedule, Sidebar styles) ... */
+
+/* === ATTENDANCE STYLES === */
+
+.att-control-bar {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border);
+  margin-bottom: 20px; box-shadow: var(--shadow);
+}
+
+.att-filters { display: flex; gap: 20px; }
+.filter-item { display: flex; flex-direction: column; gap: 5px; }
+.filter-item label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.filter-item select, .filter-item input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; width: 180px; }
+
+.view-switcher { display: flex; background: #f1f5f9; padding: 4px; border-radius: 8px; height: fit-content; align-self: center; }
+.view-switcher button { padding: 8px 16px; border: none; background: transparent; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+.view-switcher button.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+/* Daily View */
+.status-switch { display: flex; align-items: center; gap: 10px; background: #e2e8f0; padding: 4px; border-radius: 30px; width: 100px; position: relative; transition: background 0.3s; }
+.status-switch.on { background: #22c55e; }
+.status-switch.off { background: #ef4444; }
+.status-switch.neutral { background: #cbd5e1; } /* Empty State */
+
+.switch-knob { width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+.status-switch.on .switch-knob { transform: translateX(76px); }
+.status-switch.off .switch-knob { transform: translateX(0); }
+.status-switch.neutral .switch-knob { transform: translateX(38px); }
+
+.switch-text { position: absolute; width: 100%; text-align: center; font-size: 0.75rem; font-weight: 700; color: white; pointer-events: none; left: 0; }
+
+/* Monthly Sheet */
+.monthly-sheet-container { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.sheet-wrapper { overflow-x: auto; max-width: 100%; }
+.sheet-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+.sticky-col { position: sticky; left: 0; background: white; z-index: 2; border-right: 2px solid #e2e8f0; }
+.sheet-table th.sticky-col { z-index: 3; }
+
+.sheet-table th { background: #f8fafc; padding: 12px 6px; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); text-align: center; font-weight: 600; }
+.sheet-table td { padding: 10px 4px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 0.85rem; font-weight: 700; }
+
+/* Cells */
+.weekend-col { background-color: #f1f5f9; color: #94a3b8; }
+.weekend-cell { background-color: #f8fafc; }
+.cell-status.P { color: #16a34a; background-color: #f0fdf4; border-radius: 4px; }
+.cell-status.A { color: #dc2626; background-color: #fef2f2; border-radius: 4px; }
+.cell-status:empty::after { content: '-'; color: #cbd5e1; font-weight: 300; } /* Dash for empty */
+
+/* Summaries */
+.summary-col { background: #fdfdfd; border-left: 1px solid #e2e8f0; font-weight: 700; min-width: 40px; }
+.summary-col.present { color: #166534; background: #dcfce7; }
+.summary-col.absent { color: #991b1b; background: #fee2e2; }
+.present-val { color: #16a34a; background: #f0fdf4; }
+.absent-val { color: #dc2626; background: #fef2f2; }
+
+/* src/components/TeacherDashboard.css */
+/* ... (Keep Overview, Schedule, Sidebar styles exactly as before) ... */
+
+/* === UPDATED ATTENDANCE STYLES === */
+
+.att-control-bar {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border);
+  margin-bottom: 20px; box-shadow: var(--shadow);
+  z-index: 20; position: relative; /* Ensure dropdown displays over content */
+}
+
+.att-filters { display: flex; gap: 20px; }
+.filter-item { display: flex; flex-direction: column; gap: 5px; position: relative; }
+.filter-item label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.filter-item input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; width: 180px; }
+
+/* Multi-Select Box */
+.multi-select-box {
+  background: white; border: 1px solid #cbd5e1; border-radius: 8px;
+  padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  width: 200px; font-size: 0.9rem; user-select: none;
+}
+.multi-select-dropdown {
+  position: absolute; top: 75px; left: 0; background: white; border: 1px solid #e2e8f0;
+  border-radius: 8px; width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 50;
+  max-height: 250px; overflow-y: auto;
+}
+.ms-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; transition: background 0.2s;
+}
+.ms-item:hover { background: #f8fafc; }
+.ms-item input { width: 16px; height: 16px; cursor: pointer; margin: 0; }
+.ms-item span { font-size: 0.85rem; color: var(--text-main); }
+
+/* View Switcher */
+.view-switcher { display: flex; background: #f1f5f9; padding: 4px; border-radius: 8px; height: fit-content; align-self: center; }
+.view-switcher button { padding: 8px 16px; border: none; background: transparent; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+.view-switcher button.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+/* Daily View Logic */
+.status-switch { display: flex; align-items: center; gap: 10px; background: #e2e8f0; padding: 4px; border-radius: 30px; width: 100px; position: relative; transition: background 0.3s; }
+.status-switch.on { background: #22c55e; }
+.status-switch.off { background: #ef4444; }
+.status-switch.neutral { background: #cbd5e1; } /* Empty State */
+
+.switch-knob { width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+.status-switch.on .switch-knob { transform: translateX(76px); }
+.status-switch.off .switch-knob { transform: translateX(0); }
+.status-switch.neutral .switch-knob { transform: translateX(38px); }
+
+.switch-text { position: absolute; width: 100%; text-align: center; font-size: 0.75rem; font-weight: 700; color: white; pointer-events: none; left: 0; }
+
+/* Monthly Sheet */
+.monthly-sheet-container { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.sheet-wrapper { overflow-x: auto; max-width: 100%; }
+.sheet-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+.sticky-col { position: sticky; left: 0; background: white; z-index: 2; border-right: 2px solid #e2e8f0; }
+.sheet-table th.sticky-col { z-index: 3; }
+
+.sheet-table th { background: #f8fafc; padding: 12px 6px; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); text-align: center; font-weight: 600; }
+.sheet-table td { padding: 10px 4px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 0.85rem; font-weight: 700; }
+
+/* Updated Row Name for Multi-Class View */
+.row-name { font-weight: 600; color: var(--text-main); font-size: 0.9rem; }
+.row-sub { font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 2px; }
+
+/* Cell Status */
+.weekend-col { background-color: #f1f5f9; color: #94a3b8; }
+.weekend-cell { background-color: #f8fafc; }
+.today-col { border: 2px solid var(--primary); color: var(--primary); }
+.cell-status.P { color: #16a34a; background-color: #f0fdf4; border-radius: 4px; }
+.cell-status.A { color: #dc2626; background-color: #fef2f2; border-radius: 4px; }
+.cell-status:empty::after { content: '-'; color: #cbd5e1; font-weight: 300; }
+
+/* ... (Keep other existing styles) ... */
+
+/* src/components/TeacherDashboard.css */
+
+/* ... (Keep existing styles) ... */
+
+/* REPLACE THIS SECTION */
+.save-attendance-btn {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 30px auto 0 auto; /* Centers the button with top margin */
+  background: var(--sidebar-bg);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.save-attendance-btn:hover {
+  transform: translateY(-2px);
+  background: #1e293b;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+/* Ensure the daily container has padding at bottom so button isn't cut off */
+.daily-container {
+  padding-bottom: 40px; 
+  animation: fadeIn 0.3s ease;
+}
