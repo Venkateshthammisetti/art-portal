@@ -411,3 +411,280 @@
 .submit-feedback-btn:active {
   transform: translateY(0);
 }
+
+/* src/components/TeacherDashboard.css */
+
+/* ... (Keep existing styles) ... */
+
+/* === REFINED MONTHLY SHEET STYLES === */
+
+.monthly-sheet-container {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin-top: 20px;
+}
+
+.sheet-wrapper {
+  overflow-x: auto; /* Enables horizontal scroll */
+  max-width: 100%;
+  position: relative;
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: separate; /* Allows sticky positioning */
+  border-spacing: 0;
+  min-width: 1200px; /* Forces scroll on small screens */
+}
+
+/* Header Styling */
+.sheet-table th {
+  background: #f8fafc;
+  padding: 15px 5px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid #f1f5f9;
+  text-align: center;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* sticky "Student Name" Column */
+.sheet-table .sticky-col {
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 10;
+  border-right: 2px solid #e2e8f0; /* Stronger divider */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+}
+.sheet-table th.sticky-col {
+  z-index: 20; /* Sit on top of other headers */
+  background: #f8fafc;
+}
+
+/* Column Widths */
+.name-col {
+  min-width: 180px;
+  text-align: left !important;
+  padding-left: 20px !important;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.date-col {
+  min-width: 38px; /* Fixed width for dates to prevent squashing */
+  max-width: 38px;
+}
+
+/* Table Body Cells */
+.sheet-table td {
+  padding: 8px 4px;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f8fafc;
+  text-align: center;
+  font-size: 0.85rem;
+  height: 50px; /* Fixed height for consistency */
+  vertical-align: middle;
+}
+
+/* Date Status Indicators */
+.cell-status {
+  font-weight: 700;
+  cursor: default;
+}
+.cell-status.P { color: #16a34a; background-color: #f0fdf4; }
+.cell-status.A { color: #dc2626; background-color: #fef2f2; }
+.cell-status.M { color: #d97706; background-color: #fffbeb; }
+.cell-status:empty::after { 
+  content: '-'; 
+  color: #e2e8f0; 
+  font-weight: 300; 
+}
+
+/* Weekend Styling */
+.weekend-col { background-color: #f8fafc; color: #94a3b8; }
+.weekend-cell { background-color: #fcfcfc; }
+
+/* Summary Columns (Totals) at the end */
+.sheet-table th.summary-col {
+  background: #fffbeb; /* Light yellow header */
+  border-bottom: 2px solid #fcd34d;
+  min-width: 50px;
+  font-size: 0.8rem;
+  color: #b45309;
+}
+
+.sheet-table td.summary-col {
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-left: 1px solid #e2e8f0;
+}
+
+.summary-col.present { color: #166534; background-color: #f0fdf4; }
+.summary-col.absent { color: #991b1b; background-color: #fef2f2; }
+
+/* Highlight Values */
+.present-val { color: #16a34a; background: #f0fdf4; }
+.absent-val { color: #dc2626; background: #fef2f2; }
+
+
+/* src/components/TeacherDashboard.css */
+
+/* ... (Keep top styles) ... */
+
+/* === ATTENDANCE VIEW STYLES === */
+
+.att-control-bar {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border);
+  margin-bottom: 20px; box-shadow: var(--shadow); z-index: 20; position: relative;
+}
+
+.att-filters { display: flex; gap: 20px; }
+.filter-item { display: flex; flex-direction: column; gap: 5px; position: relative; }
+.filter-item label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.filter-item input, .filter-item select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; width: 180px; }
+
+/* Multi-Select */
+.multi-select-box { background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 220px; font-size: 0.9rem; user-select: none; }
+.multi-select-dropdown { position: absolute; top: 75px; left: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 50; max-height: 250px; overflow-y: auto; }
+.ms-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; transition: background 0.2s; }
+.ms-item:hover { background: #f8fafc; }
+.ms-item input { width: 16px; height: 16px; margin: 0; }
+
+.view-switcher { display: flex; background: #f1f5f9; padding: 4px; border-radius: 8px; height: fit-content; align-self: center; }
+.view-switcher button { padding: 8px 16px; border: none; background: transparent; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+.view-switcher button.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+/* ✨ FIXED DAILY HEADER (Stats + Toolbar) ✨ */
+.daily-header {
+  display: flex; justify-content: space-between; align-items: center;
+  background: white; padding: 15px 25px; border-radius: 12px;
+  border: 1px solid var(--border); margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+.dh-stats { display: flex; gap: 30px; align-items: center; }
+.stat-block { display: flex; flex-direction: column; }
+.stat-block .label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+.stat-block .value { font-size: 1.4rem; font-weight: 800; color: var(--text-main); line-height: 1; }
+.stat-block .value.green { color: #16a34a; }
+
+.dh-actions { display: flex; align-items: center; gap: 10px; }
+.action-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-right: 10px; }
+
+.bulk-btn { padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: transform 0.1s; }
+.bulk-btn:active { transform: scale(0.98); }
+.bulk-btn.present { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.bulk-btn.absent { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.bulk-btn.missed { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+
+/* Student List Row */
+.modern-student-list { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow); }
+.list-header-row { display: flex; padding: 15px 25px; background: #f8fafc; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+.col-name { flex: 2; display: flex; flex-direction: column; justify-content: center; }
+.col-id { flex: 1; color: var(--text-muted); display: flex; align-items: center; }
+.col-status { flex: 1; display: flex; justify-content: flex-end; align-items: center; }
+
+.modern-student-row { display: flex; align-items: center; padding: 15px 25px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s; }
+.modern-student-row:hover { background: #f8fafc; }
+
+/* Status Switch */
+.status-switch { display: flex; align-items: center; gap: 10px; background: #e2e8f0; padding: 4px; border-radius: 30px; width: 100px; position: relative; transition: background 0.3s; }
+.status-switch.on { background: #22c55e; }
+.status-switch.off { background: #ef4444; }
+.status-switch.missed { background: #f59e0b; }
+.status-switch.neutral { background: #cbd5e1; }
+.switch-knob { width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+.status-switch.on .switch-knob { transform: translateX(76px); }
+.status-switch.off .switch-knob { transform: translateX(0); }
+.status-switch.missed .switch-knob { transform: translateX(38px); }
+.status-switch.neutral .switch-knob { transform: translateX(38px); }
+.switch-text { position: absolute; width: 100%; text-align: center; font-size: 0.75rem; font-weight: 700; color: white; pointer-events: none; left: 0; }
+
+/* Save Button */
+.save-attendance-btn { display: block; width: 100%; max-width: 300px; margin: 30px auto 0 auto; background: var(--sidebar-bg); color: white; padding: 15px 25px; border-radius: 50px; font-size: 1rem; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s, background 0.2s; }
+.save-attendance-btn:hover { transform: translateY(-2px); background: #1e293b; }
+.daily-container { padding-bottom: 40px; animation: fadeIn 0.3s ease; }
+
+/* === ATTENDANCE HEADER FIX === */
+
+/* 1. The Container for the Stats & Buttons */
+.daily-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 20px 25px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+/* 2. The Stats Section (Present / Total) */
+.dh-stats {
+  display: flex;
+  gap: 40px; /* Space between Present and Total */
+}
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stat-block .label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-block .value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1;
+}
+
+.stat-block .value.green {
+  color: #16a34a; /* Green for Present */
+}
+
+/* 3. The Quick Actions Section (Buttons) */
+.dh-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.action-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.bulk-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.bulk-btn:active {
+  transform: scale(0.95);
+}
+
+.bulk-btn.present { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.bulk-btn.absent { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.bulk-btn.missed { background: #fef3c7; color: #b45309; border-color: #fde68a; }

@@ -2,9 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+
+// Import Models
 const User = require('./models/User');
 const Class = require('./models/Class');
-const Attendance = require('./models/Attendance');
+const Attendance = require('./models/Attendance'); // Ensure this matches Step 1
 const Feedback = require('./models/Feedback');
 
 const app = express();
@@ -12,7 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- CONNECT TO DATABASE ---
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/art_academy')
     .then(() => console.log("✅ Connected to MongoDB"))
     .catch(err => console.error("❌ DB Error:", err));
 
@@ -21,100 +23,66 @@ function escapeRegex(text) {
     if (!text) return "";
     return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
-const normalize = (str) => (str || "").toString().trim().toLowerCase();
 
 // ===========================
 //         AUTH & USERS
 // ===========================
 
-// 1. LOGIN
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username, password });
-    if (user) {
-        res.json(user); 
-    } else {
-        res.status(401).json({ success: false, message: "Wrong credentials" });
-    }
+    if (user) res.json(user); 
+    else res.status(401).json({ success: false, message: "Wrong credentials" });
 });
 
-// 2. REGISTER NEW USER
 app.post('/api/register', async (req, res) => {
   try {
     const { username } = req.body;
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already taken' });
-    }
+    if (await User.findOne({ username })) return res.status(400).json({ message: 'Username taken' });
     const newUser = new User(req.body); 
     await newUser.save();
     res.json({ message: 'User registered successfully!' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server Error' });
-  }
+  } catch (err) { res.status(500).json({ message: 'Server Error' }); }
 });
 
-// 3. ✨ NEW: GET PARENT BY PHONE (For Auto-fill)
 app.get('/api/users/parent/:phone', async (req, res) => {
   try {
-    const parent = await User.findOne({ phone: req.params.phone, role: 'parent' })
-                             .select('fullName email location zoomId referredBy');
-    if (parent) {
-      res.json(parent);
-    } else {
-      res.status(404).json({ message: "Parent not found" });
-    }
-  } catch (err) {
-    res.status(500).json({ message: "Server Error" });
-  }
+    const parent = await User.findOne({ phone: req.params.phone, role: 'parent' });
+    if (parent) res.json(parent);
+    else res.status(404).json({ message: "Parent not found" });
+  } catch (err) { res.status(500).json({ message: "Server Error" }); }
 });
 
-// 4. GET ALL USERS
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find({}).select('-password');
     res.json(users);
-  } catch (err) {
-    res.status(500).json({ message: 'Server Error' });
-  }
+  } catch (err) { res.status(500).json({ message: 'Server Error' }); }
 });
 
-// 5. UPDATE USER DETAILS
 app.put('/api/users/:id', async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedUser) return res.status(404).json({ message: "User not found" });
     res.json(updatedUser);
-  } catch (err) {
-    res.status(500).json({ message: "Server error updating user" });
-  }
+  } catch (err) { res.status(500).json({ message: "Error updating user" }); }
 });
 
-// 6. UPDATE STATUS
 app.put('/api/users/:id/status', async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
-        if (!user) return res.status(404).json({ message: "User not found" });
         user.isActive = !user.isActive; 
         await user.save();
         res.json({ message: "Status updated", isActive: user.isActive });
-    } catch (err) {
-        res.status(500).json({ message: "Server Error" });
-    }
+    } catch (err) { res.status(500).json({ message: "Server Error" }); }
 });
 
-// 7. DELETE USER
 app.delete('/api/users/:id', async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'User deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server Error' });
-  }
+    res.json({ message: 'User deleted' });
+  } catch (err) { res.status(500).json({ message: 'Server Error' }); }
 });
 
-// 8. DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
     const totalStudents = await User.countDocuments({ role: 'parent' });
@@ -123,275 +91,179 @@ app.get('/api/dashboard/stats', async (req, res) => {
       { $match: { role: 'parent' } }, 
       { $group: { _id: null, totalRevenue: { $sum: "$monthlyFee" } } }
     ]);
-    const calculatedRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
-    res.json({ students: totalStudents, teachers: totalTeachers, revenue: calculatedRevenue });
-  } catch (err) {
-    res.status(500).json({ message: 'Error fetching stats' });
-  }
-});
-
-// 9. GET USER CREDENTIALS
-app.get('/api/users/:id/credentials', async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select('username password');
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: "Server Error" });
-  }
+    res.json({ students: totalStudents, teachers: totalTeachers, revenue: revenueResult[0]?.totalRevenue || 0 });
+  } catch (err) { res.status(500).json({ message: 'Error fetching stats' }); }
 });
 
 // ===========================
 //      CLASS MANAGEMENT
 // ===========================
 
-// 1. GET ALL CLASSES
 app.get('/api/classes', async (req, res) => {
   try {
     const classes = await Class.find()
       .populate('teacher', 'fullName username')
       .populate('students', 'childName fullName username childAge joiningDate');
     res.json(classes);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching classes" });
-  }
+  } catch (err) { res.status(500).json({ message: "Error fetching classes" }); }
 });
 
-// 2. CREATE A CLASS (Strict Name Uniqueness)
 app.post('/api/classes', async (req, res) => {
   try {
-    const { className, level, subLevel, teacherId, schedule, meetingLink, maxCapacity } = req.body;
-
-    // ✨ CHECK 1: GLOBAL NAME CHECK
-    // Search for any class with this exact name (case-insensitive)
+    const { className } = req.body;
     const nameRegex = new RegExp(`^${escapeRegex(className.trim())}$`, 'i');
-    const existingName = await Class.findOne({ className: { $regex: nameRegex } });
-
-    if (existingName) {
-      return res.status(400).json({ 
-        message: `DUPLICATE NAME: A class named "${existingName.className}" already exists. Please choose a unique name.` 
-      });
+    if (await Class.findOne({ className: { $regex: nameRegex } })) {
+      return res.status(400).json({ message: `Class "${className}" already exists.` });
     }
-
-    // Create
-    const newClass = new Class({
-      className: className.trim(),
-      level, subLevel, schedule, meetingLink,
-      maxCapacity: maxCapacity || 10,
-      teacher: teacherId,
-      students: []
-    });
+    const newClass = new Class(req.body);
     await newClass.save();
     res.json(newClass);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error creating class" });
-  }
+  } catch (err) { res.status(500).json({ message: "Error creating class" }); }
 });
 
-// 3. UPDATE CLASS (Strict Name Uniqueness)
 app.put('/api/classes/:id', async (req, res) => {
   try {
-    const { className, level, subLevel, teacherId, schedule, meetingLink, maxCapacity } = req.body;
-
-    // ✨ CHECK: Name unique (excluding current class)
-    const nameRegex = new RegExp(`^${escapeRegex(className.trim())}$`, 'i');
-    const duplicate = await Class.findOne({ 
-      _id: { $ne: req.params.id }, // Ignore self
-      className: { $regex: nameRegex } 
-    });
-
-    if (duplicate) {
-      return res.status(400).json({ 
-        message: `DUPLICATE NAME: A class named "${duplicate.className}" already exists.` 
-      });
-    }
-
-    const updatedClass = await Class.findByIdAndUpdate(
-      req.params.id, 
-      { className, level, subLevel, teacher: teacherId, schedule, meetingLink, maxCapacity },
-      { new: true }
-    ).populate('teacher', 'fullName username');
-    
+    const updatedClass = await Class.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('teacher');
     res.json(updatedClass);
-  } catch (err) {
-    res.status(500).json({ message: "Error updating class" });
-  }
+  } catch (err) { res.status(500).json({ message: "Error updating class" }); }
 });
 
-// 4. ASSIGN STUDENTS
 app.post('/api/classes/:id/assign', async (req, res) => {
   try {
-    const classId = req.params.id;
     const { studentIds } = req.body; 
-
-    if (!studentIds || !Array.isArray(studentIds)) {
-        return res.status(400).json({ message: "Invalid student IDs" });
-    }
-
-    const classDoc = await Class.findById(classId);
-    if (!classDoc) return res.status(404).json({ message: "Class not found" });
-
-    await User.updateMany(
-      { _id: { $in: studentIds } },
-      { $set: { assignedClass: classId } }
-    );
-
+    const classDoc = await Class.findById(req.params.id);
+    await User.updateMany({ _id: { $in: studentIds } }, { $set: { assignedClass: req.params.id } });
     classDoc.students = studentIds;
     await classDoc.save();
-
-    res.json({ message: "Students assigned successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error assigning students" });
-  }
+    res.json({ message: "Students assigned" });
+  } catch (err) { res.status(500).json({ message: "Error assigning students" }); }
 });
 
-// 5. DELETE CLASS
 app.delete('/api/classes/:id', async (req, res) => {
   try {
-    const classId = req.params.id;
-    await Class.findByIdAndDelete(classId);
-    await User.updateMany(
-      { assignedClass: classId },
-      { $set: { assignedClass: null } }
-    );
-    res.json({ message: "Class deleted and students unassigned" });
-  } catch (err) {
-    res.status(500).json({ message: "Error deleting class" });
-  }
+    await Class.findByIdAndDelete(req.params.id);
+    await User.updateMany({ assignedClass: req.params.id }, { $set: { assignedClass: null } });
+    res.json({ message: "Class deleted" });
+  } catch (err) { res.status(500).json({ message: "Error deleting class" }); }
 });
 
 // ===========================
-//       FEE MANAGEMENT
+//      FEE & FEEDBACK
 // ===========================
 
-// 1. MARK FEE STATUS
 app.post('/api/fees/update', async (req, res) => {
   try {
     const { userId, month, status, amount } = req.body; 
-    
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "Student not found" });
-
-    const existingPaymentIndex = user.payments.findIndex(p => p.month === month);
-
-    if (existingPaymentIndex > -1) {
-      if (status === 'Pending') {
-         user.payments.splice(existingPaymentIndex, 1);
-      } else {
-         user.payments[existingPaymentIndex].status = status;
-         user.payments[existingPaymentIndex].amount = amount;
-         user.payments[existingPaymentIndex].paidDate = new Date();
-      }
-    } else {
-      if (status === 'Paid') {
-        user.payments.push({
-          month,
-          status: 'Paid',
-          amount: amount,
-          paidDate: new Date()
-        });
-      }
+    const idx = user.payments.findIndex(p => p.month === month);
+    if (idx > -1) {
+      if (status === 'Pending') user.payments.splice(idx, 1);
+      else { user.payments[idx].status = status; user.payments[idx].amount = amount; }
+    } else if (status === 'Paid') {
+      user.payments.push({ month, status: 'Paid', amount, paidDate: new Date() });
     }
-
     await user.save();
     res.json({ success: true, payments: user.payments });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error updating fee status" });
-  }
+  } catch (err) { res.status(500).json({ message: "Error updating fees" }); }
 });
 
-
-// ===========================
-//      TEACHER ROUTES
-// ===========================
-
-// 1. GET CLASSES FOR A SPECIFIC TEACHER
-app.get('/api/teacher/:id/classes', async (req, res) => {
-  try {
-    const classes = await Class.find({ teacher: req.params.id })
-      .populate('students', 'childName fullName username childAge');
-    res.json(classes);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching classes" });
-  }
-});
-
-// 2. GET ATTENDANCE (For a specific Class & Date)
-app.get('/api/attendance/:classId/:date', async (req, res) => {
-  try {
-    const { classId, date } = req.params;
-    const record = await Attendance.findOne({ classId, date });
-    if (record) {
-      res.json(record);
-    } else {
-      res.json(null); // No attendance taken yet
-    }
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching attendance" });
-  }
-});
-
-// 3. SAVE ATTENDANCE
-app.post('/api/attendance', async (req, res) => {
-  try {
-    const { date, classId, teacherId, records } = req.body;
-    
-    // Check if record exists, update if so, otherwise create new
-    let attendance = await Attendance.findOne({ date, classId });
-    
-    if (attendance) {
-      attendance.records = records;
-      await attendance.save();
-    } else {
-      attendance = new Attendance({ date, classId, teacherId, records });
-      await attendance.save();
-    }
-    res.json({ success: true, message: "Attendance saved!" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error saving attendance" });
-  }
-});
-
-// 4. SUBMIT FEEDBACK
 app.post('/api/feedback', async (req, res) => {
   try {
-    const { studentId, teacherId, month, feedbackText, rating } = req.body;
-    
-    const newFeedback = new Feedback({
-      studentId, teacherId, month, feedbackText, rating
+    await new Feedback(req.body).save();
+    res.json({ success: true, message: "Feedback submitted!" });
+  } catch (err) { res.status(500).json({ message: "Error submitting feedback" }); }
+});
+
+app.get('/api/teacher/:id/classes', async (req, res) => {
+  try {
+    const classes = await Class.find({ teacher: req.params.id }).populate('students');
+    res.json(classes);
+  } catch (err) { res.status(500).json({ message: "Error fetching classes" }); }
+});
+
+// ===========================
+//      ATTENDANCE (FIXED)
+// ===========================
+
+// 1. GET DAILY (For specific date & classes)
+app.get('/api/attendance/daily', async (req, res) => {
+  try {
+    const { classes, date } = req.query;
+    if (!classes || !date) return res.json({ statusMap: {}, isScheduled: false });
+
+    const classIds = classes.split(',');
+
+    // Fetch Records
+    const records = await Attendance.find({ date: date, classId: { $in: classIds } });
+
+    // Map: { studentId: 'Present' }
+    const statusMap = {};
+    records.forEach(r => {
+      if (r.studentId) statusMap[r.studentId.toString()] = r.status;
     });
-    
-    await newFeedback.save();
-    res.json({ success: true, message: "Feedback submitted successfully!" });
+
+    // Check Schedule
+    const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    const isScheduled = await Class.exists({ _id: { $in: classIds }, 'schedule.day': dayName });
+
+    res.json({ statusMap, isScheduled: !!isScheduled });
   } catch (err) {
-    res.status(500).json({ message: "Error submitting feedback" });
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 5. GET TEACHER'S STUDENTS (For Dropdown in Feedback)
-app.get('/api/teacher/:id/students', async (req, res) => {
+// 2. GET MONTHLY (For specific month regex)
+app.get('/api/attendance/monthly', async (req, res) => {
   try {
-    // Find all classes by this teacher
-    const classes = await Class.find({ teacher: req.params.id }).populate('students', 'childName _id');
-    
-    // Extract unique students
-    const studentMap = new Map();
-    classes.forEach(cls => {
-      cls.students.forEach(std => {
-        studentMap.set(std._id.toString(), std);
-      });
+    const { classes, month } = req.query; // "2026-01"
+    if (!classes || !month) return res.json([]);
+
+    const classIds = classes.split(',');
+    const records = await Attendance.find({ 
+      date: { $regex: `^${month}` }, 
+      classId: { $in: classIds } 
     });
     
-    res.json(Array.from(studentMap.values()));
+    res.json(records);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. SAVE ATTENDANCE (Bulk Write)
+app.post('/api/attendance', async (req, res) => {
+  try {
+    const { date, records } = req.body;
+    // records: [{ studentId, classId, status }]
+
+    console.log(`📝 Saving ${records?.length} attendance records for ${date}`);
+
+    if (!records || records.length === 0) {
+      return res.json({ success: true, message: "No records provided" });
+    }
+
+    // Convert to Bulk Operations
+    const operations = records.map(rec => {
+      if(!rec.studentId || !rec.classId) return null;
+      return {
+        updateOne: {
+          filter: { date: date, studentId: rec.studentId, classId: rec.classId },
+          update: { $set: { status: rec.status } },
+          upsert: true
+        }
+      };
+    }).filter(op => op !== null);
+
+    if (operations.length > 0) {
+      await Attendance.bulkWrite(operations);
+    }
+
+    res.json({ success: true, message: "Attendance Saved Successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching students" });
+    console.error("Attendance Save Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Start Server
-app.listen(5000, () => console.log("✅ Server running on port 5000"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

@@ -18,15 +18,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [scheduleViewMode, setScheduleViewMode] = useState('grid'); 
   const [studentViewMode, setStudentViewMode] = useState('list');
 
-  // ✨ NEW: SORT, FILTER, PERSONALIZE STATE
+  // Sort & Filter
   const [searchText, setSearchText] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'childName', direction: 'asc' });
-  const [visibleColumns, setVisibleColumns] = useState({
-    name: true, id: true, className: true, gender: true, phone: true
-  });
+  const [visibleColumns, setVisibleColumns] = useState({ name: true, id: true, className: true, gender: true, phone: true });
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
 
-  // Modal & Data
+  // Modal
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modalData, setModalData] = useState(null); 
   const [editingLink, setEditingLink] = useState('');
@@ -43,7 +41,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [monthlyData, setMonthlyData] = useState([]); 
   const [monthDays, setMonthDays] = useState([]); 
   const [msg, setMsg] = useState('');
-  const [attendanceDb, setAttendanceDb] = useState({}); 
   const [isClassScheduled, setIsClassScheduled] = useState(true);
   const [forceExtraSession, setForceExtraSession] = useState(false);
 
@@ -88,64 +85,85 @@ const TeacherDashboard = ({ user, onLogout }) => {
     } catch (err) { console.error(err); }
   };
 
-  // --- ATTENDANCE SYNC ---
+  // --- ATTENDANCE SYNC (FIXED MONTHLY LOGIC) ---
   useEffect(() => {
     if (selectedClassIds.length === 0) {
       setAttendanceList([]);
       setMonthlyData([]);
       return;
     }
+
     const combinedStudents = classes
       .filter(c => selectedClassIds.includes(c._id))
       .flatMap(c => c.students.map(s => ({ ...s, parentClassId: c._id, className: c.className })));
     setAttendanceList(combinedStudents);
 
-    if (attendanceView === 'daily') {
-      const combinedStatus = {};
-      let scheduledCount = 0;
-      selectedClassIds.forEach(classId => {
-        const dbKey = `${classId}_${attendanceDate}`;
-        const savedData = attendanceDb[dbKey] || {};
-        Object.assign(combinedStatus, savedData);
-        const cls = classes.find(c => c._id === classId);
-        const dateObj = new Date(attendanceDate);
-        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dateObj.getDay()];
-        if (cls && cls.schedule.some(s => s.day === dayName)) scheduledCount++;
-      });
-      setAttendanceStatus(combinedStatus);
-      setIsClassScheduled(scheduledCount > 0);
-    }
-
-    if (attendanceView === 'monthly') {
-      const [year, month] = selectedMonth.split('-').map(Number);
-      const daysInMonth = new Date(year, month, 0).getDate();
-      const daysArr = [];
-      for(let i=1; i<=daysInMonth; i++) {
-          const d = new Date(year, month - 1, i);
-          const dayOfWeek = d.getDay();
-          daysArr.push({
-              date: i,
-              isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-              fullDateStr: `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`
-          });
-      }
-      setMonthDays(daysArr);
-      const generatedSheet = combinedStudents.map(s => {
-        const history = daysArr.map(dayObj => {
-           const keyForDay = `${s.parentClassId}_${dayObj.fullDateStr}`;
-           const dayRecord = attendanceDb[keyForDay];
-           if (dayRecord && dayRecord[s._id]) {
-              if(dayRecord[s._id] === 'Present') return 'P';
-              if(dayRecord[s._id] === 'Absent') return 'A';
-              if(dayRecord[s._id] === 'Missed') return 'M';
+    const fetchAttendanceData = async () => {
+      try {
+        const classQuery = selectedClassIds.join(',');
+        
+        if (attendanceView === 'daily') {
+           // --- DAILY VIEW LOGIC ---
+           const url = `http://localhost:5000/api/attendance/daily?classes=${classQuery}&date=${attendanceDate}`;
+           const res = await axios.get(url);
+           setAttendanceStatus(res.data.statusMap || {}); 
+           setIsClassScheduled(res.data.isScheduled !== undefined ? res.data.isScheduled : true);
+        
+        } else {
+           // --- MONTHLY VIEW LOGIC (FIXED) ---
+           
+           // 1. Generate Days Array
+           const [year, month] = selectedMonth.split('-').map(Number);
+           const daysInMonth = new Date(year, month, 0).getDate();
+           const daysArr = [];
+           for(let i=1; i<=daysInMonth; i++) {
+               const d = new Date(year, month - 1, i);
+               const dayOfWeek = d.getDay();
+               daysArr.push({
+                   date: i,
+                   isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+                   fullDateStr: `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`
+               });
            }
-           return null; 
-        });
-        return { ...s, history };
-      });
-      setMonthlyData(generatedSheet);
-    }
-  }, [attendanceView, selectedClassIds, attendanceDate, selectedMonth, attendanceDb, classes]); 
+           setMonthDays(daysArr);
+
+           // 2. Fetch Data
+           const url = `http://localhost:5000/api/attendance/monthly?classes=${classQuery}&month=${selectedMonth}`;
+           const res = await axios.get(url);
+           const records = res.data; // Array of { studentId, date, status }
+
+           // 3. Create Lookup Map: "studentId_YYYY-MM-DD" -> "Present"
+           const lookup = {};
+           records.forEach(r => {
+             const key = `${r.studentId}_${r.date}`;
+             lookup[key] = r.status;
+           });
+
+           // 4. Map to Grid
+           const generatedSheet = combinedStudents.map(s => {
+             const history = daysArr.map(dayObj => {
+                const key = `${s._id}_${dayObj.fullDateStr}`;
+                const status = lookup[key]; 
+                
+                // Convert full word to single letter for CSS styling
+                if (status === 'Present') return 'P';
+                if (status === 'Absent') return 'A';
+                if (status === 'Missed') return 'M';
+                return null;
+             });
+             return { ...s, history };
+           });
+           
+           setMonthlyData(generatedSheet);
+        }
+      } catch (error) {
+        console.error("Error fetching attendance:", error);
+      }
+    };
+
+    fetchAttendanceData();
+
+  }, [attendanceView, selectedClassIds, attendanceDate, selectedMonth, classes]); 
 
   // --- ACTIONS ---
   const toggleClassSelection = (classId) => {
@@ -170,21 +188,33 @@ const TeacherDashboard = ({ user, onLogout }) => {
     setAttendanceStatus(newStatus);
   };
 
-  const submitAttendance = () => {
+  const submitAttendance = async () => {
     if (selectedClassIds.length === 0) return;
-    const updates = {}; 
-    selectedClassIds.forEach(classId => {
-      const dbKey = `${classId}_${attendanceDate}`;
-      updates[dbKey] = { ...(attendanceDb[dbKey] || {}) }; 
-      const classStudents = classes.find(c => c._id === classId).students;
-      classStudents.forEach(s => {
-        if (attendanceStatus[s._id]) updates[dbKey][s._id] = attendanceStatus[s._id];
-        else delete updates[dbKey][s._id]; 
-      });
-    });
-    setAttendanceDb(prev => ({ ...prev, ...updates }));
-    setMsg("✅ Saved!");
-    setTimeout(() => setMsg(''), 3000);
+    try {
+      const validRecords = attendanceList
+        .filter(s => s._id && s.parentClassId && attendanceStatus[s._id]) 
+        .map(student => ({
+          studentId: student._id,
+          classId: student.parentClassId,
+          status: attendanceStatus[student._id]
+        }));
+
+      if (validRecords.length === 0) {
+         setMsg("⚠️ No changes to save");
+         setTimeout(() => setMsg(''), 3000);
+         return;
+      }
+
+      const payload = { date: attendanceDate, records: validRecords };
+      await axios.post('http://localhost:5000/api/attendance', payload);
+
+      setMsg("✅ Saved!");
+      setTimeout(() => setMsg(''), 3000);
+    } catch (error) {
+      console.error("Save failed", error);
+      setMsg("❌ Error Saving");
+      setTimeout(() => setMsg(''), 3000);
+    }
   };
 
   const handleSaveLink = () => {
@@ -253,31 +283,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
     return Object.entries(counts).map(([name, count]) => ({ name, count }));
   };
 
-  // ✨ SORT & FILTER LOGIC
   const handleSort = (key) => {
     let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
     setSortConfig({ key, direction });
   };
 
   const getProcessedStudents = () => {
-    // 1. Filter
-    let filtered = myStudents.filter(s => 
-      s.childName.toLowerCase().includes(searchText.toLowerCase()) || 
-      s.username.toLowerCase().includes(searchText.toLowerCase()) ||
-      s.className.toLowerCase().includes(searchText.toLowerCase())
-    );
-
-    // 2. Sort
+    let filtered = myStudents.filter(s => s.childName.toLowerCase().includes(searchText.toLowerCase()));
     if (sortConfig.key) {
       filtered.sort((a, b) => {
-        const valA = a[sortConfig.key] ? a[sortConfig.key].toString().toLowerCase() : '';
-        const valB = b[sortConfig.key] ? b[sortConfig.key].toString().toLowerCase() : '';
-        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        const valA = a[sortConfig.key]?.toString().toLowerCase() || '';
+        const valB = b[sortConfig.key]?.toString().toLowerCase() || '';
+        return sortConfig.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
       });
     }
     return filtered;
@@ -323,135 +341,57 @@ const TeacherDashboard = ({ user, onLogout }) => {
              <h3 className="section-title" style={{marginTop:'40px'}}>Upcoming Sessions</h3> {getUpcomingClasses().length === 0 ? <div className="empty-state">No upcoming classes.</div> : (<div className="upcoming-list">{getUpcomingClasses().map((cls, idx) => (<div key={idx} className="upcoming-row"><div className="uc-date"><span className="uc-day">{cls.isTomorrow ? 'Tomorrow' : cls.upcomingDay}</span></div><div className="uc-info"><h4>{cls.className}</h4><span>{cls.level}</span></div><div className="uc-time">{cls.upcomingTime}</div><div className="uc-action"><button className="icon-btn-sm" onClick={() => setActiveTab('schedule')}>🗓️</button></div></div>))}</div>)} 
           </div>}
           
-          {/* ✨ STUDENTS DIRECTORY (With Features) ✨ */}
+          {/* STUDENTS */}
           {activeTab === 'students' && (
             <div className="students-view">
                <div className="std-toolbar">
-                  {/* SEARCH FILTER */}
-                  <div className="std-search">
-                     <span className="search-icon">🔍</span>
-                     <input 
-                        type="text" 
-                        placeholder="Search by name, ID or class..." 
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                     />
-                  </div>
-
+                  <div className="std-search"><span className="search-icon">🔍</span><input type="text" placeholder="Search..." value={searchText} onChange={(e) => setSearchText(e.target.value)} /></div>
                   <div className="std-actions">
-                     {/* PERSONALIZE BUTTON */}
                      <div className="col-menu-wrapper" style={{position:'relative'}}>
                         <button className="personalize-btn" onClick={() => setIsColMenuOpen(!isColMenuOpen)}>⚙️ Columns</button>
-                        {isColMenuOpen && (
-                           <div className="col-dropdown">
-                              <label><input type="checkbox" checked={visibleColumns.name} onChange={()=>setVisibleColumns({...visibleColumns, name: !visibleColumns.name})} /> Name</label>
-                              <label><input type="checkbox" checked={visibleColumns.id} onChange={()=>setVisibleColumns({...visibleColumns, id: !visibleColumns.id})} /> Student ID</label>
-                              <label><input type="checkbox" checked={visibleColumns.className} onChange={()=>setVisibleColumns({...visibleColumns, className: !visibleColumns.className})} /> Class</label>
-                              <label><input type="checkbox" checked={visibleColumns.gender} onChange={()=>setVisibleColumns({...visibleColumns, gender: !visibleColumns.gender})} /> Gender</label>
-                           </div>
-                        )}
+                        {isColMenuOpen && (<div className="col-dropdown"><label><input type="checkbox" checked={visibleColumns.name} onChange={()=>setVisibleColumns({...visibleColumns, name: !visibleColumns.name})} /> Name</label><label><input type="checkbox" checked={visibleColumns.id} onChange={()=>setVisibleColumns({...visibleColumns, id: !visibleColumns.id})} /> ID</label><label><input type="checkbox" checked={visibleColumns.className} onChange={()=>setVisibleColumns({...visibleColumns, className: !visibleColumns.className})} /> Class</label><label><input type="checkbox" checked={visibleColumns.gender} onChange={()=>setVisibleColumns({...visibleColumns, gender: !visibleColumns.gender})} /> Gender</label><label><input type="checkbox" checked={visibleColumns.phone} onChange={()=>setVisibleColumns({...visibleColumns, phone: !visibleColumns.phone})} /> Phone</label></div>)}
                      </div>
-
-                     <div className="view-switcher">
-                        <button className={studentViewMode === 'list' ? 'active' : ''} onClick={() => setStudentViewMode('list')}>📋 List</button>
-                        <button className={studentViewMode === 'analytics' ? 'active' : ''} onClick={() => setStudentViewMode('analytics')}>📊 Analytics</button>
-                     </div>
+                     <div className="view-switcher"><button className={studentViewMode === 'list' ? 'active' : ''} onClick={() => setStudentViewMode('list')}>📋 List</button><button className={studentViewMode === 'analytics' ? 'active' : ''} onClick={() => setStudentViewMode('analytics')}>📊 Analytics</button></div>
                   </div>
                </div>
-
                {studentViewMode === 'list' ? (
                   <div className="std-table-wrapper">
                      <table className="std-table">
-                        <thead>
-                           <tr>
-                              {visibleColumns.name && <th onClick={() => handleSort('childName')}>Name {sortConfig.key==='childName' ? (sortConfig.direction==='asc'?'↑':'↓') : ''}</th>}
-                              {visibleColumns.id && <th onClick={() => handleSort('username')}>ID {sortConfig.key==='username' ? (sortConfig.direction==='asc'?'↑':'↓') : ''}</th>}
-                              {visibleColumns.className && <th onClick={() => handleSort('className')}>Class {sortConfig.key==='className' ? (sortConfig.direction==='asc'?'↑':'↓') : ''}</th>}
-                              {visibleColumns.gender && <th onClick={() => handleSort('gender')}>Gender {sortConfig.key==='gender' ? (sortConfig.direction==='asc'?'↑':'↓') : ''}</th>}
-                              {visibleColumns.phone && <th>Parent Phone</th>}
-                           </tr>
-                        </thead>
-                        <tbody>
-                           {getProcessedStudents().map(s => (
-                              <tr key={s._id}>
-                                 {visibleColumns.name && <td><div className="std-name-cell"><div className="s-avatar-sm">{s.childName.charAt(0)}</div>{s.childName}</div></td>}
-                                 {visibleColumns.id && <td>{s.username}</td>}
-                                 {visibleColumns.className && <td><span className="class-badge">{s.className}</span></td>}
-                                 {visibleColumns.gender && <td>{s.gender}</td>}
-                                 {visibleColumns.phone && <td>+91 98765 43210</td>}
-                              </tr>
-                           ))}
-                        </tbody>
+                        <thead><tr>{visibleColumns.name && <th onClick={() => handleSort('childName')}>Name</th>}{visibleColumns.id && <th onClick={() => handleSort('username')}>ID</th>}{visibleColumns.className && <th onClick={() => handleSort('className')}>Class</th>}{visibleColumns.gender && <th onClick={() => handleSort('gender')}>Gender</th>}{visibleColumns.phone && <th>Phone</th>}</tr></thead>
+                        <tbody>{getProcessedStudents().map(s => (<tr key={s._id}>{visibleColumns.name && <td><div className="std-name-cell"><div className="s-avatar-sm">{s.childName.charAt(0)}</div>{s.childName}</div></td>}{visibleColumns.id && <td>{s.username}</td>}{visibleColumns.className && <td><span className="class-badge">{s.className}</span></td>}{visibleColumns.gender && <td>{s.gender}</td>}{visibleColumns.phone && <td>+91 98765 43210</td>}</tr>))}</tbody>
                      </table>
-                     {getProcessedStudents().length === 0 && <div className="empty-state">No students found.</div>}
                   </div>
                ) : (
-                  <div className="analytics-container">
-                     <div className="chart-card">
-                        <h4>Gender Distribution</h4>
-                        <div className="pie-chart-wrapper">
-                           <div className="pie-chart" style={{background: `conic-gradient(#3b82f6 0% ${(getGenderStats().boys/getGenderStats().total)*100}%, #ec4899 ${(getGenderStats().boys/getGenderStats().total)*100}% 100%)`}}><div className="pie-hole"></div></div>
-                           <div className="chart-legend"><div className="legend-item"><span className="dot blue"></span>Boys: {getGenderStats().boys}</div><div className="legend-item"><span className="dot pink"></span>Girls: {getGenderStats().girls}</div></div>
-                        </div>
-                     </div>
-                     <div className="chart-card">
-                        <h4>Students per Class</h4>
-                        <div className="bar-chart">{getClassStats().map((stat, i) => (<div key={i} className="bar-row"><div className="bar-label">{stat.name}</div><div className="bar-track"><div className="bar-fill" style={{width: `${(stat.count / myStudents.length) * 100}%`}}></div></div><div className="bar-value">{stat.count}</div></div>))}</div>
-                     </div>
-                  </div>
+                  <div className="analytics-container"><div className="chart-card"><h4>Gender</h4><div className="pie-chart-wrapper"><div className="pie-chart" style={{background: `conic-gradient(#3b82f6 0% ${(getGenderStats().boys/getGenderStats().total)*100}%, #ec4899 ${(getGenderStats().boys/getGenderStats().total)*100}% 100%)`}}><div className="pie-hole"></div></div><div className="chart-legend"><div className="legend-item"><span className="dot blue"></span>Boys: {getGenderStats().boys}</div><div className="legend-item"><span className="dot pink"></span>Girls: {getGenderStats().girls}</div></div></div></div><div className="chart-card"><h4>Classes</h4><div className="bar-chart">{getClassStats().map((stat, i) => (<div key={i} className="bar-row"><div className="bar-label">{stat.name}</div><div className="bar-track"><div className="bar-fill" style={{width: `${(stat.count / myStudents.length) * 100}%`}}></div></div><div className="bar-value">{stat.count}</div></div>))}</div></div></div>
                )}
             </div>
           )}
 
+          {/* SCHEDULE */}
           {activeTab === 'schedule' && (
             <div className="timetable-container">
               <div className="tt-toolbar">
-                 {scheduleViewMode === 'grid' ? (
-                    <>
-                        <div className="tt-date-display"><h3>Weekly Schedule</h3><span>{getWeekDates(currentDate)[0].toLocaleDateString()} - {getWeekDates(currentDate)[6].toLocaleDateString()}</span></div>
-                        <div className="week-nav"><button onClick={() => changeWeek(-1)}>‹ Prev</button><button className="nav-btn" onClick={() => setCurrentDate(new Date())}>Today</button><button onClick={() => changeWeek(1)}>Next ›</button></div>
-                    </>
-                 ) : (
-                    <h3>All Scheduled Classes ({getAllScheduledClasses().length})</h3>
-                 )}
-                 <button className="view-toggle-btn" onClick={() => setScheduleViewMode(scheduleViewMode === 'grid' ? 'list' : 'grid')}>
-                    {scheduleViewMode === 'grid' ? '📜 List View' : '📅 Grid View'}
-                 </button>
+                 {scheduleViewMode === 'grid' ? (<><div className="tt-date-display"><h3>Weekly Schedule</h3><span>{getWeekDates(currentDate)[0].toLocaleDateString()} - {getWeekDates(currentDate)[6].toLocaleDateString()}</span></div><div className="week-nav"><button onClick={() => changeWeek(-1)}>‹ Prev</button><button className="nav-btn" onClick={() => setCurrentDate(new Date())}>Today</button><button onClick={() => changeWeek(1)}>Next ›</button></div></>) : (<h3>All Classes ({getAllScheduledClasses().length})</h3>)}
+                 <button className="view-toggle-btn" onClick={() => setScheduleViewMode(scheduleViewMode === 'grid' ? 'list' : 'grid')}>{scheduleViewMode === 'grid' ? '📜 List View' : '📅 Grid View'}</button>
               </div>
-
               {scheduleViewMode === 'grid' ? (
                   <div className="tt-grid-wrapper">
-                     <div className="tt-time-col">
-                        <div className="tt-header-placeholder"></div>
-                        {timeSlots.map(h => (<div key={h} className="tt-time-label" style={{height: `${ROW_HEIGHT}px`}}><span>{h}:00</span></div>))}
-                     </div>
+                     <div className="tt-time-col"><div className="tt-header-placeholder"></div>{timeSlots.map(h => (<div key={h} className="tt-time-label" style={{height: `${ROW_HEIGHT}px`}}><span>{h}:00</span></div>))}</div>
                      <div className="tt-main-area">
                         <div className="tt-header-row">{getWeekDates(currentDate).map((date, i) => (<div key={i} className={`tt-header-cell ${new Date().toDateString() === date.toDateString() ? 'active' : ''}`}><div className="day-name">{dayNamesFull[date.getDay()].slice(0, 3)}</div><div className="day-num">{date.getDate()}</div></div>))}</div>
                         <div className="tt-grid-body">
                            {timeSlots.map(h => (<div key={h} className="tt-grid-row" style={{height: `${ROW_HEIGHT}px`}}></div>))}
-                           {classes.map(cls => (
-                              cls.schedule.map((sch, idx) => {
-                                 const style = getBlockStyle(sch.day, sch.time);
-                                 if (!style) return null;
-                                 return (<div key={`${cls._id}-${idx}`} className={`tt-event-block ${getClassColor(cls.className)}`} style={style} onClick={() => handleBlockClick(cls, sch.time)}><div className="ev-time">{sch.time}</div><div className="ev-title">{cls.className}</div></div>)
-                              })
-                           ))}
+                           {classes.map(cls => (cls.schedule.map((sch, idx) => { const style = getBlockStyle(sch.day, sch.time); if (!style) return null; return (<div key={`${cls._id}-${idx}`} className={`tt-event-block ${getClassColor(cls.className)}`} style={style} onClick={() => handleBlockClick(cls, sch.time)}><div className="ev-time">{sch.time}</div><div className="ev-title">{cls.className}</div></div>) } )))}
                         </div>
                      </div>
                   </div>
               ) : (
-                  <div className="schedule-list-view-wrapper">
-                      <div className="list-header-row table-header"><div className="col-day">Day</div><div className="col-time">Time</div><div className="col-details">Class Details</div><div className="col-action">Action</div></div>
-                      <div className="schedule-list-body">
-                        {getAllScheduledClasses().map((cls, i) => (
-                            <div key={i} className="schedule-list-item"><div className="sli-day">{cls.day}</div><div className="sli-time">{cls.time}</div><div className="sli-info"><h4>{cls.className}</h4><span>{cls.level} • {cls.students.length} Students</span></div><div className="sli-action"><button className="sli-btn" onClick={() => handleBlockClick(cls, cls.time)}>Details</button></div></div>
-                        ))}
-                      </div>
-                  </div>
+                  <div className="schedule-list-view-wrapper"><div className="list-header-row table-header"><div className="col-day">Day</div><div className="col-time">Time</div><div className="col-details">Class Details</div><div className="col-action">Action</div></div><div className="schedule-list-body">{getAllScheduledClasses().map((cls, i) => (<div key={i} className="schedule-list-item"><div className="sli-day">{cls.day}</div><div className="sli-time">{cls.time}</div><div className="sli-info"><h4>{cls.className}</h4><span>{cls.level} • {cls.students.length} Students</span></div><div className="sli-action"><button className="sli-btn" onClick={() => handleBlockClick(cls, cls.time)}>Details</button></div></div>))}</div></div>
               )}
             </div>
           )}
 
+          {/* ATTENDANCE */}
           {activeTab === 'attendance' && (
             <div className="attendance-view">
                <div className="att-control-bar">
@@ -473,8 +413,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         <div className="schedule-warning-box animate-fade-in"><div className="warning-icon">📅</div><h3>No Class Scheduled</h3><p>Selected classes not scheduled for today.</p><button className="force-btn" onClick={() => setForceExtraSession(true)}>Mark Extra Session</button></div>
                      ) : (
                         <div className="daily-container animate-fade-in">
-                           <div className="att-stats-card"><div className="att-stat"><span className="label">Present</span><span className="value success">{presentCount}</span></div><div className="att-divider">/</div><div className="att-stat"><span className="label">Total</span><span className="value">{attendanceList.length}</span></div></div>
-                           <div className="att-toolbar"><span className="toolbar-label">Quick Actions:</span><button className="bulk-btn present" onClick={() => markAll('Present')}>Mark All Present</button><button className="bulk-btn absent" onClick={() => markAll('Absent')}>Mark All Absent</button><button className="bulk-btn missed" onClick={() => markAll('Missed')}>Mark All Missed</button></div>
+                           <div className="daily-header"><div className="dh-stats"><div className="stat-block"><span className="label">Present</span><span className="value green">{presentCount}</span></div><div className="stat-block"><span className="label">Total</span><span className="value">{attendanceList.length}</span></div></div><div className="dh-actions"><span className="action-label">Quick Actions:</span><button className="bulk-btn present" onClick={() => markAll('Present')}>Mark All Present</button><button className="bulk-btn absent" onClick={() => markAll('Absent')}>Mark All Absent</button><button className="bulk-btn missed" onClick={() => markAll('Missed')}>Mark All Missed</button></div></div>
                            <div className="modern-student-list">
                               <div className="list-header-row"><div className="col-name">Student Name</div><div className="col-id">Class</div><div className="col-status">Status</div></div>
                               {attendanceList.map(s => {
