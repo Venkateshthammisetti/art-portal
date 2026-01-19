@@ -2,16 +2,34 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const multer = require('multer'); // ✨ NEW: File Uploads
+const path = require('path');
 
 // Import Models
 const User = require('./models/User');
 const Class = require('./models/Class');
-const Attendance = require('./models/Attendance'); // Ensure this matches Step 1
+const Attendance = require('./models/Attendance');
 const Feedback = require('./models/Feedback');
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ✨ NEW: Serve "uploads" folder publicly so PDFs can be viewed
+app.use('/uploads', express.static('uploads'));
+
+// ✨ NEW: Configure Multer Storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Files will be saved here
+  },
+  filename: (req, file, cb) => {
+    // Unique filename: "123456789-report.pdf"
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
 
 // --- CONNECT TO DATABASE ---
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/art_academy')
@@ -95,6 +113,14 @@ app.get('/api/dashboard/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ message: 'Error fetching stats' }); }
 });
 
+app.get('/api/users/:id/credentials', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('username password');
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) { res.status(500).json({ message: "Server Error" }); }
+});
+
 // ===========================
 //      CLASS MANAGEMENT
 // ===========================
@@ -148,7 +174,58 @@ app.delete('/api/classes/:id', async (req, res) => {
 });
 
 // ===========================
-//      FEE & FEEDBACK
+//      FEEDBACK (WITH PDF)
+// ===========================
+
+// 1. SUBMIT FEEDBACK (Modified for File Upload)
+app.post('/api/feedback', upload.single('report'), async (req, res) => {
+  try {
+    // Multer handles the file, other fields are in req.body
+    const { studentId, teacherId, month, feedbackText, rating } = req.body;
+    const reportFile = req.file ? req.file.path : null; // Get file path if uploaded
+
+    const newFeedback = new Feedback({ 
+      studentId, 
+      teacherId, 
+      month, 
+      feedbackText, 
+      rating,
+      reportFile // Save the path
+    });
+    
+    await newFeedback.save();
+    res.json({ success: true, message: "Feedback submitted successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error submitting feedback" });
+  }
+});
+
+// 2. GET HISTORY (Fixed: Now filters by month)
+app.get('/api/feedback/teacher/:teacherId', async (req, res) => {
+  try {
+    const { month } = req.query; // Get month from URL (e.g., "2026-02")
+    
+    // Default query: Match teacher
+    const query = { teacherId: req.params.teacherId };
+    
+    // ✨ FIX: If a month is provided, add it to the query
+    if (month) {
+      query.month = month;
+    }
+
+    const feedback = await Feedback.find(query)
+      .populate('studentId', 'childName')
+      .sort({ createdAt: -1 });
+      
+    res.json(feedback);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching feedback history" });
+  }
+});
+
+// ===========================
+//      ATTENDANCE & FEES
 // ===========================
 
 app.post('/api/fees/update', async (req, res) => {
@@ -167,13 +244,6 @@ app.post('/api/fees/update', async (req, res) => {
   } catch (err) { res.status(500).json({ message: "Error updating fees" }); }
 });
 
-app.post('/api/feedback', async (req, res) => {
-  try {
-    await new Feedback(req.body).save();
-    res.json({ success: true, message: "Feedback submitted!" });
-  } catch (err) { res.status(500).json({ message: "Error submitting feedback" }); }
-});
-
 app.get('/api/teacher/:id/classes', async (req, res) => {
   try {
     const classes = await Class.find({ teacher: req.params.id }).populate('students');
@@ -181,87 +251,41 @@ app.get('/api/teacher/:id/classes', async (req, res) => {
   } catch (err) { res.status(500).json({ message: "Error fetching classes" }); }
 });
 
-// ===========================
-//      ATTENDANCE (FIXED)
-// ===========================
-
-// 1. GET DAILY (For specific date & classes)
 app.get('/api/attendance/daily', async (req, res) => {
   try {
     const { classes, date } = req.query;
     if (!classes || !date) return res.json({ statusMap: {}, isScheduled: false });
-
     const classIds = classes.split(',');
-
-    // Fetch Records
     const records = await Attendance.find({ date: date, classId: { $in: classIds } });
-
-    // Map: { studentId: 'Present' }
     const statusMap = {};
-    records.forEach(r => {
-      if (r.studentId) statusMap[r.studentId.toString()] = r.status;
-    });
-
-    // Check Schedule
+    records.forEach(r => { if (r.studentId) statusMap[r.studentId.toString()] = r.status; });
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     const isScheduled = await Class.exists({ _id: { $in: classIds }, 'schedule.day': dayName });
-
     res.json({ statusMap, isScheduled: !!isScheduled });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 2. GET MONTHLY (For specific month regex)
 app.get('/api/attendance/monthly', async (req, res) => {
   try {
-    const { classes, month } = req.query; // "2026-01"
+    const { classes, month } = req.query;
     if (!classes || !month) return res.json([]);
-
     const classIds = classes.split(',');
-    const records = await Attendance.find({ 
-      date: { $regex: `^${month}` }, 
-      classId: { $in: classIds } 
-    });
-    
+    const records = await Attendance.find({ date: { $regex: `^${month}` }, classId: { $in: classIds } });
     res.json(records);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. SAVE ATTENDANCE (Bulk Write)
 app.post('/api/attendance', async (req, res) => {
   try {
     const { date, records } = req.body;
-    // records: [{ studentId, classId, status }]
-
-    console.log(`📝 Saving ${records?.length} attendance records for ${date}`);
-
-    if (!records || records.length === 0) {
-      return res.json({ success: true, message: "No records provided" });
-    }
-
-    // Convert to Bulk Operations
+    if (!records || records.length === 0) return res.json({ success: true });
     const operations = records.map(rec => {
       if(!rec.studentId || !rec.classId) return null;
-      return {
-        updateOne: {
-          filter: { date: date, studentId: rec.studentId, classId: rec.classId },
-          update: { $set: { status: rec.status } },
-          upsert: true
-        }
-      };
+      return { updateOne: { filter: { date: date, studentId: rec.studentId, classId: rec.classId }, update: { $set: { status: rec.status } }, upsert: true } };
     }).filter(op => op !== null);
-
-    if (operations.length > 0) {
-      await Attendance.bulkWrite(operations);
-    }
-
-    res.json({ success: true, message: "Attendance Saved Successfully" });
-  } catch (err) {
-    console.error("Attendance Save Error:", err);
-    res.status(500).json({ error: err.message });
-  }
+    if (operations.length > 0) await Attendance.bulkWrite(operations);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Start Server

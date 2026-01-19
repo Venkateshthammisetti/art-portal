@@ -44,11 +44,16 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [isClassScheduled, setIsClassScheduled] = useState(true);
   const [forceExtraSession, setForceExtraSession] = useState(false);
 
-  // Feedback
+  // Feedback State
   const [feedbackStudent, setFeedbackStudent] = useState('');
   const [feedbackMonth, setFeedbackMonth] = useState(new Date().toISOString().slice(0, 7));
   const [feedbackText, setFeedbackText] = useState('');
   const [rating, setRating] = useState(5);
+  const [reportFile, setReportFile] = useState(null);
+  
+  // Feedback History
+  const [feedbackHistory, setFeedbackHistory] = useState([]);
+  const [historyMonth, setHistoryMonth] = useState(new Date().toISOString().slice(0, 7)); // Default: Current Month
 
   const dropdownRef = useRef(null);
   useEffect(() => {
@@ -85,7 +90,42 @@ const TeacherDashboard = ({ user, onLogout }) => {
     } catch (err) { console.error(err); }
   };
 
-  // --- ATTENDANCE SYNC (FIXED MONTHLY LOGIC) ---
+  // --- FETCH FEEDBACK HISTORY (With Month Filter) ---
+  useEffect(() => {
+    if (activeTab === 'feedback') {
+      const fetchHistory = async () => {
+        try {
+          const res = await axios.get(`http://localhost:5000/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
+          setFeedbackHistory(res.data);
+        } catch (err) { console.error(err); }
+      };
+      fetchHistory();
+    }
+  }, [activeTab, historyMonth, currentUser._id]);
+
+  // Month Navigation Helper
+  const changeHistoryMonth = (offset) => {
+    const [year, month] = historyMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 + offset, 1);
+    // Handle timezone offset to ensure correct YYYY-MM
+    const newStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    setHistoryMonth(newStr);
+  };
+
+  const formatMonthName = (isoStr) => {
+    const [year, month] = isoStr.split('-');
+    const date = new Date(year, month - 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const getSentiment = (rating) => {
+    if (rating >= 5) return { label: 'Excellent', color: 'green' };
+    if (rating >= 4) return { label: 'Good', color: 'blue' };
+    if (rating === 3) return { label: 'Average', color: 'orange' };
+    return { label: 'Concern', color: 'red' };
+  };
+
+  // --- ATTENDANCE SYNC ---
   useEffect(() => {
     if (selectedClassIds.length === 0) {
       setAttendanceList([]);
@@ -103,16 +143,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
         const classQuery = selectedClassIds.join(',');
         
         if (attendanceView === 'daily') {
-           // --- DAILY VIEW LOGIC ---
            const url = `http://localhost:5000/api/attendance/daily?classes=${classQuery}&date=${attendanceDate}`;
            const res = await axios.get(url);
            setAttendanceStatus(res.data.statusMap || {}); 
            setIsClassScheduled(res.data.isScheduled !== undefined ? res.data.isScheduled : true);
-        
         } else {
-           // --- MONTHLY VIEW LOGIC (FIXED) ---
-           
-           // 1. Generate Days Array
            const [year, month] = selectedMonth.split('-').map(Number);
            const daysInMonth = new Date(year, month, 0).getDate();
            const daysArr = [];
@@ -127,25 +162,15 @@ const TeacherDashboard = ({ user, onLogout }) => {
            }
            setMonthDays(daysArr);
 
-           // 2. Fetch Data
            const url = `http://localhost:5000/api/attendance/monthly?classes=${classQuery}&month=${selectedMonth}`;
            const res = await axios.get(url);
-           const records = res.data; // Array of { studentId, date, status }
-
-           // 3. Create Lookup Map: "studentId_YYYY-MM-DD" -> "Present"
+           const records = res.data; 
            const lookup = {};
-           records.forEach(r => {
-             const key = `${r.studentId}_${r.date}`;
-             lookup[key] = r.status;
-           });
+           records.forEach(r => { lookup[`${r.studentId}_${r.date}`] = r.status; });
 
-           // 4. Map to Grid
            const generatedSheet = combinedStudents.map(s => {
              const history = daysArr.map(dayObj => {
-                const key = `${s._id}_${dayObj.fullDateStr}`;
-                const status = lookup[key]; 
-                
-                // Convert full word to single letter for CSS styling
+                const status = lookup[`${s._id}_${dayObj.fullDateStr}`]; 
                 if (status === 'Present') return 'P';
                 if (status === 'Absent') return 'A';
                 if (status === 'Missed') return 'M';
@@ -153,16 +178,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
              });
              return { ...s, history };
            });
-           
            setMonthlyData(generatedSheet);
         }
-      } catch (error) {
-        console.error("Error fetching attendance:", error);
-      }
+      } catch (error) { console.error("Error fetching attendance:", error); }
     };
-
     fetchAttendanceData();
-
   }, [attendanceView, selectedClassIds, attendanceDate, selectedMonth, classes]); 
 
   // --- ACTIONS ---
@@ -217,17 +237,40 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   };
 
-  const handleSaveLink = () => {
-    if (!modalData || !editingLink) return;
-    const updatedClasses = classes.map(c => c._id === modalData._id ? { ...c, meetingLink: editingLink } : c);
-    setClasses(updatedClasses);
-    setModalData({ ...modalData, meetingLink: editingLink });
-    setIsLinkInputVisible(false);
-    setMsg("🔗 Zoom Link Updated!");
-    setTimeout(() => setMsg(''), 3000);
+  const sendFeedback = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('studentId', feedbackStudent);
+      formData.append('teacherId', currentUser._id);
+      formData.append('month', feedbackMonth);
+      formData.append('feedbackText', feedbackText);
+      formData.append('rating', rating);
+      if (reportFile) {
+        formData.append('report', reportFile);
+      }
+
+      await axios.post('http://localhost:5000/api/feedback', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setMsg("Report Sent!");
+      setFeedbackText('');
+      setRating(5);
+      setReportFile(null); // Reset File
+      
+      // Refresh History (Current Month)
+      const res = await axios.get(`http://localhost:5000/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
+      setFeedbackHistory(res.data);
+      
+      setTimeout(()=>setMsg(''),3000);
+    } catch (err) { console.error(err); }
   };
 
-  // --- HELPERS & LOGIC ---
+  const handleBlockClick = (cls, t) => { setModalData({...cls, time:t}); setEditingLink(cls.meetingLink || ''); setIsLinkInputVisible(!cls.meetingLink); };
+  const handleSaveLink = () => { setMsg("Link Saved locally (demo)"); setTimeout(()=>setMsg(''),3000); };
+
+  // --- HELPERS ---
   const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const timeSlots = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR + 1 }, (_, i) => i + GRID_START_HOUR);
 
@@ -267,8 +310,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
   
   const getWeekDates = (baseDate) => { const d = new Date(baseDate); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return Array.from({length:7}, (_,i) => { const t = new Date(d); t.setDate(diff+i); return t; }); };
   const changeWeek = (off) => { const d = new Date(currentDate); d.setDate(d.getDate() + (off*7)); setCurrentDate(d); };
-  const sendFeedback = (e) => { e.preventDefault(); setMsg("Report Sent!"); setTimeout(()=>setMsg(''),3000); };
-  const handleBlockClick = (cls, t) => { setModalData({...cls, time:t}); setEditingLink(cls.meetingLink || ''); setIsLinkInputVisible(!cls.meetingLink); };
   const presentCount = Object.values(attendanceStatus).filter(s => s === 'Present').length;
   const getClassColor = (name) => { const colors = ['blue', 'green', 'purple', 'orange']; let val = 0; for(let i=0; i<name.length;i++) val+=name.charCodeAt(i); return colors[val % colors.length]; };
 
@@ -459,7 +500,55 @@ const TeacherDashboard = ({ user, onLogout }) => {
             </div>
           )}
 
-          {activeTab === 'feedback' && <div className="feedback-view"><div className="form-card"><form onSubmit={sendFeedback}><div className="controls-row" style={{boxShadow:'none', padding:0, border:'none', background:'transparent'}}><div className="control-group"><label>Student</label><select value={feedbackStudent} onChange={(e) => setFeedbackStudent(e.target.value)} required><option value="">-- Choose --</option>{myStudents.map(s => <option key={s._id} value={s._id}>{s.childName}</option>)}</select></div><div className="control-group"><label>Month</label><input type="month" value={feedbackMonth} onChange={(e) => setFeedbackMonth(e.target.value)} required /></div></div><div className="control-group"><label>Rating</label><div className="star-rating">{[1,2,3,4,5].map(star => <span key={star} onClick={() => setRating(star)} style={{color: star <= rating ? '#f59e0b' : '#e2e8f0'}}>★</span>)}</div></div><div className="control-group"><label>Remarks</label><textarea rows="5" value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} required></textarea></div><button type="submit" className="submit-feedback-btn">Submit Report</button></form></div></div>}
+          {/* FEEDBACK (With History & Upload) */}
+          {activeTab === 'feedback' && (
+            <div className="feedback-view">
+               <div className="feedback-container-grid">
+                  <div className="form-card">
+                     <h3>📝 New Report</h3>
+                     <form onSubmit={sendFeedback}>
+                        <div className="controls-row">
+                           <div className="control-group"><label>Student</label><select value={feedbackStudent} onChange={(e) => setFeedbackStudent(e.target.value)} required><option value="">-- Choose --</option>{myStudents.map(s => <option key={s._id} value={s._id}>{s.childName}</option>)}</select></div>
+                           <div className="control-group"><label>Month</label><input type="month" value={feedbackMonth} onChange={(e) => setFeedbackMonth(e.target.value)} required /></div>
+                        </div>
+                        <div className="control-group">
+                           <label>Upload Report (PDF)</label>
+                           <input type="file" accept="application/pdf" onChange={(e) => setReportFile(e.target.files[0])} className="file-input" />
+                        </div>
+                        <div className="control-group"><label>Rating</label><div className="star-rating">{[1,2,3,4,5].map(star => (<span key={star} onClick={() => setRating(star)} style={{color: star <= rating ? '#f59e0b' : '#e2e8f0'}}>★</span>))}</div></div>
+                        <div className="control-group"><label>Remarks</label><textarea rows="4" value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} required></textarea></div>
+                        <button type="submit" className="submit-feedback-btn">Send Report</button>
+                     </form>
+                  </div>
+                  <div className="history-card">
+                     <div className="history-header-row">
+                        <h3>Sent History</h3>
+                        <div className="month-nav-mini">
+                           <button onClick={() => changeHistoryMonth(-1)}>‹</button>
+                           <span>{formatMonthName(historyMonth)}</span>
+                           <button onClick={() => changeHistoryMonth(1)}>›</button>
+                        </div>
+                     </div>
+                     <div className="history-list">
+                        {feedbackHistory.length === 0 ? <div className="empty-history">No reports sent in {formatMonthName(historyMonth)}.</div> : feedbackHistory.map(item => {
+                           const sent = getSentiment(item.rating);
+                           return (
+                             <div key={item._id} className="history-item">
+                                <div className="h-header">
+                                   <span className="h-name">{item.studentId?.childName || 'Unknown'}</span>
+                                   <span className={`h-sentiment ${sent.color}`}>{sent.label}</span>
+                                </div>
+                                <div className="h-rating">{'★'.repeat(item.rating)}<span className="grey">{'★'.repeat(5-item.rating)}</span></div>
+                                <p className="h-text">"{item.feedbackText}"</p>
+                                {item.reportFile && <a href={`http://localhost:5000/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
+                             </div>
+                           );
+                        })}
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
         </div>
       </main>
 
