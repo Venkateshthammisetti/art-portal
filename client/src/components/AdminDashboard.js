@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  AreaChart, Area // ✨ ADDED THIS
-} from 'recharts';import axios from "axios";
+  AreaChart, Area 
+} from 'recharts';
+import axios from "axios";
 import "./AdminDashboard.css";
 
 // LEVELS CONFIGURATION
@@ -26,8 +27,7 @@ const AdminDashboard = ({ onLogout }) => {
   const IconClasses = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>);
   const IconLogout = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>);
   const IconFee = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5"></path></svg>);
-  // Place this with your other icons (IconHome, IconUsers, etc.)
-const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>);
+  const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>);
 
   const fetchStats = () => {
     axios.get('http://localhost:5000/api/dashboard/stats')
@@ -47,9 +47,7 @@ const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="n
           <button className={activeTab === "classes" ? "active" : ""} onClick={() => setActiveTab("classes")}><IconClasses /> <span>Class Management</span></button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => setActiveTab("fees")}><IconFee /> <span>Fee Tracker</span></button>
           <button className={activeTab === "add-user" ? "active" : ""} onClick={() => setActiveTab("add-user")}><IconAdd /> <span>Register User</span></button>
-          <button className={activeTab === "slots" ? "active" : ""} onClick={() => setActiveTab("slots")}>
-  <IconClock /> <span>Slot Manager</span>
-</button>
+          <button className={activeTab === "slots" ? "active" : ""} onClick={() => setActiveTab("slots")}><IconClock /> <span>Slot Manager</span></button>
         </nav>
         <div className="sidebar-footer"><p>Admin Portal v1.0</p></div>
       </aside>
@@ -77,7 +75,7 @@ const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="n
   );
 };
 
-// --- TAB 1: OVERVIEW (Complete: Added Growth & Teacher Stats) ---
+// --- TAB 1: OVERVIEW ---
 const OverviewTab = ({ stats }) => {
   const [users, setUsers] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -98,12 +96,10 @@ const OverviewTab = ({ stats }) => {
     fetchData();
   }, []);
 
-  // --- DATA PROCESSING ---
   const students = users.filter(u => u.role === 'parent');
   const teachers = users.filter(u => u.role === 'teacher');
   const recentStudents = [...students].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
 
-  // 1. Gender Data
   const maleCount = students.filter(s => s.gender === 'Male').length;
   const femaleCount = students.filter(s => s.gender === 'Female').length;
   const genderData = [
@@ -111,7 +107,6 @@ const OverviewTab = ({ stats }) => {
     { name: 'Female', value: femaleCount, color: '#ec4899' },
   ].filter(d => d.value > 0);
 
-  // 2. Fee Data (Current Month)
   const currentMonth = new Date().toISOString().slice(0, 7); 
   const paidCount = students.filter(s => (s.payments || []).some(p => p.month === currentMonth && p.status === 'Paid')).length;
   const pendingCount = students.length - paidCount;
@@ -120,7 +115,6 @@ const OverviewTab = ({ stats }) => {
     { name: 'Pending', value: pendingCount, color: '#f59e0b' },
   ].filter(d => d.value > 0);
 
-  // 3. Level Data
   const levelCounts = {};
   classes.forEach(cls => {
     const lvl = cls.level || 'Unknown';
@@ -130,42 +124,34 @@ const OverviewTab = ({ stats }) => {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // ✨ 4. REVENUE GROWTH DATA (Last 6 Months)
   const getLast6Months = () => {
     const months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
-      months.push(d.toISOString().slice(0, 7)); // "2025-08"
+      months.push(d.toISOString().slice(0, 7)); 
     }
     return months;
   };
 
   const revenueTrendData = getLast6Months().map(monthStr => {
-    // Calculate total collected for this specific month across all students
     const totalForMonth = students.reduce((acc, student) => {
       const payment = (student.payments || []).find(p => p.month === monthStr && p.status === 'Paid');
       return acc + (payment ? (payment.amount || student.monthlyFee) : 0);
     }, 0);
     
-    // Format "2025-08" to "Aug"
     const dateObj = new Date(monthStr + "-01");
     const label = dateObj.toLocaleString('default', { month: 'short' });
     
     return { name: label, revenue: totalForMonth };
   });
 
-  // ✨ 5. TEACHER WORKLOAD DATA
   const teacherLoadData = teachers.map(t => {
-    // Find all classes taught by this teacher
     const teacherClasses = classes.filter(c => c.teacher && c.teacher._id === t._id);
-    // Sum up students in those classes
     const studentCount = teacherClasses.reduce((acc, c) => acc + c.students.length, 0);
     return { name: t.fullName || t.username, students: studentCount };
-  }).sort((a, b) => b.students - a.students).slice(0, 5); // Top 5 Teachers
+  }).sort((a, b) => b.students - a.students).slice(0, 5);
 
-
-  // --- REUSABLE COMPONENTS ---
   const ProfessionalDonut = ({ data, totalLabel }) => {
     const total = data.reduce((a, b) => a + b.value, 0);
     if (total === 0) return <p style={{color:'#94a3b8', textAlign:'center', padding:'20px'}}>No data yet.</p>;
@@ -200,63 +186,25 @@ const OverviewTab = ({ stats }) => {
 
   return (
     <div style={{maxWidth:'1200px', margin:'0 auto', paddingBottom:'30px'}}>
-      
-      {/* 1. WELCOME BANNER */}
-      <div style={{
-        background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
-        borderRadius: '16px', padding: '30px', color: 'white',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '30px', boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)'
-      }}>
-        <div>
-          <h2 style={{margin: '0 0 5px 0', fontSize: '1.8rem', fontWeight:'700'}}>Dashboard Overview</h2>
-          <p style={{margin: 0, opacity: 0.9}}>Here is what's happening in your institute today.</p>
-        </div>
-        <div style={{textAlign:'right', background:'rgba(255,255,255,0.1)', padding:'10px 20px', borderRadius:'12px', backdropFilter:'blur(5px)'}}>
-          <div style={{fontSize:'0.85rem', opacity:0.8}}>Today's Date</div>
-          <div style={{fontSize:'1.1rem', fontWeight:'600'}}>{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-        </div>
+      <div style={{background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)', borderRadius: '16px', padding: '30px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.4)'}}>
+        <div><h2 style={{margin: '0 0 5px 0', fontSize: '1.8rem', fontWeight:'700'}}>Dashboard Overview</h2><p style={{margin: 0, opacity: 0.9}}>Here is what's happening in your institute today.</p></div>
+        <div style={{textAlign:'right', background:'rgba(255,255,255,0.1)', padding:'10px 20px', borderRadius:'12px', backdropFilter:'blur(5px)'}}><div style={{fontSize:'0.85rem', opacity:0.8}}>Today's Date</div><div style={{fontSize:'1.1rem', fontWeight:'600'}}>{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
       </div>
 
-      {/* 2. STATS CARDS */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px', marginBottom:'30px'}}>
-        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
-           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#eff6ff', color:'#2563eb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>🎓</div><span style={{fontSize:'0.75rem', fontWeight:'600', color:'#16a34a', background:'#dcfce7', padding:'2px 8px', borderRadius:'10px', height:'fit-content'}}>+ Active</span></div>
-           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{stats.students}</div>
-           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Total Students</div>
-        </div>
-        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
-           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#f0fdf4', color:'#16a34a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>👨‍🏫</div></div>
-           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{stats.teachers}</div>
-           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Expert Teachers</div>
-        </div>
-        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
-           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#f5f3ff', color:'#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>💰</div></div>
-           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>₹{(stats.revenue || 0).toLocaleString()}</div>
-           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Monthly Revenue (Est.)</div>
-        </div>
-        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
-           <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#fff7ed', color:'#ea580c', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>⚠️</div></div>
-           <div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{pendingCount}</div>
-           <div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Pending Payments</div>
-        </div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}><div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#eff6ff', color:'#2563eb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>🎓</div><span style={{fontSize:'0.75rem', fontWeight:'600', color:'#16a34a', background:'#dcfce7', padding:'2px 8px', borderRadius:'10px', height:'fit-content'}}>+ Active</span></div><div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{stats.students}</div><div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Total Students</div></div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}><div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#f0fdf4', color:'#16a34a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>👨‍🏫</div></div><div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{stats.teachers}</div><div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Expert Teachers</div></div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}><div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#f5f3ff', color:'#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>💰</div></div><div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>₹{(stats.revenue || 0).toLocaleString()}</div><div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Monthly Revenue (Est.)</div></div>
+        <div style={{background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}><div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}><div style={{width:'40px', height:'40px', borderRadius:'10px', background:'#fff7ed', color:'#ea580c', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem'}}>⚠️</div></div><div style={{fontSize:'2rem', fontWeight:'800', color:'#1e293b'}}>{pendingCount}</div><div style={{color:'#64748b', fontSize:'0.9rem', fontWeight:'500'}}>Pending Payments</div></div>
       </div>
 
-      {/* 3. MIDDLE ROW: Revenue Trend & Donut Charts */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(350px, 1fr))', gap:'20px', marginBottom:'30px'}}>
-        
-        {/* ✨ NEW: Revenue Growth Chart */}
         <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)', gridColumn: 'span 1'}}>
             <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Revenue Trend (Last 6 Months)</h3>
             <div style={{ width: '100%', height: 200, fontSize:'0.75rem' }}>
               <ResponsiveContainer>
                 <AreaChart data={revenueTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                  <defs><linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#94a3b8'}} />
                   <YAxis axisLine={false} tickLine={false} tick={{fill:'#94a3b8'}} />
@@ -266,18 +214,13 @@ const OverviewTab = ({ stats }) => {
               </ResponsiveContainer>
             </div>
         </div>
-
-        {/* Demographics */}
         <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
            <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Student Demographics</h3>
            <ProfessionalDonut data={genderData} totalLabel="Students" />
         </div>
       </div>
       
-      {/* 4. BOTTOM ROW: Teacher Load & Level Distribution */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(350px, 1fr))', gap:'20px', marginBottom:'30px'}}>
-        
-        {/* ✨ NEW: Teacher Workload */}
         <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
            <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Top Teachers by Student Load</h3>
            <div style={{ width: '100%', height: 250, fontSize:'0.8rem' }}>
@@ -292,8 +235,6 @@ const OverviewTab = ({ stats }) => {
              </ResponsiveContainer>
            </div>
         </div>
-
-        {/* Level Distribution */}
         <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
             <h3 style={{margin:'0 0 20px 0', fontSize:'1rem', color:'#0f172a'}}>Class Level Distribution</h3>
             <div style={{ width: '100%', height: 250, fontSize:'0.8rem' }}>
@@ -308,10 +249,8 @@ const OverviewTab = ({ stats }) => {
               </ResponsiveContainer>
             </div>
         </div>
-        
       </div>
       
-      {/* 5. RECENT ACTIVITY LIST (Full Width Bottom) */}
       <div style={{background:'#fff', borderRadius:'16px', padding:'25px', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
          <h3 style={{margin:'0 0 15px 0', fontSize:'1rem', color:'#0f172a'}}>Recent Student Registrations</h3>
          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:'20px'}}>
@@ -330,11 +269,9 @@ const OverviewTab = ({ stats }) => {
            }
          </div>
       </div>
-
     </div>
   );
 };
-
 
 // --- TAB 4: CLASS MANAGEMENT ---
 const ClassManagementTab = () => {
@@ -425,23 +362,23 @@ const ClassManagementTab = () => {
       ) : (
         <div className="table-wrapper">
           <div className="filter-bar">
-             <div className="search-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" placeholder="Search Class, Student, Level..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-             </div>
-             <div className="filter-actions">
-               <div className="filter-dropdown">
-                 <label>Sort By:</label>
-                 <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-                   <option value="newest">Newest First</option>
-                   <option value="oldest">Oldest First</option>
-                   <option value="name-asc">Name (A-Z)</option>
-                   <option value="most-students">Most Students</option>
-                   <option value="least-students">Least Students</option>
-                 </select>
-               </div>
-               <button className="save-btn" style={{width:'auto', padding: '8px 16px', height:'38px', display:'flex', alignItems:'center'}} onClick={() => setShowClassModal({ show: true, isEdit: false })}>+ New Class</button>
-             </div>
+              <div className="search-box">
+                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                 <input type="text" placeholder="Search Class, Student, Level..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </div>
+              <div className="filter-actions">
+                <div className="filter-dropdown">
+                  <label>Sort By:</label>
+                  <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="most-students">Most Students</option>
+                    <option value="least-students">Least Students</option>
+                  </select>
+                </div>
+                <button className="save-btn" style={{width:'auto', padding: '8px 16px', height:'38px', display:'flex', alignItems:'center'}} onClick={() => setShowClassModal({ show: true, isEdit: false })}>+ New Class</button>
+              </div>
           </div>
 
           <div className="table-container">
@@ -508,15 +445,15 @@ const ClassManagementTab = () => {
       {deleteClassModal.show && (
         <div className="modal-overlay">
           <div className="modal-content delete-modal-content">
-             <h3>Delete Class?</h3>
-             <p style={{color: '#64748b', marginBottom: '20px', lineHeight: '1.5'}}>
-               Are you sure you want to delete this class? <br/>
-               <strong style={{color: '#ef4444'}}>This will unassign all students.</strong>
-             </p>
-             <div className="modal-actions">
-               <button className="cancel-btn" onClick={() => setDeleteClassModal({ show: false, classId: null })}>Cancel</button>
-               <button className="confirm-delete-btn" onClick={confirmClassDelete}>Yes, Delete</button>
-             </div>
+              <h3>Delete Class?</h3>
+              <p style={{color: '#64748b', marginBottom: '20px', lineHeight: '1.5'}}>
+                Are you sure you want to delete this class? <br/>
+                <strong style={{color: '#ef4444'}}>This will unassign all students.</strong>
+              </p>
+              <div className="modal-actions">
+                <button className="cancel-btn" onClick={() => setDeleteClassModal({ show: false, classId: null })}>Cancel</button>
+                <button className="confirm-delete-btn" onClick={confirmClassDelete}>Yes, Delete</button>
+              </div>
           </div>
         </div>
       )}
@@ -524,7 +461,7 @@ const ClassManagementTab = () => {
   );
 };
 
-// --- COMPONENT: CLASS DETAILS VIEW (With Schedule & Copy Link) ---
+// --- COMPONENT: CLASS DETAILS VIEW ---
 const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
   const [copyStatus, setCopyStatus] = useState("Copy Meeting Link 📋");
 
@@ -558,7 +495,6 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
 
       <div className="object-body-grid">
         <div className="top-row-grid">
-           
            <div className="detail-card">
              <h3>Schedule & Link</h3>
              <div style={{marginBottom:'15px'}}>
@@ -571,23 +507,12 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                     ))
                 ) : <span style={{color:'#94a3b8'}}>No schedule set</span>}
              </div>
-             
              {cls.meetingLink ? (
                  <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
                     <div style={{background:'#f1f5f9', padding:'8px', borderRadius:'4px', fontSize:'0.85rem', color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
                       {cls.meetingLink}
                     </div>
-                    <button 
-                      onClick={handleCopyLink} 
-                      className="save-btn" 
-                      style={{
-                        display:'block', 
-                        width:'100%', 
-                        textAlign:'center', 
-                        backgroundColor: copyStatus.includes('✅') ? '#10b981' : '#0284c7', 
-                        transition: 'background-color 0.2s'
-                      }}
-                    >
+                    <button onClick={handleCopyLink} className="save-btn" style={{display:'block', width:'100%', textAlign:'center', backgroundColor: copyStatus.includes('✅') ? '#10b981' : '#0284c7', transition: 'background-color 0.2s'}}>
                       {copyStatus}
                     </button>
                  </div>
@@ -632,7 +557,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
   );
 };
 
-// --- COMPONENT: CLASS MODAL (Strict Name Validation) ---
+// --- COMPONENT: CLASS MODAL ---
 const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({ 
     className: initialData ? initialData.className : '', 
@@ -649,7 +574,6 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
   const [availableSubLevels, setAvailableSubLevels] = useState([]);
   const [duplicateError, setDuplicateError] = useState(""); 
 
-  // Update Sub-levels dropdown
   useEffect(() => {
     if (formData.level && LEVEL_STRUCTURE[formData.level]) {
         setAvailableSubLevels(LEVEL_STRUCTURE[formData.level]);
@@ -658,29 +582,23 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     }
   }, [formData.level]);
 
-  // ✨ REAL-TIME NAME DUPLICATE CHECK
   useEffect(() => {
     const checkDuplicate = () => {
       if (!formData.className) { 
           setDuplicateError(""); 
           return; 
       }
-
       const normalize = (str) => (str || "").toString().trim().toLowerCase();
-      
-      // Check if ANY class has this name (ignoring self if editing)
       const isDuplicate = existingClasses.some(cls => {
-          if (initialData && cls._id === initialData._id) return false; // Skip self
+          if (initialData && cls._id === initialData._id) return false; 
           return normalize(cls.className) === normalize(formData.className);
       });
-
       if (isDuplicate) {
           setDuplicateError(`Name "${formData.className}" is already taken!`);
       } else {
           setDuplicateError("");
       }
     };
-
     checkDuplicate();
   }, [formData.className, existingClasses, initialData]);
 
@@ -694,14 +612,12 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (duplicateError) return; // Prevent submit if error exists
-    
+    if (duplicateError) return;
     try {
       if (initialData) await axios.put(`http://localhost:5000/api/classes/${initialData._id}`, formData);
       else await axios.post('http://localhost:5000/api/classes', formData);
       onSuccess();
     } catch (err) { 
-        // Show server-side error if one slips through
         const msg = err.response?.data?.message || "Error saving class";
         alert("⚠️ " + msg); 
     }
@@ -712,33 +628,18 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
       <div className="modal-content" style={{maxWidth:'600px'}}>
         <div className="modal-header"><h3>{initialData ? 'Edit Class' : 'Create New Class'}</h3><button className="close-modal" onClick={onClose}>×</button></div>
         <form onSubmit={handleSubmit}>
-          
           <div className="form-row">
              <div className="form-group">
                 <label>Class Name</label>
-                <input 
-                    required 
-                    placeholder="e.g. Oil Painting A"
-                    value={formData.className} 
-                    onChange={e => setFormData({...formData, className: e.target.value})} 
-                    className={duplicateError ? "input-error" : ""} 
-                />
+                <input required placeholder="e.g. Oil Painting A" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})} className={duplicateError ? "input-error" : ""} />
              </div>
              <div className="form-group"><label>Max Capacity</label><input type="number" required value={formData.maxCapacity} onChange={e => setFormData({...formData, maxCapacity: e.target.value})} style={{width:'80px'}} /></div>
           </div>
-          
-          {/* ✨ ERROR MESSAGE DISPLAY */}
-          {duplicateError && (
-            <div className="error-msg" style={{marginTop:'-10px', marginBottom:'15px'}}>
-                ⛔ {duplicateError}
-            </div>
-          )}
-          
+          {duplicateError && <div className="error-msg" style={{marginTop:'-10px', marginBottom:'15px'}}>⛔ {duplicateError}</div>}
           <div className="form-row">
             <div className="form-group"><label>Level</label><select required value={formData.level} onChange={e => setFormData({...formData, level: e.target.value, subLevel: ""})}><option value="">Select Level</option>{Object.keys(LEVEL_STRUCTURE).map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}</select></div>
             <div className="form-group"><label>Sub-Level</label><select required value={formData.subLevel} onChange={e => setFormData({...formData, subLevel: e.target.value})} disabled={!formData.level}><option value="">Select Sub-Level</option>{availableSubLevels.map(sub => <option key={sub} value={sub}>{sub}</option>)}</select></div>
           </div>
-
           <div className="form-group" style={{background:'#f8fafc', padding:'15px', borderRadius:'8px', marginTop:'15px', border:'1px solid #e2e8f0'}}>
             <label style={{color:'#334155', fontWeight:'600'}}>Class Schedule</label>
             {formData.schedule.map((slot, index) => (
@@ -750,13 +651,9 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
             ))}
             <button type="button" onClick={addScheduleSlot} style={{marginTop:'10px', fontSize:'0.85rem', color:'#0284c7', background:'none', border:'none', cursor:'pointer'}}>+ Add Another Day</button>
           </div>
-
           <div className="form-group" style={{marginTop:'15px'}}><label>Meeting Link</label><input placeholder="https://zoom.us/..." value={formData.meetingLink} onChange={e => setFormData({...formData, meetingLink: e.target.value})} /></div>
           <div className="form-group"><label>Assign Teacher</label><select required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})}><option value="">Select Teacher</option>{teachers.map(t => (<option key={t._id} value={t._id}>{t.fullName || t.username}</option>))}</select></div>
-          
-          <button type="submit" className="save-btn" style={{marginTop:'15px'}} disabled={!!duplicateError}>
-            {initialData ? 'Save Changes' : 'Create Class'}
-          </button>
+          <button type="submit" className="save-btn" style={{marginTop:'15px'}} disabled={!!duplicateError}>{initialData ? 'Save Changes' : 'Create Class'}</button>
         </form>
       </div>
     </div>
@@ -903,11 +800,26 @@ const EditUserModal = ({ user, onClose, onSave }) => {
   const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
   const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
   return (
-    <div className="modal-overlay"><div className="modal-content" style={{ maxWidth: '600px' }}><div className="modal-header"><h3>Edit Details: {user.username}</h3><button className="close-modal" onClick={onClose} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button></div><form onSubmit={handleSubmit}><div className="edit-form-grid"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></div><div className="form-group"><label>Phone Number</label><input name="phone" value={formData.phone || ''} onChange={handleChange} /></div><div className="form-group"><label>Email</label><input name="email" value={formData.email || ''} onChange={handleChange} /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location || ''} onChange={handleChange} /></div>{user.role !== 'admin' && <><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId || ''} onChange={handleChange} /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy || ''} onChange={handleChange} /></div></>}</div><div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>{user.role === 'parent' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#0284c7' }}>Student Info</h4><div className="edit-form-grid"><div className="form-group"><label>Child Name</label><input name="childName" value={formData.childName || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#16a34a' }} /></div><div className="form-group"><label>Child Age</label><input name="childAge" value={formData.childAge || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Class/Grade</label><input name="childClass" value={formData.childClass || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : user.role === 'teacher' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#9333ea' }}>Teacher Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#9333ea' }} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : (<><h4 style={{ margin: '0 0 10px 0', color: '#334155' }}>Admin Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization / Role</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>)}</div><div className="modal-actions" style={{justifyContent: 'flex-end'}}><button type="button" className="cancel-btn" onClick={onClose} style={{marginRight:'10px'}}>Cancel</button><button type="submit" className="save-btn" style={{width: 'auto', padding: '10px 25px'}}>Save Changes</button></div></form></div></div>
+    <div className="modal-overlay"><div className="modal-content" style={{ maxWidth: '600px' }}><div className="modal-header"><h3>Edit Details: {user.username}</h3><button className="close-modal" onClick={onClose} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button></div><form onSubmit={handleSubmit}><div className="edit-form-grid"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></div><div className="form-group"><label>Phone Number</label><input name="phone" value={formData.phone || ''} onChange={handleChange} /></div><div className="form-group"><label>Email</label><input name="email" value={formData.email || ''} onChange={handleChange} /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location || ''} onChange={handleChange} /></div>{user.role !== 'admin' && <><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId || ''} onChange={handleChange} /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy || ''} onChange={handleChange} /></div></>}</div><div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+    {user.role === 'parent' ? (
+        <>
+            <h4 style={{ margin: '0 0 10px 0', color: '#0284c7' }}>Student Info</h4>
+            <div className="edit-form-grid">
+                <div className="form-group"><label>Child Name</label><input name="childName" value={formData.childName || ''} onChange={handleChange} /></div>
+                <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#16a34a' }} /></div>
+                {/* ✨ NEW FIELD: Monthly Class Target */}
+                <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={formData.monthlyClassesTarget || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#0284c7' }} /></div>
+                <div className="form-group"><label>Child Age</label><input name="childAge" value={formData.childAge || ''} onChange={handleChange} /></div>
+                <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div>
+                <div className="form-group"><label>Class/Grade</label><input name="childClass" value={formData.childClass || ''} onChange={handleChange} /></div>
+                <div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div>
+            </div>
+        </>
+    ) : user.role === 'teacher' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#9333ea' }}>Teacher Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#9333ea' }} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : (<><h4 style={{ margin: '0 0 10px 0', color: '#334155' }}>Admin Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization / Role</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>)}</div><div className="modal-actions" style={{justifyContent: 'flex-end'}}><button type="button" className="cancel-btn" onClick={onClose} style={{marginRight:'10px'}}>Cancel</button><button type="submit" className="save-btn" style={{width: 'auto', padding: '10px 25px'}}>Save Changes</button></div></form></div></div>
   );
 };
 
-// --- COMPONENT: USER DETAILS VIEW (Fixed: Added Gender) ---
+// --- COMPONENT: USER DETAILS VIEW ---
 const UserDetailsView = ({ user, onBack, onDelete }) => {
   const [credentials, setCredentials] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -936,7 +848,6 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
 
       <div className="object-body-grid">
         <div className="top-row-grid">
-            {/* Login Credentials Card */}
             <div className="detail-card" style={{ borderLeft: "4px solid #3b82f6" }}>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h3>Login Credentials</h3>{copyMsg && <span style={{fontSize:'12px', color:'#10b981', fontWeight:'bold'}}>{copyMsg}</span>}</div>
               <div className="credential-box" style={{ background: "#f8fafc", padding: "15px", borderRadius: "8px" }}>
@@ -945,7 +856,6 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
               </div>
             </div>
             
-            {/* Contact Info Card */}
             <div className="detail-card">
               <h3>Contact Information</h3>
               <div className="info-row"><label>Email:</label> <span>{user.email || "N/A"}</span></div>
@@ -955,7 +865,6 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
             </div>
         </div>
         
-        {/* Main Details Card */}
         <div className="detail-card full-width-card">
           <h3>{user.role === "parent" ? "Student Details" : "Professional Details"}</h3>
           <div className="details-grid-layout">
@@ -965,7 +874,6 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
                   {user.role === "parent" ? (
                     <>
                       <div className="info-row"><label>Child Name:</label> <span>{user.childName || "N/A"}</span></div>
-                      {/* ✨ GENDER ADDED HERE */}
                       <div className="info-row"><label>Gender:</label> <span>{user.gender || "N/A"}</span></div>
                       <div className="info-row"><label>Date of Birth:</label> <span>{user.childDob ? new Date(user.childDob).toLocaleDateString() : 'N/A'}</span></div>
                     </>
@@ -981,6 +889,8 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
                     <>
                       <div className="info-row"><label>Age:</label> <span>{user.childAge || "N/A"}</span></div>
                       <div className="info-row"><label>Class:</label> <span>{user.childClass || "N/A"}</span></div>
+                      {/* ✨ SHOW MONTHLY CLASS TARGET */}
+                      <div className="info-row"><label>Class Target:</label> <span style={{fontWeight:'bold'}}>{user.monthlyClassesTarget || 8} Classes/Mo</span></div>
                       <div className="info-row"><label>Monthly Fee:</label><span style={{ color: "#16a34a", fontWeight: "bold", fontSize: "16px" }}>₹{user.monthlyFee || 0}</span></div>
                     </>
                   ) : user.role === "teacher" ? (
@@ -998,21 +908,23 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
   );
 };
 
-// --- TAB 3: ADD USER (Updated: Teacher Education + Sibling Zoom ID) ---
+// --- TAB 3: ADD USER ---
 const AddUserTab = () => {
   const [formData, setFormData] = useState({ 
     username: "", password: "", role: "parent", 
     firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
     studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
     fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
-    childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: "", dob: "" 
+    childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: "", dob: "",
+    monthlyClassesTarget: 8 // ✨ Default to 8
   });
 
   const [showSibling, setShowSibling] = useState(false);
   const [siblingData, setSiblingData] = useState({
     username: "", password: "", 
     firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "",
-    childAge: "", childDob: "", childClass: "", monthlyFee: "", zoomId: "" // ✨ Added Zoom ID
+    childAge: "", childDob: "", childClass: "", monthlyFee: "", zoomId: "",
+    monthlyClassesTarget: 8 // ✨ Default to 8
   });
   
   const [msg, setMsg] = useState("");
@@ -1045,7 +957,6 @@ const AddUserTab = () => {
     e.preventDefault();
     setMsg("Processing...");
     
-    // --- PAYLOAD 1 (Student 1 / Teacher / Admin) ---
     const student1Name = `${formData.firstName} ${formData.lastName}`.trim();
     const payload1 = { 
       ...formData, 
@@ -1055,11 +966,9 @@ const AddUserTab = () => {
     try {
       await axios.post("http://localhost:5000/api/register", payload1);
 
-      // --- PAYLOAD 2 (Sibling) ---
       if (formData.role === 'parent' && showSibling) {
         const student2Name = `${siblingData.firstName} ${siblingData.lastName}`.trim();
         const payload2 = { 
-          // Unique Sibling Data
           username: siblingData.username, 
           password: siblingData.password, 
           role: "parent",
@@ -1073,9 +982,9 @@ const AddUserTab = () => {
           childDob: siblingData.childDob, 
           childClass: siblingData.childClass, 
           monthlyFee: siblingData.monthlyFee,
-          zoomId: siblingData.zoomId || formData.zoomId, // ✨ Use Sibling Zoom or Fallback to Parent
+          monthlyClassesTarget: siblingData.monthlyClassesTarget, // ✨ New field
+          zoomId: siblingData.zoomId || formData.zoomId, 
           
-          // Shared Parent Data
           fullName: formData.fullName, 
           email: formData.email, 
           phone: formData.phone, 
@@ -1091,17 +1000,18 @@ const AddUserTab = () => {
         setMsg("✅ User Registered Successfully!");
       }
 
-      // Reset
       setFormData({ 
         username: "", password: "", role: "parent", 
         firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
         studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
         fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
-        childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: "", dob: "" 
+        childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: "", dob: "",
+        monthlyClassesTarget: 8 
       });
       setSiblingData({ 
         username: "", password: "", firstName: "", lastName: "", gender: "", 
-        admissionId: "", shortBio: "", childAge: "", childDob: "", childClass: "", monthlyFee: "", zoomId: "" 
+        admissionId: "", shortBio: "", childAge: "", childDob: "", childClass: "", monthlyFee: "", zoomId: "",
+        monthlyClassesTarget: 8
       });
       setShowSibling(false);
 
@@ -1116,7 +1026,6 @@ const AddUserTab = () => {
       <h3>Register New Profile</h3>
       <form onSubmit={handleRegister} className="admin-form">
         
-        {/* 1. Login Section */}
         <div className="form-section">
             <h4 className="section-title">Login Credentials {showSibling && "(Student 1)"}</h4>
             <div className="form-row">
@@ -1126,20 +1035,23 @@ const AddUserTab = () => {
             <div className="form-group"><label>Role</label><select name="role" value={formData.role} onChange={handleChange}><option value="parent">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
         </div>
 
-        {/* 2. Student 1 Details */}
         {formData.role === "parent" && (
           <div className="form-section student-section">
             <h4 className="section-title" style={{color: '#0284c7'}}>Student 1 Details</h4>
             <div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} /></div></div>
             <div className="form-row"><div className="form-group"><label>Gender *</label><select name="gender" value={formData.gender} onChange={handleChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
             <div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} /></div><div className="form-group"><label>Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} /></div></div>
-            <div className="form-row"><div className="form-group"><label>Class / Grade</label><input name="childClass" value={formData.childClass} onChange={handleChange} /></div><div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div></div>
+            <div className="form-row">
+                <div className="form-group"><label>Class / Grade</label><input name="childClass" value={formData.childClass} onChange={handleChange} /></div>
+                <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
+                {/* ✨ NEW FIELD: Monthly Class Target */}
+                <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={formData.monthlyClassesTarget} onChange={handleChange} style={{fontWeight:'bold', color:'#0284c7'}} /></div>
+            </div>
             <div className="form-row"><div className="form-group"><label>Student Email</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} /></div><div className="form-group"><label>Student Phone</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} /></div></div>
             <div className="form-group"><label>Short Bio</label><textarea name="shortBio" value={formData.shortBio} onChange={handleChange} style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} /></div>
           </div>
         )}
 
-        {/* 3. Parent Details */}
         {formData.role === "parent" && (
             <div className="form-section parent-section">
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h4 className="section-title" style={{color: '#ea580c', margin:0}}>Parent / Guardian Details (Shared)</h4>{autoFillMsg && <span style={{fontSize:'0.85rem', color:'#16a34a', fontWeight:'bold'}}>{autoFillMsg}</span>}</div>
@@ -1149,10 +1061,8 @@ const AddUserTab = () => {
             </div>
         )}
 
-        {/* 4. Sibling Checkbox */}
         {formData.role === "parent" && (<div style={{marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '8px', border: '1px dashed #0284c7', display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" id="siblingCheck" checked={showSibling} onChange={(e) => setShowSibling(e.target.checked)} style={{width:'20px', height:'20px', cursor:'pointer'}}/><label htmlFor="siblingCheck" style={{cursor:'pointer', fontWeight:'600', color:'#0369a1', fontSize:'1rem'}}>Register a Sibling?</label></div>)}
         
-        {/* 5. Sibling Form - ✨ Added Zoom ID */}
         {showSibling && formData.role === "parent" && (
             <div className="form-section student-section" style={{borderLeft: '5px solid #0284c7'}}>
                 <h4 className="section-title" style={{color: '#0284c7'}}>Student 2 Details (Sibling)</h4>
@@ -1161,15 +1071,15 @@ const AddUserTab = () => {
                 <div className="form-row"><div className="form-group"><label>Gender</label><select name="gender" value={siblingData.gender} onChange={handleSiblingChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={siblingData.childDob} onChange={handleSiblingChange} /></div></div>
                 <div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={siblingData.admissionId} onChange={handleSiblingChange} /></div><div className="form-group"><label>Class / Grade</label><input name="childClass" value={siblingData.childClass} onChange={handleSiblingChange} /></div></div>
                 
-                {/* ✨ SIBLING ZOOM ID & FEE */}
                 <div className="form-row">
                    <div className="form-group"><label>Sibling Zoom ID</label><input name="zoomId" value={siblingData.zoomId} onChange={handleSiblingChange} placeholder="If different from parent" /></div>
                    <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={siblingData.monthlyFee} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
+                   {/* ✨ NEW FIELD: Sibling Class Target */}
+                   <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={siblingData.monthlyClassesTarget} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#0284c7'}} /></div>
                 </div>
             </div>
         )}
         
-        {/* 6. Other Roles - ✨ Added Teacher Zoom & Education */}
         {formData.role !== "parent" && (
            <div className="form-section">
              <h4 className="section-title">Details</h4>
@@ -1180,7 +1090,6 @@ const AddUserTab = () => {
                     <div className="form-group"><label>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} /></div>
                  </div>
                  
-                 {/* ✨ NEW TEACHER FIELDS */}
                  <div className="form-row">
                     <div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} /></div>
                     <div className="form-group"><label>Education / Qualification</label><input name="education" value={formData.education} onChange={handleChange} /></div>
@@ -1208,8 +1117,7 @@ const AddUserTab = () => {
   );
 };
 
-// --- TAB 5: FEE TRACKER (Fixed: Total Outstanding Logic) ---
-// --- TAB 5: FEE TRACKER (With Analytics Charts) ---
+// --- TAB 5: FEE TRACKER ---
 const FeeTrackerTab = () => {
   const [students, setStudents] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
@@ -1217,7 +1125,7 @@ const FeeTrackerTab = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); 
   const [sortOrder, setSortOrder] = useState("name-asc");
-  const [showAnalytics, setShowAnalytics] = useState(false); // ✨ NEW: Toggle View
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => { fetchStudents(); }, []);
 
@@ -1271,7 +1179,6 @@ const FeeTrackerTab = () => {
     return { count: pendingCount, amount: pendingAmount };
   };
 
-  // --- STATS CALCULATION ---
   const totalEstRevenue = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
   const currentCollected = students.reduce((acc, s) => getPaymentStatus(s) === 'Paid' ? acc + (s.monthlyFee || 0) : acc, 0);
   const currentPending = totalEstRevenue - currentCollected;
@@ -1287,7 +1194,6 @@ const FeeTrackerTab = () => {
       return 0;
     });
 
-  // --- CUSTOM DONUT CHART COMPONENT ---
   const DonutChart = ({ value, total, color, label }) => {
     const percentage = total > 0 ? (value / total) * 100 : 0;
     const strokeDasharray = `${percentage}, 100`;
@@ -1316,17 +1222,12 @@ const FeeTrackerTab = () => {
       <div className="table-wrapper">
         <div className="filter-bar" style={{flexWrap:'wrap', gap:'15px'}}>
            <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
-              <button onClick={() => changeMonth(-1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&lt;</button>
-              <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding:'6px', borderRadius:'4px', border:'1px solid #cbd5e1', fontWeight:'600', color:'#0284c7'}} />
-              <button onClick={() => changeMonth(1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&gt;</button>
+             <button onClick={() => changeMonth(-1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&lt;</button>
+             <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding:'6px', borderRadius:'4px', border:'1px solid #cbd5e1', fontWeight:'600', color:'#0284c7'}} />
+             <button onClick={() => changeMonth(1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&gt;</button>
            </div>
            
-           {/* ✨ TOGGLE BUTTON */}
-           <button 
-             onClick={() => setShowAnalytics(!showAnalytics)} 
-             className="save-btn" 
-             style={{display:'flex', alignItems:'center', gap:'8px', backgroundColor: showAnalytics ? '#334155' : '#0284c7'}}
-           >
+           <button onClick={() => setShowAnalytics(!showAnalytics)} className="save-btn" style={{display:'flex', alignItems:'center', gap:'8px', backgroundColor: showAnalytics ? '#334155' : '#0284c7'}}>
              {showAnalytics ? '📄 View List' : '📊 View Analytics'}
            </button>
 
@@ -1339,45 +1240,28 @@ const FeeTrackerTab = () => {
            )}
         </div>
 
-        {/* ✨ CONDITIONAL RENDERING: CHARTS OR TABLE */}
         {showAnalytics ? (
           <div style={{padding:'30px', background:'#f8fafc'}}>
-             <h3 style={{marginBottom:'20px', color:'#334155'}}>Analytics for {new Date(selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
-             
-             {/* Charts Row */}
-             <div style={{display:'flex', gap:'20px', flexWrap:'wrap', marginBottom:'30px'}}>
+              <h3 style={{marginBottom:'20px', color:'#334155'}}>Analytics for {new Date(selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+              <div style={{display:'flex', gap:'20px', flexWrap:'wrap', marginBottom:'30px'}}>
                 <DonutChart value={currentCollected} total={totalEstRevenue} color="#10b981" label="Collection Rate (Month)" />
                 <DonutChart value={currentPending} total={totalEstRevenue} color="#f59e0b" label="Pending Dues (Month)" />
                 <DonutChart value={totalOutstandingAllTime} total={totalOutstandingAllTime + currentCollected} color="#ef4444" label="Total Outstanding Risk" />
-             </div>
-
-             {/* Summary Cards */}
-             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px'}}>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}>
-                   <div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div>
-                   <div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{students.length}</div>
-                </div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}>
-                   <div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div>
-                   <div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{students.filter(s => getPaymentStatus(s) === 'Paid').length}</div>
-                </div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}>
-                   <div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div>
-                   <div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{students.filter(s => getPaymentStatus(s) === 'Pending').length}</div>
-                </div>
-             </div>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px'}}>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{students.length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{students.filter(s => getPaymentStatus(s) === 'Paid').length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{students.filter(s => getPaymentStatus(s) === 'Pending').length}</div></div>
+              </div>
           </div>
         ) : (
-          /* STANDARD TABLE VIEW */
           <>
-            {/* Financial Summary Row */}
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px', padding:'15px 20px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0'}}>
                 <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>EST. REVENUE</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#334155'}}>₹{totalEstRevenue.toLocaleString()}</div></div>
                 <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>COLLECTED</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#16a34a'}}>₹{currentCollected.toLocaleString()}</div></div>
                 <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>PENDING</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#f59e0b'}}>₹{currentPending.toLocaleString()}</div></div>
                 <div style={{background:'#fee2e2', padding:'10px', borderRadius:'8px', border:'1px solid #fecaca'}}><div style={{fontSize:'0.75rem', color:'#991b1b', fontWeight:'bold'}}>TOTAL OUTSTANDING</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#dc2626'}}>₹{totalOutstandingAllTime.toLocaleString()}</div></div>
             </div>
-
             <div className="table-container">
               <table className="custom-table">
                 <thead><tr><th>Student Name</th><th>Monthly Fee</th><th>Status ({new Date(selectedMonth).toLocaleString('default', { month: 'short' })})</th><th>Total Pending Dues</th><th>Action</th></tr></thead>
@@ -1408,20 +1292,17 @@ const FeeTrackerTab = () => {
   );
 };
 
-
-// --- TAB: SLOT MANAGEMENT (Interactive - Schedule Directly from Slots) ---
+// --- TAB: SLOT MANAGEMENT ---
 const SlotManagementTab = () => {
   const [classes, setClasses] = useState([]);
-  const [teachers, setTeachers] = useState([]); // ✨ Needed for the Modal
+  const [teachers, setTeachers] = useState([]);
   const [selectedDay, setSelectedDay] = useState(new Date().getDay() === 0 ? "Saturday" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]); 
   const [loading, setLoading] = useState(true);
   
-  // ✨ Modal State
   const [showClassModal, setShowClassModal] = useState({ show: false, initialData: null });
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  // --- 1. DEFINE YOUR EXACT SLOTS ---
   const TIME_SLOTS = {
     morning: [
       { id: 'm1', start: '06:00', end: '07:00', label: '06:00 - 07:00 am' },
@@ -1448,43 +1329,37 @@ const SlotManagementTab = () => {
     finally { setLoading(false); }
   };
 
-  // ✨ CLICK HANDLER: Add New Class to Empty Slot
   const handleSlotClick = (startTime) => {
-    // Open Modal with Day and Time PRE-FILLED
     setShowClassModal({
       show: true,
       initialData: {
         className: "", level: "", subLevel: "", teacherId: "", meetingLink: "", maxCapacity: 10,
-        schedule: [{ day: selectedDay, time: startTime }] // <--- Auto-fill this
+        schedule: [{ day: selectedDay, time: startTime }]
       }
     });
   };
 
-  // ✨ CLICK HANDLER: Edit Existing Class
   const handleEditClick = (cls) => {
     setShowClassModal({ show: true, initialData: cls });
   };
 
   const handleModalSuccess = () => {
     setShowClassModal({ show: false, initialData: null });
-    fetchData(); // Refresh grid
+    fetchData(); 
     alert("Schedule updated successfully!");
   };
 
-  // Helper to find a class scheduled for this specific Day & Time
   const getClassForSlot = (timeStart) => {
     return classes.find(cls => 
       cls.schedule.some(s => s.day === selectedDay && s.time === timeStart)
     );
   };
 
-  // Logic: Evening slots are blocked on Weekdays (Mon-Fri) based on your image
   const isEveningBlocked = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].includes(selectedDay);
 
   const renderSlotCard = (slot, isBlocked) => {
     const assignedClass = getClassForSlot(slot.start);
     
-    // 1. BLOCKED SLOT (Grey) - Non-clickable
     if (isBlocked && !assignedClass) {
       return (
         <div key={slot.id} style={{background:'#f1f5f9', border:'1px dashed #cbd5e1', borderRadius:'8px', padding:'15px', opacity:0.6, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100px'}}>
@@ -1493,7 +1368,6 @@ const SlotManagementTab = () => {
       );
     }
 
-    // 2. OCCUPIED SLOT (Class Card) - Click to Edit
     if (assignedClass) {
       const enrolled = assignedClass.students.length;
       const capacity = assignedClass.maxCapacity || 10;
@@ -1503,7 +1377,7 @@ const SlotManagementTab = () => {
         <div 
             key={slot.id} 
             className="detail-card" 
-            onClick={() => handleEditClick(assignedClass)} // ✨ Enable Edit
+            onClick={() => handleEditClick(assignedClass)} 
             style={{margin:0, borderLeft: isFull ? '4px solid #ef4444' : '4px solid #3b82f6', minHeight:'100px', cursor:'pointer', transition:'transform 0.1s'}}
             title="Click to Edit Class"
         >
@@ -1526,11 +1400,10 @@ const SlotManagementTab = () => {
       );
     }
 
-    // 3. AVAILABLE SLOT (Green) - Click to Add
     return (
       <div 
         key={slot.id} 
-        onClick={() => handleSlotClick(slot.start)} // ✨ Enable Add
+        onClick={() => handleSlotClick(slot.start)} 
         style={{
             background:'#f0fdf4', border:'1px dashed #16a34a', borderRadius:'8px', padding:'15px', 
             display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', 
@@ -1548,7 +1421,6 @@ const SlotManagementTab = () => {
   return (
     <>
       <div className="table-wrapper">
-        {/* Day Selector */}
         <div className="filter-bar" style={{overflowX:'auto', paddingBottom:'5px'}}>
             {days.map(day => (
             <button 
@@ -1571,7 +1443,6 @@ const SlotManagementTab = () => {
         </div>
 
         <div style={{padding:'25px'}}>
-            {/* --- MORNING SECTION --- */}
             <div style={{marginBottom:'30px'}}>
             <h3 style={{background:'#ffedd5', color:'#c2410c', padding:'10px 15px', borderRadius:'6px', display:'inline-block', margin:'0 0 15px 0', fontSize:'1rem'}}>☀️ Morning Slots (IST)</h3>
             <div style={{display:'grid', gridTemplateColumns:'200px 1fr', gap:'20px', alignItems:'start'}}>
@@ -1584,7 +1455,6 @@ const SlotManagementTab = () => {
             </div>
             </div>
 
-            {/* --- EVENING SECTION --- */}
             <div>
             <h3 style={{background:'#e0e7ff', color:'#4338ca', padding:'10px 15px', borderRadius:'6px', display:'inline-block', margin:'0 0 15px 0', fontSize:'1rem'}}>🌙 Evening Slots (IST)</h3>
             <div style={{display:'grid', gridTemplateColumns:'200px 1fr', gap:'20px', alignItems:'start'}}>
@@ -1599,7 +1469,6 @@ const SlotManagementTab = () => {
         </div>
       </div>
       
-      {/* ✨ REUSE CLASS MODAL */}
       {showClassModal.show && (
         <ClassModal 
             teachers={teachers} 

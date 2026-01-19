@@ -288,6 +288,51 @@ app.post('/api/attendance', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===========================
+//      PARENT / STUDENT ROUTES
+// ===========================
+
+// 1. GET STUDENT DETAILS (Class, Schedule, Fees)
+app.get('/api/student/:id/profile', async (req, res) => {
+  try {
+    const student = await User.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    // Fetch the class details if assigned
+    let classDetails = null;
+    if (student.assignedClass) {
+      classDetails = await Class.findById(student.assignedClass).populate('teacher', 'fullName');
+    }
+
+    res.json({ student, classDetails });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching profile" });
+  }
+});
+
+// 2. GET STUDENT FEEDBACK (Reports)
+app.get('/api/feedback/student/:studentId', async (req, res) => {
+  try {
+    const feedback = await Feedback.find({ studentId: req.params.studentId })
+      .populate('teacherId', 'fullName')
+      .sort({ createdAt: -1 });
+    res.json(feedback);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching reports" });
+  }
+});
+
+// 3. GET STUDENT ATTENDANCE (History)
+app.get('/api/attendance/student/:studentId', async (req, res) => {
+  try {
+    // Get all records for this student
+    const records = await Attendance.find({ studentId: req.params.studentId });
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching attendance" });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
