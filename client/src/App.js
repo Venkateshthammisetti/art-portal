@@ -34,7 +34,7 @@ function App() {
   // 3. Login Logic
   const handleLoginLogic = async (username, password) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/login', { username, password });
+      const res = await axios.post('https://art-portal-7n6r.onrender.com/api/login', { username, password });
       console.log("Login Response:", res.data); // Debugging
       setUser(res.data);
       setError('');

@@ -27,14 +27,14 @@ const ParentDashboard = ({ user, onLogout }) => {
   const fetchParentData = async () => {
     setLoading(true);
     try {
-      const profileRes = await axios.get(`http://localhost:5000/api/student/${currentUser._id}/profile`);
+      const profileRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/student/${currentUser._id}/profile`);
       setStudentProfile(profileRes.data.student);
       setAssignedClass(profileRes.data.classDetails);
 
-      const reportRes = await axios.get(`http://localhost:5000/api/feedback/student/${currentUser._id}`);
+      const reportRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/student/${currentUser._id}`);
       setReports(reportRes.data);
 
-      const attRes = await axios.get(`http://localhost:5000/api/attendance/student/${currentUser._id}`);
+      const attRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/attendance/student/${currentUser._id}`);
       setAttendanceHistory(attRes.data);
 
     } catch (err) {
@@ -289,7 +289,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     </p>
                     {reports[0].reportFile ? (
                       <a
-                        href={`http://localhost:5000/${reports[0].reportFile}`}
+                        href={`https://art-portal-7n6r.onrender.com/${reports[0].reportFile}`}
                         target="_blank"
                         rel="noreferrer"
                         className="mini-link-btn"
@@ -449,7 +449,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                         </span>
                         {rep.reportFile && (
                           <a
-                            href={`http://localhost:5000/${rep.reportFile}`}
+                            href={`https://art-portal-7n6r.onrender.com/${rep.reportFile}`}
                             target="_blank"
                             rel="noreferrer"
                             className="download-pdf-btn"
