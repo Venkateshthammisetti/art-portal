@@ -73,7 +73,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   const fetchData = async () => {
     try {
-      const classRes = await axios.get(`http://localhost:5000/api/teacher/${currentUser._id}/classes`);
+      const classRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/teacher/${currentUser._id}/classes`);
       setClasses(classRes.data);
       const allStudents = [];
       const seenIds = new Set();
@@ -95,7 +95,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     if (activeTab === 'feedback') {
       const fetchHistory = async () => {
         try {
-          const res = await axios.get(`http://localhost:5000/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
+          const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
           setFeedbackHistory(res.data);
         } catch (err) { console.error(err); }
       };
@@ -143,7 +143,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
         const classQuery = selectedClassIds.join(',');
         
         if (attendanceView === 'daily') {
-           const url = `http://localhost:5000/api/attendance/daily?classes=${classQuery}&date=${attendanceDate}`;
+           const url = `https://art-portal-7n6r.onrender.com/api/attendance/daily?classes=${classQuery}&date=${attendanceDate}`;
            const res = await axios.get(url);
            setAttendanceStatus(res.data.statusMap || {}); 
            setIsClassScheduled(res.data.isScheduled !== undefined ? res.data.isScheduled : true);
@@ -162,7 +162,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
            }
            setMonthDays(daysArr);
 
-           const url = `http://localhost:5000/api/attendance/monthly?classes=${classQuery}&month=${selectedMonth}`;
+           const url = `https://art-portal-7n6r.onrender.com/api/attendance/monthly?classes=${classQuery}&month=${selectedMonth}`;
            const res = await axios.get(url);
            const records = res.data; 
            const lookup = {};
@@ -226,7 +226,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
       }
 
       const payload = { date: attendanceDate, records: validRecords };
-      await axios.post('http://localhost:5000/api/attendance', payload);
+      await axios.post('https://art-portal-7n6r.onrender.com/api/attendance', payload);
 
       setMsg("✅ Saved!");
       setTimeout(() => setMsg(''), 3000);
@@ -250,7 +250,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
         formData.append('report', reportFile);
       }
 
-      await axios.post('http://localhost:5000/api/feedback', formData, {
+      await axios.post('https://art-portal-7n6r.onrender.com/api/feedback', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -260,7 +260,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setReportFile(null); // Reset File
       
       // Refresh History (Current Month)
-      const res = await axios.get(`http://localhost:5000/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
+      const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
       setFeedbackHistory(res.data);
       
       setTimeout(()=>setMsg(''),3000);
@@ -353,7 +353,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
           <button className={activeTab === 'attendance' ? 'active' : ''} onClick={() => setActiveTab('attendance')}><span>📝</span> Attendance</button>
           <button className={activeTab === 'feedback' ? 'active' : ''} onClick={() => setActiveTab('feedback')}><span>💬</span> Feedback</button>
         </div>
-        <button className="t-logout" onClick={onLogout}><span>🚪</span> Logout</button>
+        <button className="t-logout" onClick={onLogout}> Logout</button>
       </aside>
 
       <main className="teacher-main">
@@ -540,7 +540,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 </div>
                                 <div className="h-rating">{'★'.repeat(item.rating)}<span className="grey">{'★'.repeat(5-item.rating)}</span></div>
                                 <p className="h-text">"{item.feedbackText}"</p>
-                                {item.reportFile && <a href={`http://localhost:5000/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
+                                {item.reportFile && <a href={`https://art-portal-7n6r.onrender.com/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
                              </div>
                            );
                         })}

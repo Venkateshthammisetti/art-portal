@@ -6,6 +6,10 @@ import {
 import axios from "axios";
 import "./AdminDashboard.css";
 
+// ✨ 1. ADD IMAGE IMPORTS
+import logoImg from './new-logo.png'; 
+import titleImg from './logo-title-copy.png';
+
 // LEVELS CONFIGURATION
 const LEVEL_STRUCTURE = {
   "Foundation": ["Level 1", "Level 2", "Level 3"],
@@ -30,7 +34,7 @@ const AdminDashboard = ({ onLogout }) => {
   const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>);
 
   const fetchStats = () => {
-    axios.get('http://localhost:5000/api/dashboard/stats')
+    axios.get('https://art-portal-7n6r.onrender.com/api/dashboard/stats')
       .then(res => setStats(res.data))
       .catch(err => console.error(err));
   };
@@ -40,7 +44,11 @@ const AdminDashboard = ({ onLogout }) => {
   return (
     <div className="admin-container">
       <aside className="admin-sidebar">
-        <div className="sidebar-brand"><div className="brand-logo-circle">VA</div><h3>Venky Art</h3></div>
+        {/* ✨ 2. UPDATED SIDEBAR LOGO SECTION (Images instead of text) */}
+        <div className="sidebar-brand">
+           <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
+           <img src={titleImg} alt="Venky Art" className="sidebar-title-img" />
+        </div>
         <nav className="sidebar-nav">
           <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}><IconHome /> <span>Dashboard</span></button>
           <button className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}><IconUsers /> <span>User Management</span></button>
@@ -58,7 +66,7 @@ const AdminDashboard = ({ onLogout }) => {
             <p>Welcome back, Admin</p>
           </div>
           <div className="header-actions">
-            <div className="user-profile-pill"><img src="https://ui-avatars.com/api/?name=Admin+User&background=00bfa5&color=fff" alt="Profile" /><span>Super Admin</span></div>
+            <div className="user-profile-pill"><span>Super Admin</span></div>
             <button onClick={onLogout} className="header-logout-btn" title="Logout"><IconLogout /></button>
           </div>
         </header>
@@ -85,8 +93,8 @@ const OverviewTab = ({ stats }) => {
     const fetchData = async () => {
       try {
         const [usersRes, classesRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/users'),
-          axios.get('http://localhost:5000/api/classes')
+          axios.get('https://art-portal-7n6r.onrender.com/api/users'),
+          axios.get('https://art-portal-7n6r.onrender.com/api/classes')
         ]);
         setUsers(usersRes.data);
         setClasses(classesRes.data);
@@ -289,9 +297,9 @@ const ClassManagementTab = () => {
 
   const fetchData = async () => {
     try {
-      const classRes = await axios.get('http://localhost:5000/api/classes');
+      const classRes = await axios.get('https://art-portal-7n6r.onrender.com/api/classes');
       setClasses(classRes.data);
-      const userRes = await axios.get('http://localhost:5000/api/users');
+      const userRes = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
       setTeachers(userRes.data.filter(u => u.role === 'teacher'));
       return classRes.data; 
     } catch (err) { 
@@ -319,7 +327,7 @@ const ClassManagementTab = () => {
 
   const confirmClassDelete = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/classes/${deleteClassModal.classId}`);
+      await axios.delete(`https://art-portal-7n6r.onrender.com/api/classes/${deleteClassModal.classId}`);
       await fetchData();
       setDeleteClassModal({ show: false, classId: null }); 
       setSelectedClass(null); 
@@ -614,8 +622,8 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     e.preventDefault();
     if (duplicateError) return;
     try {
-      if (initialData) await axios.put(`http://localhost:5000/api/classes/${initialData._id}`, formData);
-      else await axios.post('http://localhost:5000/api/classes', formData);
+      if (initialData) await axios.put(`https://art-portal-7n6r.onrender.com/api/classes/${initialData._id}`, formData);
+      else await axios.post('https://art-portal-7n6r.onrender.com/api/classes', formData);
       onSuccess();
     } catch (err) { 
         const msg = err.response?.data?.message || "Error saving class";
@@ -668,7 +676,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
 
   useEffect(() => {
     const loadStudents = async () => {
-      const res = await axios.get('http://localhost:5000/api/users');
+      const res = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
       const studentList = res.data.filter(u => u.role === 'parent');
       setStudents(studentList);
       const alreadyInClass = studentList.filter(s => s.assignedClass === classId).map(s => s._id);
@@ -685,7 +693,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
   };
 
   const handleSave = async () => {
-    try { await axios.post(`http://localhost:5000/api/classes/${classId}/assign`, { studentIds: selectedIds }); onSuccess(); } 
+    try { await axios.post(`https://art-portal-7n6r.onrender.com/api/classes/${classId}/assign`, { studentIds: selectedIds }); onSuccess(); } 
     catch (err) { alert("Failed to assign students"); }
   };
 
@@ -731,19 +739,19 @@ const UserManagementTab = () => {
   });
 
   useEffect(() => { fetchUsers(); }, []);
-  const fetchUsers = () => { axios.get('http://localhost:5000/api/users').then(res => setUsers(res.data)).catch(err => console.error(err)); };
+  const fetchUsers = () => { axios.get('https://art-portal-7n6r.onrender.com/api/users').then(res => setUsers(res.data)).catch(err => console.error(err)); };
   const showToast = (message, type = 'success') => { setToast({ show: true, message, type }); setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000); };
   const initiateDelete = (e, userId) => { if (e && e.stopPropagation) e.stopPropagation(); setDeleteModal({ show: true, userId }); };
   const confirmDelete = async () => {
-    try { await axios.delete(`http://localhost:5000/api/users/${deleteModal.userId}`); setUsers(users.filter(user => user._id !== deleteModal.userId)); showToast('User deleted successfully!', 'success'); setDeleteModal({ show: false, userId: null }); setSelectedUser(null); } 
+    try { await axios.delete(`https://art-portal-7n6r.onrender.com/api/users/${deleteModal.userId}`); setUsers(users.filter(user => user._id !== deleteModal.userId)); showToast('User deleted successfully!', 'success'); setDeleteModal({ show: false, userId: null }); setSelectedUser(null); } 
     catch (err) { showToast('Failed to delete user.', 'error'); setDeleteModal({ show: false, userId: null }); }
   };
   const handleToggleStatus = async (e, userId, currentStatus) => {
-    e.stopPropagation(); try { await axios.put(`http://localhost:5000/api/users/${userId}/status`); setUsers(users.map(user => user._id === userId ? { ...user, isActive: !currentStatus } : user)); showToast('Status updated', 'success'); } catch (err) { showToast('Error', 'error'); }
+    e.stopPropagation(); try { await axios.put(`https://art-portal-7n6r.onrender.com/api/users/${userId}/status`); setUsers(users.map(user => user._id === userId ? { ...user, isActive: !currentStatus } : user)); showToast('Status updated', 'success'); } catch (err) { showToast('Error', 'error'); }
   };
   const handleEditClick = (e, user) => { e.stopPropagation(); setEditingUser(user); };
   const handleEditSave = async (updatedData) => {
-    try { await axios.put(`http://localhost:5000/api/users/${updatedData._id}`, updatedData); setUsers(users.map(u => (u._id === updatedData._id ? updatedData : u))); if (selectedUser && selectedUser._id === updatedData._id) { setSelectedUser(updatedData); } setEditingUser(null); showToast('User details updated!', 'success'); } 
+    try { await axios.put(`https://art-portal-7n6r.onrender.com/api/users/${updatedData._id}`, updatedData); setUsers(users.map(u => (u._id === updatedData._id ? updatedData : u))); if (selectedUser && selectedUser._id === updatedData._id) { setSelectedUser(updatedData); } setEditingUser(null); showToast('User details updated!', 'success'); } 
     catch (err) { showToast('Failed to update user.', 'error'); }
   };
   const toggleColumn = (key) => { setVisibleColumns(prev => { const newState = { ...prev, [key]: !prev[key] }; localStorage.setItem('admin_visible_columns', JSON.stringify(newState)); return newState; }); };
@@ -826,7 +834,7 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
   const [loadingCreds, setLoadingCreds] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
 
-  const handleToggleCredentials = async () => { if (!credentials) { setLoadingCreds(true); try { const res = await axios.get(`http://localhost:5000/api/users/${user._id}/credentials`); setCredentials(res.data); setShowPassword(true); } catch (err) { console.error("Error fetching creds", err); } finally { setLoadingCreds(false); } } else { setShowPassword(!showPassword); } };
+  const handleToggleCredentials = async () => { if (!credentials) { setLoadingCreds(true); try { const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/users/${user._id}/credentials`); setCredentials(res.data); setShowPassword(true); } catch (err) { console.error("Error fetching creds", err); } finally { setLoadingCreds(false); } } else { setShowPassword(!showPassword); } };
   const handleCopy = (text) => { navigator.clipboard.writeText(text); setCopyMsg("Copied!"); setTimeout(() => setCopyMsg(""), 2000); };
   
   const displayDob = user.role === 'admin' ? user.dob : user.childDob;
@@ -936,7 +944,7 @@ const AddUserTab = () => {
   const handlePhoneBlur = async () => {
     if (formData.role === 'parent' && formData.phone.length > 9) {
       try {
-        const res = await axios.get(`http://localhost:5000/api/users/parent/${formData.phone}`);
+        const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/users/parent/${formData.phone}`);
         if (res.data) {
           setFormData(prev => ({ 
             ...prev, 
@@ -964,7 +972,7 @@ const AddUserTab = () => {
     };
 
     try {
-      await axios.post("http://localhost:5000/api/register", payload1);
+      await axios.post("https://art-portal-7n6r.onrender.com/api/register", payload1);
 
       if (formData.role === 'parent' && showSibling) {
         const student2Name = `${siblingData.firstName} ${siblingData.lastName}`.trim();
@@ -994,7 +1002,7 @@ const AddUserTab = () => {
           studentEmail: formData.studentEmail, 
           studentPhone: formData.studentPhone 
         };
-        await axios.post("http://localhost:5000/api/register", payload2);
+        await axios.post("https://art-portal-7n6r.onrender.com/api/register", payload2);
         setMsg("✅ Success! Both siblings registered.");
       } else {
         setMsg("✅ User Registered Successfully!");
@@ -1132,7 +1140,7 @@ const FeeTrackerTab = () => {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/users');
+      const res = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
       setStudents(res.data.filter(u => u.role === 'parent'));
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -1149,7 +1157,7 @@ const FeeTrackerTab = () => {
       return s;
     });
     setStudents(updatedStudents);
-    try { await axios.post('http://localhost:5000/api/fees/update', { userId: studentId, month: selectedMonth, status: newStatus, amount: feeAmount }); } 
+    try { await axios.post('https://art-portal-7n6r.onrender.com/api/fees/update', { userId: studentId, month: selectedMonth, status: newStatus, amount: feeAmount }); } 
     catch (err) { alert("Error updating payment"); fetchStudents(); }
   };
 
@@ -1321,9 +1329,9 @@ const SlotManagementTab = () => {
 
   const fetchData = async () => {
     try {
-      const classRes = await axios.get('http://localhost:5000/api/classes');
+      const classRes = await axios.get('https://art-portal-7n6r.onrender.com/api/classes');
       setClasses(classRes.data);
-      const userRes = await axios.get('http://localhost:5000/api/users');
+      const userRes = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
       setTeachers(userRes.data.filter(u => u.role === 'teacher'));
     } catch (err) { console.error(err); } 
     finally { setLoading(false); }
