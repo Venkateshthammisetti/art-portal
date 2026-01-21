@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import logoImg from './new-logo.png'; 
 import titleImg from './logo-title-copy.png';
 import bannerImg from './banner4.png';
+import bannerMobile from './banner-001.png';
 
 const ParentDashboard = ({ user, onLogout }) => {
   const currentUser = user;
@@ -17,8 +18,10 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [attendanceMonth, setAttendanceMonth] = useState(new Date().toISOString().slice(0, 7));
-
   const [copyFeedback, setCopyFeedback] = useState("Copy Link");
+
+  // ✨ NEW: State for Mobile Sidebar Toggle
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (currentUser?._id) fetchParentData();
@@ -82,7 +85,6 @@ const ParentDashboard = ({ user, onLogout }) => {
     return lastPayment.status === 'Paid' ? { status: 'Paid', color: 'green' } : { status: 'Pending', color: 'red' };
   };
 
-  // ✨ UPDATED REFERRAL LOGIC (With Real Data)
   const handleShare = (method) => {
     const websiteUrl = "https://thevenkyart.com"; 
     const referralText = `Hey! I highly recommend *Thevenkyart Online Art Academy* for professional art classes. Check them out here: ${websiteUrl}. Use my referral name *${currentUser.username}* when you join!`;
@@ -96,19 +98,31 @@ const ParentDashboard = ({ user, onLogout }) => {
     }
   };
 
+  // Helper to close sidebar when clicking a link on mobile
+  const handleNavClick = (tab) => {
+    setActiveTab(tab);
+    setIsSidebarOpen(false);
+  };
+
   if (loading) return <div className="loading-screen">Loading Portal...</div>;
 
   const attStats = calculateAttendanceStats();
 
   const chartData = [
-    { name: 'Attended', value: attStats.present, color: '#2563eb' }, // Blue
-    { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present), color: '#e2e8f0' } // Light Grey
+    { name: 'Attended', value: attStats.present, color: '#2563eb' }, 
+    { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present), color: '#e2e8f0' } 
   ];
 
   return (
     <div className="parent-container">
-      <aside className="parent-sidebar">
-        {/* ✨ UPDATED SIDEBAR HEADER WITH IMAGE */}
+      {/* ✨ NEW: Mobile Overlay (Dark background when menu is open) */}
+      <div
+        className={`mobile-overlay ${isSidebarOpen ? "open" : ""}`}
+        onClick={() => setIsSidebarOpen(false)}
+      ></div>
+
+      {/* ✨ UPDATED: Sidebar with 'open' class for mobile */}
+      <aside className={`parent-sidebar ${isSidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <img
             src={logoImg}
@@ -120,37 +134,37 @@ const ParentDashboard = ({ user, onLogout }) => {
         <div className="p-nav">
           <button
             className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => handleNavClick("overview")}
           >
             <span>📊</span> Overview
           </button>
           <button
             className={activeTab === "schedule" ? "active" : ""}
-            onClick={() => setActiveTab("schedule")}
+            onClick={() => handleNavClick("schedule")}
           >
             <span>🗓️</span> Class Schedule
           </button>
           <button
             className={activeTab === "reports" ? "active" : ""}
-            onClick={() => setActiveTab("reports")}
+            onClick={() => handleNavClick("reports")}
           >
             <span>📝</span> Academic Reports
           </button>
           <button
             className={activeTab === "attendance" ? "active" : ""}
-            onClick={() => setActiveTab("attendance")}
+            onClick={() => handleNavClick("attendance")}
           >
             <span>📅</span> Attendance Log
           </button>
           <button
             className={activeTab === "fees" ? "active" : ""}
-            onClick={() => setActiveTab("fees")}
+            onClick={() => handleNavClick("fees")}
           >
             <span>💳</span> Fee Status
           </button>
           <button
             className={activeTab === "refer" ? "active" : ""}
-            onClick={() => setActiveTab("refer")}
+            onClick={() => handleNavClick("refer")}
           >
             <span>📣</span> Refer and support
           </button>
@@ -162,6 +176,14 @@ const ParentDashboard = ({ user, onLogout }) => {
 
       <main className="parent-main">
         <header className="p-header">
+          {/* ✨ NEW: Menu Button (Only visible on mobile via CSS) */}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setIsSidebarOpen(true)}
+          >
+            ☰
+          </button>
+
           <div className="p-header-left">
             <h2>
               {activeTab === "overview"
@@ -170,15 +192,19 @@ const ParentDashboard = ({ user, onLogout }) => {
                   ? "Refer a Friend"
                   : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
             </h2>
-            <p>Parent Portal • {currentUser.fullName}</p>
+            <p className="desktop-only">
+              Parent Portal • {currentUser.fullName}
+            </p>
           </div>
           <div className="p-header-right">
-            <span className="role-badge">Parent</span>
+            <span className="role-badge desktop-only">Parent</span>
             <div className="header-profile">
               <div className="avatar">{currentUser.fullName?.charAt(0)}</div>
             </div>
+            {/* Shortened Logout for mobile */}
             <button className="logout-btn" onClick={onLogout}>
-              Logout
+              <span className="desktop-text">Logout</span>
+              <span className="mobile-icon">⏻</span>
             </button>
           </div>
         </header>
@@ -190,12 +216,12 @@ const ParentDashboard = ({ user, onLogout }) => {
               <div
                 className="welcome-card"
                 style={{
-                  backgroundImage: `url(${bannerImg})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
+                  // We pass both images as CSS variables
+                  "--desktop-bg": `url(${bannerImg})`,
+                  "--mobile-bg": `url(${bannerMobile})`,
                 }}
               >
+                {" "}
                 <div className="wc-text">
                   <h1>Hello, {currentUser.fullName}!</h1>
                   <p>
@@ -204,12 +230,10 @@ const ParentDashboard = ({ user, onLogout }) => {
                     Thevenkyart Art Academy.
                   </p>
                 </div>
-                {/* <div className="wc-stat"><div className="big-stat">{attStats.percentage}%</div><div className="small-stat-label">Attended: <strong>{attStats.present}</strong> / {attStats.target}</div></div> */}
               </div>
-              {/* ✨ 2. NEW: Separate Attendance Card */}
+
               <div className="info-card attendance-card">
                 <h3>📅 Attendance</h3>
-
                 <div
                   style={{
                     width: "100%",
@@ -238,8 +262,6 @@ const ParentDashboard = ({ user, onLogout }) => {
                       <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
-
-                  {/* Centered Percentage */}
                   <div
                     style={{
                       position: "absolute",
@@ -260,7 +282,6 @@ const ParentDashboard = ({ user, onLogout }) => {
                     </span>
                   </div>
                 </div>
-
                 <div className="att-details-text">
                   <div className="ad-row">
                     <span>Attended:</span>
@@ -274,6 +295,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   </div>
                 </div>
               </div>
+
               <div className="info-card report-preview-card">
                 <h3>📝 Latest Report</h3>
                 {reports.length > 0 ? (
@@ -309,6 +331,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <div className="empty-mini">No reports released yet.</div>
                 )}
               </div>
+
               <div className="info-card next-class-card">
                 <h3>🚀 Next Class</h3>
                 {assignedClass ? (
@@ -344,6 +367,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   </div>
                 )}
               </div>
+
               <div className="info-card fee-card">
                 <h3>💳 Fee Status</h3>
                 <div className={`fee-status-badge ${getPaymentStatus().color}`}>
@@ -355,6 +379,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     : "Please clear dues."}
                 </p>
               </div>
+
               <div className="info-card profile-card">
                 <h3>👤 Student Details</h3>
                 <div className="detail-row">
@@ -581,11 +606,9 @@ const ParentDashboard = ({ user, onLogout }) => {
           {activeTab === "refer" && (
             <div className="referral-view">
               <div className="referral-grid">
-                {/* LEFT: Institute Profile Card */}
                 <div className="referral-card institute-card">
                   <div className="inst-cover"></div>
                   <div className="inst-body">
-                    {/* ✨ UPDATED REFERRAL LOGO IMAGE */}
                     <img
                       src={logoImg}
                       alt="Venky Art Logo"
@@ -626,20 +649,16 @@ const ParentDashboard = ({ user, onLogout }) => {
                     </div>
                   </div>
                 </div>
-
-                {/* RIGHT: Share Actions */}
                 <div className="referral-card action-card">
                   <h3>Spread the Word!</h3>
                   <p className="action-desc">
                     Love our classes? Refer a friend or family member and let
                     them experience the joy of art.
                   </p>
-
                   <div className="referral-code-box">
                     <span className="rc-label">Your Referral Code</span>
                     <div className="code-display">{currentUser.username}</div>
                   </div>
-
                   <div className="share-buttons">
                     <button
                       className="share-btn whatsapp"
