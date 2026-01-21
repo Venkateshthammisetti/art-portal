@@ -967,3 +967,156 @@
     font-size: 0.7rem; /* Smaller text inside badge */
   }
 }
+
+/* ========================================= */
+/* 🎨 ART LOADING ANIMATION */
+/* ========================================= */
+
+.art-loading-screen {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f8fafc; /* Light canvas background */
+  z-index: 2000; /* Ensure it sits on top of everything */
+}
+
+.paint-loader {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.paint-drop {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  animation: bounce 0.6s infinite alternate;
+}
+
+/* 🎨 The Art Colors */
+.red {
+  background-color: #ef4444; /* Bright Red */
+  animation-delay: 0s;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+}
+
+.yellow {
+  background-color: #f59e0b; /* Sunny Yellow */
+  animation-delay: 0.2s;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);
+}
+
+.blue {
+  background-color: #3b82f6; /* Royal Blue */
+  animation-delay: 0.4s;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+}
+
+.green {
+  background-color: #10b981; /* Fresh Green */
+  animation-delay: 0.6s;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+}
+
+.loading-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.1rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  animation: fadePulse 1.5s infinite;
+}
+
+/* ✨ ANIMATION KEYFRAMES */
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-25px); /* Jumps up */
+  }
+}
+
+@keyframes fadePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ========================================= */
+/* 🛠️ FIX: ATTENDANCE COLOR CLASH */
+/* ========================================= */
+
+/* This removes the unwanted "Paint Drop" background from the numbers */
+.as-val.green, 
+.as-val.red {
+  background-color: transparent !important; /* Removes the blocky color */
+  box-shadow: none !important;              /* Removes the glow/shadow */
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Ensure the text colors are still nice and sharp */
+.as-val.green {
+  color: #16a34a !important; /* Clean Green Text */
+}
+
+.as-val.red {
+  color: #dc2626 !important; /* Clean Red Text */
+}
+
+
+/* ========================================= */
+/* 🛠️ FIX: DASHBOARD OVERVIEW TEXT CLEANUP */
+/* ========================================= */
+
+/* Fixes the "Attended: 2 Classes" in the Overview Tab */
+.ad-row .green,
+.att-details-text .green {
+  background-color: transparent !important; /* Remove the green block */
+  box-shadow: none !important;              /* Remove the shadow/glow */
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: #16a34a !important; /* Keep the text distinct green */
+}
+
+/* Just in case you use red somewhere else in this section */
+.ad-row .red,
+.att-details-text .red {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: #dc2626 !important;
+}
+
+/* ========================================= */
+/* 🔗 CLICKABLE CARD HEADINGS */
+/* ========================================= */
+
+.clickable-heading {
+  cursor: pointer;
+  transition: color 0.2s ease;
+  display: flex;
+  justify-content: space-between; /* Pushes the arrow to the right */
+  align-items: center;
+}
+
+.clickable-heading:hover {
+  color: #2563eb !important; /* Changes to Blue on hover */
+  text-decoration: underline;
+}
+
+/* Optional: Make the arrow fade in on hover */
+.clickable-heading::after {
+  content: '↗'; /* Arrow icon */
+  font-size: 1rem;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.clickable-heading:hover::after {
+  opacity: 1;
+}

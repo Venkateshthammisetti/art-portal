@@ -1,325 +1,221 @@
 /* src/components/Login.css */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 .login-container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  font-family: 'Poppins', sans-serif;
-  overflow: hidden;
+  display: flex; height: 100vh; width: 100vw;
+  font-family: 'Poppins', sans-serif; overflow: hidden;
 }
 
-/* --- Left Side: Illustration --- */
+/* --- Left Side: Illustration (Desktop) --- */
 .login-illustration {
-  flex: 1.5; /* Takes up 60% of the width */
-  position: relative; /* Needed for positioning the logo */
-  background: url('./art-illustration.png') no-repeat center center;
+  flex: 1.5;
+  position: relative;
+  
+  /* ✨ FIX: Force background to White */
+  background-color: #ffffff; 
+  
+  /* Keep existing image settings */
+  background-image: url('./art-illustration.png');
+  background-repeat: no-repeat;
+  background-position: center center;
   background-size: contain;
 }
 
-/* FIX: Logo Styling - Smaller and Pinned to Top-Left */
-/* src/components/Login.css */
-
-/* src/components/Login.css */
-
-/* src/components/Login.css */
-
-/* 1. The Container - Sets the stage for 3D */
+/* Logo Flip Animation (Desktop) */
 .logo-flip-box {
-  position: absolute;
-  top: 30px;
-  left: 30px;
-  width: 140px;  /* Adjust size as needed */
-  height: 140px;
-  perspective: 1000px; /* Gives it 3D depth */
-  z-index: 10;
-  cursor: pointer;
+  position: absolute; top: 30px; left: 30px;
+  width: 140px; height: 140px; perspective: 1000px; z-index: 10; cursor: pointer;
 }
-
-/* 2. The Inner Wrapper - This part actually rotates */
 .logo-flip-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  text-align: center;
-  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy flip */
-  transform-style: preserve-3d;
+  position: relative; width: 100%; height: 100%; text-align: center;
+  transition: transform 0.8s; transform-style: preserve-3d;
 }
-
-/* 3. Trigger the Flip on Hover */
-.logo-flip-box:hover .logo-flip-inner {
-  transform: rotateY(180deg);
-}
-
-/* 4. Common Styles for Front & Back Images */
+.logo-flip-box:hover .logo-flip-inner { transform: rotateY(180deg); }
 .logo-front, .logo-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  -webkit-backface-visibility: hidden; /* Hides the back of the image */
-  backface-visibility: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute; width: 100%; height: 100%;
+  backface-visibility: hidden; display: flex; align-items: center; justify-content: center;
 }
+.logo-back { transform: rotateY(180deg); }
+.logo-front img, .logo-back img { width: 120px; height: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
 
-/* 5. FRONT SIDE (Logo) */
-.logo-front img {
-  width: 120px;
-  height: auto;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
-}
-
-/* 6. BACK SIDE (Paintbrush) */
-.logo-back {
-  transform: rotateY(180deg); /* Starts facing backwards */
-}
-
-.logo-back img {
-  width: 120px; /* Make the brush the same size */
-  height: auto;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
-}
 /* --- Right Side: Form Section --- */
 .login-form-section {
-  flex: 1; /* Takes up 40% of the width */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  /* Fallback color if image doesn't load */
-  background-color: #f4f7f6; 
+  flex: 1; display: flex; align-items: center; justify-content: center; position: relative;
+  background-color: #ffffff; 
 }
 
-/* The Blurred Background Layer behind the form */
+/* Blurred Background */
 .login-bg-blur {
-  position: absolute;
-  top: 0; 
-  left: 0; 
-  right: 0; 
-  bottom: 0;
-  
-  /* GRADIENT START */
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   background: linear-gradient(135deg, #1714ad 0%, #070239 100%);
-  /* GRADIENT END */
-  
-  background-size: cover;
-  filter: blur(1px) brightness(1);
-  opacity: 1; 
-  z-index: 1;
+  background-size: cover; filter: blur(1px); z-index: 1;
 }
 
-/* --- The Login Card --- */
+/* Login Card (Desktop Default) */
+/* --- Login Card (Desktop - GLASS MODE) --- */
 .login-card {
-  position: relative;
-  z-index: 2; /* Sits on top of the blur */
-  background: rgba(255, 255, 255, 0.95); /* Slightly transparent white */
-  padding: 50px 40px;
-  border-radius: 24px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.close-icon {
-  position: absolute;
-  top: 15px;
-  right: 20px;
-  font-size: 24px;
-  color: #999;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-/* --- Inputs --- */
-.input-with-icon {
-  position: relative;
-  margin-bottom: 20px;
-}
-
-.input-icon {
-  position: absolute;
-  top: 50%;
-  left: 15px;
-  transform: translateY(-50%);
-  color: #888;
-  width: 18px;
-  height: 18px;
-}
-
-.input-with-icon input {
-  width: 100%;
-  padding: 14px 14px 14px 45px; /* Padding left for the icon */
-  border: 1px solid transparent;
-  background-color: #ecf2f9; /* Light blue-ish grey background like screenshot */
-  border-radius: 12px;
-  font-size: 15px;
-  outline: none;
-  transition: all 0.3s ease;
-  color: #333;
-}
-
-.input-with-icon input:focus {
-  background-color: #fff;
-  border-color: #00bfa5;
-  box-shadow: 0 0 0 4px rgba(0, 191, 165, 0.1);
-}
-
-.input-with-icon input::placeholder {
-  color: #a0a0a0;
-}
-
-/* --- Button --- */
-.login-btn {
-  width: 100%;
-  padding: 14px;
-  background-color: #052283; /* Teal */
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: background-color 0.3s;
-}
-
-.login-btn:hover {
-  background-color: #e46008;
-}
-
-/* --- Text Links --- */
-.forgot-link {
-  text-align: right;
-  margin-bottom: 20px;
-}
-.forgot-link a {
-  font-size: 13px;
-  color: #666;
-  text-decoration: none;
-}
-
-.create-account-link {
-  margin-top: 25px;
-  font-size: 14px;
-  color: #555;
-}
-.create-account-link a {
-  color: #00bfa5;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-  .login-illustration {
-    display: none; /* Hide art on mobile */
-  }
-  .login-bg-blur {
-    opacity: 1; /* Show full background on mobile */
-    filter: blur(5px);
-  }
-}
-
-/* src/components/Login.css */
-
-/* --- 1. ENTRANCE ANIMATIONS --- */
-
-/* The Card Slides Up on Load */
-/* --- The Login Card (Glass Effect) --- */
-.login-card {
-  position: relative;
+  position: relative; 
   z-index: 2;
-  width: 90%;
-  max-width: 400px;
-  padding: 50px 40px;
-  border-radius: 24px;
-  text-align: center;
-
-  /* GLASS STYLES */
-  background: rgba(255, 255, 255, 0.1); /* Very transparent */
-  backdrop-filter: blur(15px);           /* The Blur */
-  -webkit-backdrop-filter: blur(15px);   /* Safari support */
-  border: 1px solid rgba(255, 255, 255, 0.2); /* Thin icy border */
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   
-  /* Text must be white to show on dark background */
-  color: white; 
+  /* ✨ GLASS EFFECT START */
+  background: rgba(255, 255, 255, 0.1); /* Very transparent white */
+  backdrop-filter: blur(15px);           /* The Frost Effect */
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Thin icy border */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); /* Deeper shadow for depth */
+  /* ✨ GLASS EFFECT END */
+
+  padding: 50px 40px; 
+  border-radius: 24px;
+  width: 90%; 
+  max-width: 400px;
+  text-align: center;
+  
+  /* ✨ IMPORTANT: Switch text to White so it pops on the dark bg */
+  color: white;
 }
 
-@keyframes slideUpFade {
-  0% {
-    opacity: 0;
-    transform: translateY(40px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Update Desktop Inputs to match Glass Theme */
+.input-with-icon input {
+  width: 100%; 
+  padding: 14px 14px 14px 45px;
+  border-radius: 12px; 
+  font-size: 15px; 
+  outline: none; 
+  transition: 0.3s;
+  
+  /* ✨ Glass Input Style */
+  background: rgba(255, 255, 255, 0.15); /* Semi-transparent */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white; /* White text inside input */
 }
 
-/* The Logo Floats Gently */
-.brand-logo {
-  /* Add this to your existing .brand-logo block */
-  animation: floatLogo 6s ease-in-out infinite;
+/* Placeholder text color */
+.input-with-icon input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
 }
 
-@keyframes floatLogo {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); } /* Moves up */
+/* Icon color */
+.input-icon {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-/* --- 2. FLOATING BACKGROUND ORBS --- */
-
-.floating-shape {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(50px);
-  z-index: 2; /* Sit behind the card (z-index 2) but above the blur (z-index 1) */
-  opacity: 0.6;
-  animation: floatOrb 8s infinite ease-in-out;
+/* Welcome Header (Desktop) */
+.welcome-header h2 {
+  color: white; /* Ensure header is white */
+  margin-bottom: 10px;
+}
+.welcome-header p {
+  color: rgba(255, 255, 255, 0.8);
 }
 
-/* Shape 1: A glowing Cyan orb */
-.shape-1 {
-  width: 200px;
-  height: 200px;
-  background: #00bfa5;
-  top: 10%;
-  right: 10%;
-  animation-delay: 0s;
+/* HIDE Mobile Elements on Desktop */
+.mobile-brand-header, .mobile-footer, .floating-shape {
+  display: none; 
 }
 
-/* Shape 2: A glowing Purple orb */
-.shape-2 {
-  width: 150px;
-  height: 150px;
-  background: #9b59b6;
-  bottom: 15%;
-  left: 10%;
-  animation-delay: -4s; /* Starts at a different time */
+/* Inputs */
+.input-with-icon { position: relative; margin-bottom: 20px; }
+.input-icon {
+  position: absolute; top: 50%; left: 15px; transform: translateY(-50%);
+  color: #888; width: 18px; height: 18px;
+}
+.input-with-icon input {
+  width: 100%; padding: 14px 14px 14px 45px;
+  border: 1px solid transparent; background-color: #ecf2f9;
+  border-radius: 12px; font-size: 15px; outline: none; transition: 0.3s; color: #333;
+}
+.input-with-icon input:focus {
+  background-color: #fff; border-color: #ce3507; box-shadow: 0 0 0 4px rgba(239, 102, 48, 0.1);
 }
 
-@keyframes floatOrb {
-  0%, 100% { transform: translate(0, 0); }
-  33% { transform: translate(30px, -50px); }
-  66% { transform: translate(-20px, 20px); }
-}
-
-/* --- 3. BUTTON "PULSE" EFFECT --- */
-
+/* Button */
 .login-btn {
-  /* Add this to your existing button animation */
-  animation: pulseGlow 3s infinite;
+  width: 100%; padding: 14px; background-color: #052283; color: white;
+  border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
+  margin-top: 10px; transition: 0.3s;
 }
+.login-btn:hover { background-color: #e46008; }
 
-@keyframes pulseGlow {
-  0% { box-shadow: 0 0 0 0 rgba(0, 191, 165, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(0, 191, 165, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 191, 165, 0); }
+.forgot-link { text-align: right; margin-bottom: 20px; font-size: 13px; color: #666; cursor: pointer; }
+.error-msg { color: red; font-size: 0.9rem; margin-top: 10px; }
+
+
+/* ========================================= */
+/* 📱 MOBILE VIEW ONLY (Max Width 768px)     */
+/* ========================================= */
+@media (max-width: 768px) {
+  
+  /* 1. Reset Layout */
+  .login-illustration { display: none; } /* Hide left side */
+  .login-form-section { width: 100%; }
+
+  /* 2. Show Mobile Brand Header, Hide Desktop Welcome */
+  .desktop-only { display: none; }
+  
+  .mobile-brand-header {
+    display: flex; flex-direction: column; align-items: center;
+    margin-bottom: 30px; animation: slideDown 0.8s ease-out;
+  }
+
+  /* 3. Style the Logo & Title */
+  .mobile-logo-wrapper {
+    width: 80px; height: 80px;
+    background: white; border-radius: 50%;
+    display: grid; place-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    margin-bottom: 15px;
+  }
+  .mobile-logo { width: 50px; height: auto; }
+  
+  .mobile-title {
+    height: 24px; width: auto; margin-bottom: 8px;
+    filter: brightness(0) invert(1); /* Turns black title WHITE */
+  }
+  
+  .mobile-tagline {
+    color: #cbd5e1; font-size: 0.85rem; letter-spacing: 1px;
+    text-transform: uppercase; margin: 0; font-weight: 500;
+  }
+
+  /* 4. Transform Card to Glassmorphism (Dark Theme) */
+  .login-card {
+    background: rgba(255, 255, 255, 0.1); /* See-through */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    color: white; /* White text for dark bg */
+  }
+
+  /* 5. Update Inputs for Dark Theme */
+  .input-with-icon input {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+  .input-with-icon input::placeholder { color: rgba(255, 255, 255, 0.7); }
+  .input-icon { color: rgba(255, 255, 255, 0.9); }
+  .forgot-link { color: rgba(255, 255, 255, 0.7); }
+
+  /* 6. Button Glow */
+  .login-btn {
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  }
+
+  /* 7. Show Floating Shapes & Footer */
+  .mobile-footer { display: block; margin-top: 30px; color: rgba(255, 255, 255, 0.4); font-size: 0.75rem; }
+  
+  .floating-shape {
+    display: block; position: absolute; border-radius: 50%;
+    filter: blur(50px); opacity: 0.6; z-index: 0;
+  }
+  .shape-1 { width: 180px; height: 180px; background: #00bfa5; top: 10%; right: -20px; animation: float 6s infinite alternate; }
+  .shape-2 { width: 150px; height: 150px; background: #9b59b6; bottom: 10%; left: -20px; animation: float 8s infinite alternate-reverse; }
+
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes float { from { transform: translate(0,0); } to { transform: translate(20px, 20px); } }
 }
