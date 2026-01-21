@@ -23,6 +23,11 @@ const ParentDashboard = ({ user, onLogout }) => {
   // ✨ NEW: State for Mobile Sidebar Toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // ✨ NEW: State for Swipe Detection
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const minSwipeDistance = 50;
+
   useEffect(() => {
     if (currentUser?._id) fetchParentData();
   }, [currentUser]);
@@ -125,8 +130,43 @@ const ParentDashboard = ({ user, onLogout }) => {
     { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present), color: '#e2e8f0' } 
   ];
 
+  // ✨ LOGIC: Handle Swipe Gestures
+  const onTouchStart = (e) => {
+    setTouchEnd(null); // Reset end value
+    setTouchStart(e.targetTouches[0].clientX); // Record where finger landed
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX); // Track finger movement
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    // 1. Open Menu: Swipe Right (Left-to-Right)
+    // ONLY if starting near the left edge (0-100px) so we don't accidentally swipe charts
+    if (isRightSwipe && touchStart < 100) {
+      setIsSidebarOpen(true);
+    }
+
+    // 2. Close Menu: Swipe Left (Right-to-Left)
+    // If the menu is already open, swiping left anywhere should close it
+    if (isLeftSwipe && isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+  };
+
   return (
-    <div className="parent-container">
+    <div
+      className="parent-container"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* ✨ NEW: Mobile Overlay (Dark background when menu is open) */}
       <div
         className={`mobile-overlay ${isSidebarOpen ? "open" : ""}`}
@@ -245,7 +285,12 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
 
               <div className="info-card attendance-card">
-                <h3>📅 Attendance</h3>
+                <h3
+                  onClick={() => setActiveTab("attendance")}
+                  className="clickable-heading"
+                >
+                  📅 Attendance
+                </h3>
                 <div
                   style={{
                     width: "100%",
@@ -309,7 +354,12 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
 
               <div className="info-card report-preview-card">
-                <h3>📝 Latest Report</h3>
+                <h3
+                  onClick={() => setActiveTab("reports")}
+                  className="clickable-heading"
+                >
+                  📝 Latest Report
+                </h3>{" "}
                 {reports.length > 0 ? (
                   <div className="latest-report-box">
                     <div className="lrb-header">
@@ -345,7 +395,12 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
 
               <div className="info-card next-class-card">
-                <h3>🚀 Next Class</h3>
+                <h3
+                  onClick={() => setActiveTab("schedule")}
+                  className="clickable-heading"
+                >
+                  🚀 Next Class
+                </h3>{" "}
                 {assignedClass ? (
                   <div className="nc-details">
                     <div className="nc-row">
@@ -381,7 +436,12 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
 
               <div className="info-card fee-card">
-                <h3>💳 Fee Status</h3>
+                <h3
+                  onClick={() => setActiveTab("fees")}
+                  className="clickable-heading"
+                >
+                  💳 Fee Status
+                </h3>{" "}
                 <div className={`fee-status-badge ${getPaymentStatus().color}`}>
                   {getPaymentStatus().status}
                 </div>

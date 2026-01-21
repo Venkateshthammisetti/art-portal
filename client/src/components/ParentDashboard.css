@@ -1045,3 +1045,78 @@
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
+/* ========================================= */
+/* 🛠️ FIX: ATTENDANCE COLOR CLASH */
+/* ========================================= */
+
+/* This removes the unwanted "Paint Drop" background from the numbers */
+.as-val.green, 
+.as-val.red {
+  background-color: transparent !important; /* Removes the blocky color */
+  box-shadow: none !important;              /* Removes the glow/shadow */
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Ensure the text colors are still nice and sharp */
+.as-val.green {
+  color: #16a34a !important; /* Clean Green Text */
+}
+
+.as-val.red {
+  color: #dc2626 !important; /* Clean Red Text */
+}
+
+
+/* ========================================= */
+/* 🛠️ FIX: DASHBOARD OVERVIEW TEXT CLEANUP */
+/* ========================================= */
+
+/* Fixes the "Attended: 2 Classes" in the Overview Tab */
+.ad-row .green,
+.att-details-text .green {
+  background-color: transparent !important; /* Remove the green block */
+  box-shadow: none !important;              /* Remove the shadow/glow */
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: #16a34a !important; /* Keep the text distinct green */
+}
+
+/* Just in case you use red somewhere else in this section */
+.ad-row .red,
+.att-details-text .red {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: #dc2626 !important;
+}
+
+/* ========================================= */
+/* 🔗 CLICKABLE CARD HEADINGS */
+/* ========================================= */
+
+.clickable-heading {
+  cursor: pointer;
+  transition: color 0.2s ease;
+  display: flex;
+  justify-content: space-between; /* Pushes the arrow to the right */
+  align-items: center;
+}
+
+.clickable-heading:hover {
+  color: #2563eb !important; /* Changes to Blue on hover */
+  text-decoration: underline;
+}
+
+/* Optional: Make the arrow fade in on hover */
+.clickable-heading::after {
+  content: '↗'; /* Arrow icon */
+  font-size: 1rem;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.clickable-heading:hover::after {
+  opacity: 1;
+}
