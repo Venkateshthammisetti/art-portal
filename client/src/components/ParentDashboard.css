@@ -967,3 +967,81 @@
     font-size: 0.7rem; /* Smaller text inside badge */
   }
 }
+
+/* ========================================= */
+/* 🎨 ART LOADING ANIMATION */
+/* ========================================= */
+
+.art-loading-screen {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f8fafc; /* Light canvas background */
+  z-index: 2000; /* Ensure it sits on top of everything */
+}
+
+.paint-loader {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.paint-drop {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  animation: bounce 0.6s infinite alternate;
+}
+
+/* 🎨 The Art Colors */
+.red {
+  background-color: #ef4444; /* Bright Red */
+  animation-delay: 0s;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+}
+
+.yellow {
+  background-color: #f59e0b; /* Sunny Yellow */
+  animation-delay: 0.2s;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);
+}
+
+.blue {
+  background-color: #3b82f6; /* Royal Blue */
+  animation-delay: 0.4s;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+}
+
+.green {
+  background-color: #10b981; /* Fresh Green */
+  animation-delay: 0.6s;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+}
+
+.loading-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.1rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  animation: fadePulse 1.5s infinite;
+}
+
+/* ✨ ANIMATION KEYFRAMES */
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-25px); /* Jumps up */
+  }
+}
+
+@keyframes fadePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}

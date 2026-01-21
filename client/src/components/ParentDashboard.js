@@ -104,8 +104,20 @@ const ParentDashboard = ({ user, onLogout }) => {
     setIsSidebarOpen(false);
   };
 
-  if (loading) return <div className="loading-screen">Loading Portal...</div>;
-
+// ✨ REPLACING THE TEXT LOADER WITH ART ANIMATION
+  if (loading) {
+    return (
+      <div className="art-loading-screen">
+        <div className="paint-loader">
+          <div className="paint-drop red"></div>
+          <div className="paint-drop yellow"></div>
+          <div className="paint-drop blue"></div>
+          <div className="paint-drop green"></div>
+        </div>
+        <p className="loading-text">Curating your child's artistic journey...</p>
+      </div>
+    );
+  }
   const attStats = calculateAttendanceStats();
 
   const chartData = [
