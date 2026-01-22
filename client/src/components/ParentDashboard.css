@@ -32,30 +32,6 @@
   transition: transform 0.3s ease; /* For mobile animation */
   z-index: 1000;
 }
-.p-nav button {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  background: transparent; border: none; padding: 14px;
-  color: #94a3b8; font-weight: 600; cursor: pointer;
-  border-radius: 8px; transition: all 0.2s; text-align: left; font-size: 0.95rem;
-  /* ✨ FIX: Remove generic hover here */
-}
-
-.p-nav button.active { 
-  background: var(--p-primary); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); 
-}
-
-/* ✨ THE MAGIC FIX: Only apply hover if the device actually HAS a mouse */
-@media (hover: hover) {
-  .p-nav button:hover { 
-    background: #1e293b; 
-    color: white; 
-  }
-  
-  .clickable-heading:hover {
-    color: #2563eb !important;
-    text-decoration: underline;
-  }
-}
 
 .sidebar-header {
   display: flex;
@@ -78,6 +54,7 @@
   filter: brightness(0) invert(1);
 }
 
+/* SIDEBAR NAVIGATION BUTTONS */
 .p-nav button {
   width: 100%;
   display: flex;
@@ -93,16 +70,15 @@
   transition: all 0.2s;
   text-align: left;
   font-size: 0.95rem;
+  /* ✨ FIX: No hover styles here to prevent mobile double-tap */
 }
-.p-nav button:hover {
-  background: #1e293b;
-  color: white;
-}
+
 .p-nav button.active {
   background: var(--p-primary);
   color: white;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
+
 .sidebar-footer {
   margin-top: auto;
   font-size: 0.75rem;
@@ -188,7 +164,9 @@
   cursor: pointer;
   color: var(--p-text);
   margin-right: 15px;
+  -webkit-tap-highlight-color: transparent; /* Fixes grey tap box on mobile */
 }
+
 .mobile-overlay {
   display: none;
   position: fixed;
@@ -222,7 +200,6 @@
 
 .welcome-card {
   grid-column: span 3;
-  /* 👇 CHANGE THIS: Use the variable instead of fixed url */
   background-image: var(--desktop-bg); 
   background-size: cover;
   background-position: center;
@@ -401,10 +378,9 @@
   color: var(--p-text);
   cursor: pointer;
   transition: background 0.2s;
+  /* Hover removed here for mobile fix */
 }
-.mini-link-btn:hover {
-  background: #e2e8f0;
-}
+
 
 /* SCHEDULE VIEW */
 .class-detail-card {
@@ -500,10 +476,7 @@
   font-size: 0.85rem;
   color: var(--p-text);
   transition: background 0.2s;
-}
-.download-pdf-btn:hover {
-  background: #f1f5f9;
-  border-color: var(--p-text);
+  /* Hover removed here for mobile fix */
 }
 
 /* ATTENDANCE */
@@ -777,9 +750,41 @@
   background: #f1f5f9;
   color: #334155;
   border: 1px solid #cbd5e1;
+  /* Hover removed here for mobile fix */
 }
-.share-btn.copy:hover {
-  background: #e2e8f0;
+
+
+/* ========================================= */
+/* 🖱️ DESKTOP HOVER FIX (Prevents Mobile Double Tap) */
+/* ========================================= */
+@media (hover: hover) {
+  /* 1. Sidebar Links */
+  .p-nav button:hover {
+    background: #1e293b;
+    color: white;
+  }
+
+  /* 2. Clickable Headings */
+  .clickable-heading:hover {
+    color: #2563eb !important;
+    text-decoration: underline;
+  }
+
+  /* 3. Mini Buttons (Reports) */
+  .mini-link-btn:hover {
+    background: #e2e8f0;
+  }
+
+  /* 4. PDF Download Buttons */
+  .download-pdf-btn:hover {
+    background: #f1f5f9;
+    border-color: var(--p-text);
+  }
+
+  /* 5. Copy Button */
+  .share-btn.copy:hover {
+    background: #e2e8f0;
+  }
 }
 
 /* ========================================= */
@@ -850,8 +855,6 @@
     gap: 15px;
   }
 
- /* ... inside @media (max-width: 768px) { ... */
-
   .welcome-card {
     grid-column: span 1;
     display: flex;
@@ -859,7 +862,6 @@
     justify-content: flex-start; /* Align text to top */
     text-align: center;
     
-    /* 👇 MOBILE MAGIC STARTS HERE */
     background-image: var(--mobile-bg) !important; /* Switch to banner-001 */
     background-position: bottom center !important;   /* Stick image to bottom */
     background-size: 100% auto !important;           /* Fit width perfectly */
@@ -880,8 +882,6 @@
     margin-bottom: 10px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3); /* Adds readability */
   }
-
-  /* ... } end of media query */
 
   /* Attendance Stats Bar (Stack items) */
   .att-summary-bar {
@@ -1128,10 +1128,7 @@
   align-items: center;
 }
 
-.clickable-heading:hover {
-  color: #2563eb !important; /* Changes to Blue on hover */
-  text-decoration: underline;
-}
+/* Hover is now handled in the media query block above */
 
 /* Optional: Make the arrow fade in on hover */
 .clickable-heading::after {
@@ -1141,8 +1138,10 @@
   transition: opacity 0.2s;
 }
 
-.clickable-heading:hover::after {
-  opacity: 1;
+@media (hover: hover) {
+    .clickable-heading:hover::after {
+        opacity: 1;
+    }
 }
 
 /* ========================================= */
