@@ -11,26 +11,6 @@
   --p-border: #e2e8f0;
 }
 
-/* ========================================= */
-/* 🍎 iOS & MOBILE GLOBAL FIXES */
-/* ========================================= */
-button, 
-a, 
-input, 
-.clickable-heading, 
-.mobile-menu-btn,
-.logout-btn,
-.mini-link-btn,
-.download-pdf-btn,
-.share-btn {
-  /* Tells iOS: "Don't wait for zoom, just click!" */
-  touch-action: manipulation; 
-  /* Removes the grey highlight box when tapping on mobile */
-  -webkit-tap-highlight-color: transparent; 
-  /* Ensure element is recognized as clickable */
-  cursor: pointer;
-}
-
 .parent-container {
   display: flex;
   height: 100vh;
@@ -40,9 +20,7 @@ input,
   overflow: hidden; /* Prevents double scrolling */
 }
 
-/* ========================================= */
 /* SIDEBAR */
-/* ========================================= */
 .parent-sidebar {
   width: 260px;
   background: var(--p-sidebar-bg);
@@ -51,7 +29,7 @@ input,
   padding: 25px;
   color: #94a3b8;
   flex-shrink: 0;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease; /* For mobile animation */
   z-index: 1000;
 }
 
@@ -77,7 +55,6 @@ input,
 }
 
 /* SIDEBAR NAVIGATION BUTTONS */
-/* ✨ NOTE: No hover styles here to prevent mobile double-tap */
 .p-nav button {
   width: 100%;
   display: flex;
@@ -93,6 +70,7 @@ input,
   transition: all 0.2s;
   text-align: left;
   font-size: 0.95rem;
+  /* ✨ FIX: No hover styles here to prevent mobile double-tap */
 }
 
 .p-nav button.active {
@@ -108,9 +86,7 @@ input,
   opacity: 0.5;
 }
 
-/* ========================================= */
 /* MAIN AREA */
-/* ========================================= */
 .parent-main {
   flex: 1;
   display: flex;
@@ -188,6 +164,7 @@ input,
   cursor: pointer;
   color: var(--p-text);
   margin-right: 15px;
+  -webkit-tap-highlight-color: transparent; /* Fixes grey tap box on mobile */
 }
 
 .mobile-overlay {
@@ -401,7 +378,7 @@ input,
   color: var(--p-text);
   cursor: pointer;
   transition: background 0.2s;
-  /* ✨ Hover removed here for mobile fix */
+  /* Hover removed here for mobile fix */
 }
 
 
@@ -499,7 +476,7 @@ input,
   font-size: 0.85rem;
   color: var(--p-text);
   transition: background 0.2s;
-  /* ✨ Hover removed here for mobile fix */
+  /* Hover removed here for mobile fix */
 }
 
 /* ATTENDANCE */
@@ -773,15 +750,14 @@ input,
   background: #f1f5f9;
   color: #334155;
   border: 1px solid #cbd5e1;
-  /* ✨ Hover removed here for mobile fix */
+  /* Hover removed here for mobile fix */
 }
 
 
 /* ========================================= */
 /* 🖱️ DESKTOP HOVER FIX (Prevents Mobile Double Tap) */
 /* ========================================= */
-/* Only show hover effects if user has a mouse (pointer: fine) */
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) {
   /* 1. Sidebar Links */
   .p-nav button:hover {
     background: #1e293b;
@@ -793,31 +769,21 @@ input,
     color: #2563eb !important;
     text-decoration: underline;
   }
-  
-  /* 3. Clickable Heading Arrow */
-  .clickable-heading:hover::after {
-     opacity: 1;
-  }
 
-  /* 4. Mini Buttons (Reports) */
+  /* 3. Mini Buttons (Reports) */
   .mini-link-btn:hover {
     background: #e2e8f0;
   }
 
-  /* 5. PDF Download Buttons */
+  /* 4. PDF Download Buttons */
   .download-pdf-btn:hover {
     background: #f1f5f9;
     border-color: var(--p-text);
   }
 
-  /* 6. Copy Button */
+  /* 5. Copy Button */
   .share-btn.copy:hover {
     background: #e2e8f0;
-  }
-  
-  /* 7. Logout Button */
-  .logout-btn:hover {
-    background: #fecaca;
   }
 }
 
@@ -1162,7 +1128,9 @@ input,
   align-items: center;
 }
 
-/* Optional: Make the arrow fade in on hover (Handled in media query now) */
+/* Hover is now handled in the media query block above */
+
+/* Optional: Make the arrow fade in on hover */
 .clickable-heading::after {
    /* Arrow icon */
   font-size: 1rem;
@@ -1170,6 +1138,11 @@ input,
   transition: opacity 0.2s;
 }
 
+@media (hover: hover) {
+    .clickable-heading:hover::after {
+        opacity: 1;
+    }
+}
 
 /* ========================================= */
 /* 🚪 LOGOUT MODAL STYLES */
