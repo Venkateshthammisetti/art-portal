@@ -32,6 +32,30 @@
   transition: transform 0.3s ease; /* For mobile animation */
   z-index: 1000;
 }
+.p-nav button {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  background: transparent; border: none; padding: 14px;
+  color: #94a3b8; font-weight: 600; cursor: pointer;
+  border-radius: 8px; transition: all 0.2s; text-align: left; font-size: 0.95rem;
+  /* ✨ FIX: Remove generic hover here */
+}
+
+.p-nav button.active { 
+  background: var(--p-primary); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); 
+}
+
+/* ✨ THE MAGIC FIX: Only apply hover if the device actually HAS a mouse */
+@media (hover: hover) {
+  .p-nav button:hover { 
+    background: #1e293b; 
+    color: white; 
+  }
+  
+  .clickable-heading:hover {
+    color: #2563eb !important;
+    text-decoration: underline;
+  }
+}
 
 .sidebar-header {
   display: flex;
@@ -1119,4 +1143,90 @@
 
 .clickable-heading:hover::after {
   opacity: 1;
+}
+
+/* ========================================= */
+/* 🚪 LOGOUT MODAL STYLES */
+/* ========================================= */
+
+/* The Dark Background Overlay */
+.logout-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000; /* On top of everything */
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* The White Box */
+.logout-modal {
+  background: white;
+  width: 90%;
+  max-width: 320px;
+  padding: 25px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  transform: scale(0.95);
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Text Styles */
+.lm-title {
+  margin: 0 0 10px 0;
+  color: #1e293b;
+  font-size: 1.2rem;
+}
+
+.lm-text {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin-bottom: 25px;
+}
+
+/* Button Container */
+.lm-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+/* Buttons */
+.lm-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.lm-btn.cancel {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.lm-btn.confirm {
+  background: #dc2626;
+  color: white;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }

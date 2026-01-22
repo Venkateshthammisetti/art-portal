@@ -23,8 +23,11 @@ const ParentDashboard = ({ user, onLogout }) => {
   // ✨ NEW: State for Mobile Sidebar Toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // ✨ NEW: State for Swipe Detection
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+ // ✨ UPDATED: Swipe State (Track Y axis too to fix scrolling issues)
   const [touchStart, setTouchStart] = useState(null);
+  const [touchEndY, setTouchEndY] = useState(null); // To detect scrolling
   const [touchEnd, setTouchEnd] = useState(null);
   const minSwipeDistance = 50;
 
@@ -132,33 +135,48 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   // ✨ LOGIC: Handle Swipe Gestures
   const onTouchStart = (e) => {
-    setTouchEnd(null); // Reset end value
-    setTouchStart(e.targetTouches[0].clientX); // Record where finger landed
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY); // Capture starting Y
   };
 
   const onTouchMove = (e) => {
     setTouchEnd(e.targetTouches[0].clientX); // Track finger movement
   };
 
-  const onTouchEnd = () => {
+  const onTouchEnd = (e) => {
     if (!touchStart || !touchEnd) return;
     
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    const distanceX = touchStart - touchEnd;
+    const isLeftSwipe = distanceX > minSwipeDistance;
+    const isRightSwipe = distanceX < -minSwipeDistance;
 
-    // 1. Open Menu: Swipe Right (Left-to-Right)
-    // ONLY if starting near the left edge (0-100px) so we don't accidentally swipe charts
+    // ✨ FIX: If user is swiping up/down (scrolling), ignore side swipes
+    // This prevents the menu from jumping while reading
+    const endY = e.changedTouches[0].clientY;
+    const distanceY = Math.abs(touchEndY - endY);
+    if (distanceY > 50) return; // It's a scroll, not a swipe
+
     if (isRightSwipe && touchStart < 100) {
       setIsSidebarOpen(true);
     }
 
-    // 2. Close Menu: Swipe Left (Right-to-Left)
-    // If the menu is already open, swiping left anywhere should close it
     if (isLeftSwipe && isSidebarOpen) {
       setIsSidebarOpen(false);
     }
   };
+
+  // const handleLogoutClick = () => {
+  //   if (logoutConfirm) {
+  //     // Second tap: Actually logout
+  //     onLogout();
+  //   } else {
+  //     // First tap: Show confirmation
+  //     setLogoutConfirm(true);
+  //     // Reset after 3 seconds if they don't tap again
+  //     setTimeout(() => setLogoutConfirm(false), 3000);
+  //   }
+  // };
 
   return (
     <div
@@ -254,7 +272,7 @@ const ParentDashboard = ({ user, onLogout }) => {
               <div className="avatar">{currentUser.fullName?.charAt(0)}</div>
             </div>
             {/* Shortened Logout for mobile */}
-            <button className="logout-btn" onClick={onLogout}>
+            <button className="logout-btn" onClick={() => setShowLogoutModal(true)}>
               <span className="desktop-text">Logout</span>
               <span className="mobile-icon">⏻</span>
             </button>
@@ -751,6 +769,22 @@ const ParentDashboard = ({ user, onLogout }) => {
           )}
         </div>
       </main>
+      {showLogoutModal && (
+        <div className="logout-modal-overlay">
+          <div className="logout-modal">
+            <h3 className="lm-title">Confirm Logout</h3>
+            <p className="lm-text">Are you sure you want to exit?</p>
+            <div className="lm-actions">
+              <button className="lm-btn cancel" onClick={() => setShowLogoutModal(false)}>
+                Cancel
+              </button>
+              <button className="lm-btn confirm" onClick={onLogout}>
+                Yes, Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
