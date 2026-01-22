@@ -11,6 +11,26 @@
   --p-border: #e2e8f0;
 }
 
+/* ========================================= */
+/* 🍎 iOS & MOBILE GLOBAL FIXES */
+/* ========================================= */
+button, 
+a, 
+input, 
+.clickable-heading, 
+.mobile-menu-btn,
+.logout-btn,
+.mini-link-btn,
+.download-pdf-btn,
+.share-btn {
+  /* Tells iOS: "Don't wait for zoom, just click!" */
+  touch-action: manipulation; 
+  /* Removes the grey highlight box when tapping on mobile */
+  -webkit-tap-highlight-color: transparent; 
+  /* Ensure element is recognized as clickable */
+  cursor: pointer;
+}
+
 .parent-container {
   display: flex;
   height: 100vh;
@@ -20,7 +40,9 @@
   overflow: hidden; /* Prevents double scrolling */
 }
 
+/* ========================================= */
 /* SIDEBAR */
+/* ========================================= */
 .parent-sidebar {
   width: 260px;
   background: var(--p-sidebar-bg);
@@ -29,7 +51,7 @@
   padding: 25px;
   color: #94a3b8;
   flex-shrink: 0;
-  transition: transform 0.3s ease; /* For mobile animation */
+  transition: transform 0.3s ease;
   z-index: 1000;
 }
 
@@ -55,6 +77,7 @@
 }
 
 /* SIDEBAR NAVIGATION BUTTONS */
+/* ✨ NOTE: No hover styles here to prevent mobile double-tap */
 .p-nav button {
   width: 100%;
   display: flex;
@@ -70,7 +93,6 @@
   transition: all 0.2s;
   text-align: left;
   font-size: 0.95rem;
-  /* ✨ FIX: No hover styles here to prevent mobile double-tap */
 }
 
 .p-nav button.active {
@@ -86,7 +108,9 @@
   opacity: 0.5;
 }
 
+/* ========================================= */
 /* MAIN AREA */
+/* ========================================= */
 .parent-main {
   flex: 1;
   display: flex;
@@ -164,7 +188,6 @@
   cursor: pointer;
   color: var(--p-text);
   margin-right: 15px;
-  -webkit-tap-highlight-color: transparent; /* Fixes grey tap box on mobile */
 }
 
 .mobile-overlay {
@@ -378,7 +401,7 @@
   color: var(--p-text);
   cursor: pointer;
   transition: background 0.2s;
-  /* Hover removed here for mobile fix */
+  /* ✨ Hover removed here for mobile fix */
 }
 
 
@@ -476,7 +499,7 @@
   font-size: 0.85rem;
   color: var(--p-text);
   transition: background 0.2s;
-  /* Hover removed here for mobile fix */
+  /* ✨ Hover removed here for mobile fix */
 }
 
 /* ATTENDANCE */
@@ -750,14 +773,15 @@
   background: #f1f5f9;
   color: #334155;
   border: 1px solid #cbd5e1;
-  /* Hover removed here for mobile fix */
+  /* ✨ Hover removed here for mobile fix */
 }
 
 
 /* ========================================= */
 /* 🖱️ DESKTOP HOVER FIX (Prevents Mobile Double Tap) */
 /* ========================================= */
-@media (hover: hover) {
+/* Only show hover effects if user has a mouse (pointer: fine) */
+@media (hover: hover) and (pointer: fine) {
   /* 1. Sidebar Links */
   .p-nav button:hover {
     background: #1e293b;
@@ -769,21 +793,31 @@
     color: #2563eb !important;
     text-decoration: underline;
   }
+  
+  /* 3. Clickable Heading Arrow */
+  .clickable-heading:hover::after {
+     opacity: 1;
+  }
 
-  /* 3. Mini Buttons (Reports) */
+  /* 4. Mini Buttons (Reports) */
   .mini-link-btn:hover {
     background: #e2e8f0;
   }
 
-  /* 4. PDF Download Buttons */
+  /* 5. PDF Download Buttons */
   .download-pdf-btn:hover {
     background: #f1f5f9;
     border-color: var(--p-text);
   }
 
-  /* 5. Copy Button */
+  /* 6. Copy Button */
   .share-btn.copy:hover {
     background: #e2e8f0;
+  }
+  
+  /* 7. Logout Button */
+  .logout-btn:hover {
+    background: #fecaca;
   }
 }
 
@@ -1128,9 +1162,7 @@
   align-items: center;
 }
 
-/* Hover is now handled in the media query block above */
-
-/* Optional: Make the arrow fade in on hover */
+/* Optional: Make the arrow fade in on hover (Handled in media query now) */
 .clickable-heading::after {
    /* Arrow icon */
   font-size: 1rem;
@@ -1138,11 +1170,6 @@
   transition: opacity 0.2s;
 }
 
-@media (hover: hover) {
-    .clickable-heading:hover::after {
-        opacity: 1;
-    }
-}
 
 /* ========================================= */
 /* 🚪 LOGOUT MODAL STYLES */
