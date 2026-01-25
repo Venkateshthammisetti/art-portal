@@ -20,7 +20,7 @@ body.dark {
   --p-sidebar-bg: #020617;
   --p-bg: #0f172a;
   --p-card: #1e293b;
-  --p-text: #f8fafc; /* Almost white text */
+  --p-text: #f8fafc;
   --p-muted: #94a3b8;
   --p-border: #334155;
   --p-nav-bg: #1e293b;
@@ -28,7 +28,12 @@ body.dark {
   --p-button-bg: #334155;
 }
 
-/* Apply variables to container */
+/* GLOBAL RESET & CONTAINER */
+* { -webkit-tap-highlight-color: transparent; }
+button, a, input, .clickable-heading, .mobile-menu-btn, .logout-btn, .nav-item {
+  touch-action: manipulation; cursor: pointer;
+}
+
 .parent-container {
   display: flex;
   height: 100vh;
@@ -40,16 +45,15 @@ body.dark {
 }
 
 /* ========================================= */
-/* 🍎 iOS & MOBILE GLOBAL FIXES */
+/* 🖥️ DESKTOP STYLES (Default) */
 /* ========================================= */
-* { -webkit-tap-highlight-color: transparent; }
-button, a, input, .clickable-heading, .mobile-menu-btn, .logout-btn, .nav-item {
-  touch-action: manipulation; cursor: pointer;
-}
 
-/* ========================================= */
-/* SIDEBAR (Desktop Only) */
-/* ========================================= */
+/* 1. HIDE MOBILE ELEMENTS ON DESKTOP */
+.mobile-bottom-nav { display: none !important; }
+.mobile-icon { display: none !important; }
+.mobile-menu-btn { display: none !important; }
+
+/* 2. SIDEBAR (Visible on Desktop) */
 .parent-sidebar {
   width: 260px; background: var(--p-sidebar-bg); display: flex; flex-direction: column;
   padding: 25px; color: #94a3b8; flex-shrink: 0; z-index: 1000;
@@ -65,9 +69,7 @@ button, a, input, .clickable-heading, .mobile-menu-btn, .logout-btn, .nav-item {
 .p-nav button.active { background: var(--p-primary); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
 .sidebar-footer { margin-top: auto; font-size: 0.75rem; text-align: center; opacity: 0.5; }
 
-/* ========================================= */
-/* MAIN AREA */
-/* ========================================= */
+/* 3. HEADER & LOGOUT BUTTON (Desktop) */
 .parent-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; width: 100%; }
 .p-header {
   height: 70px; background: var(--p-card); border-bottom: 1px solid var(--p-border);
@@ -85,7 +87,7 @@ body.dark .role-badge { background: #1e293b; border-color: #334155; }
 .header-profile { display: flex; align-items: center; gap: 10px; margin-right: 10px; cursor: pointer; }
 .header-profile .avatar {
   width: 38px; height: 38px; background: #e2e8f0; border-radius: 50%;
-  display: grid; place-items: center; font-weight: 700; color: #0f172a; /* Always dark text inside avatar */
+  display: grid; place-items: center; font-weight: 700; color: #0f172a; 
   transition: background 0.2s;
 }
 .header-profile:active .avatar { background: #cbd5e1; }
@@ -97,6 +99,7 @@ body.dark .role-badge { background: #1e293b; border-color: #334155; }
   height: 38px;
 }
 body.dark .logout-btn { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+.desktop-text { display: inline-block; }
 
 /* DROPDOWN MENU */
 .profile-dropdown {
@@ -269,7 +272,7 @@ body.dark .logout-btn { background: #450a0a; border-color: #7f1d1d; color: #fca5
 body.dark .inst-logo-img {
   background: #ffffff; /* 1. Force background white */
   border-color: #ffffff; /* 1. Force border white */
-  /* 2. Invert everything -> Bg becomes black, Logo becomes white */
+   /* 2. Invert everything -> Bg becomes black, Logo becomes white */
 }
 
 .inst-title-img { display: block; margin: 10px auto; max-width: 80%; height: auto; object-fit: contain; }
@@ -305,22 +308,35 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
 }
 
 /* ========================================= */
-/* ✨ HIDE MOBILE NAV ON DESKTOP */
+/* 💻 TABLET & SMALL LAPTOP (iPad Landscape) */
 /* ========================================= */
-.mobile-bottom-nav { 
-  display: none !important; 
-}
-.mobile-icon { 
-  display: none !important; 
-}
-.desktop-text {
-  display: inline-block;
+/* ✨ NEW: iPad Optimization (768px - 1200px) */
+@media (min-width: 768px) and (max-width: 1200px) {
+  /* 1. Grid Adjustment (2 Columns instead of 3) */
+  .overview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* 2. Welcome Card Width */
+  .welcome-card {
+    grid-column: span 2;
+  }
+  
+  /* 3. Stack Referral Cards on smaller tablets */
+  .referral-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* 4. Ensure Sidebar is Visible */
+  .parent-sidebar { display: flex !important; }
+  .mobile-bottom-nav { display: none !important; }
 }
 
 /* ========================================= */
-/* 📱 MOBILE RESPONSIVENESS (Max Width 768px) */
+/* 📱 MOBILE RESPONSIVENESS (Below 768px) */
 /* ========================================= */
-@media (max-width: 768px) {
+/* ✨ CHANGED: Use 767px so 768px (iPad) uses Desktop style */
+@media (max-width: 767px) {
   /* HIDE DESKTOP ELEMENTS */
   .parent-sidebar { display: none; }
   .desktop-only { display: none; }
