@@ -71,7 +71,7 @@ const Login = ({ onLogin, error }) => {
 
           {/* ✨ 2. DESKTOP WELCOME HEADER (Hidden on Mobile) */}
           <div className="welcome-header desktop-only">
-            <h2>Welcome, Parents! 👋</h2>
+            <h2>Welcome, Parent! 👋</h2>
             <p>Log in to track your child's artistic journey.</p>
           </div>
 

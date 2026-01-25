@@ -271,7 +271,10 @@ const ParentDashboard = ({ user, onLogout }) => {
             <div className="overview-grid">
               <div className="welcome-card" style={{ '--desktop-bg': `url(${bannerImg})`, '--mobile-bg': `url(${bannerMobile})` }}>
                 <div className="wc-text">
-                  <h1>Hello, {currentUser.fullName}!</h1>
+                  <h1>
+                  Hello, {currentUser.fullName.charAt(0).toUpperCase() + currentUser.fullName.slice(1).toLowerCase()}!
+                </h1>
+
                   <p>Here is a quick summary of your child <strong>{currentUser.childName}'s</strong> progress at Thevenkyart Art Academy.</p>
                 </div>
               </div>
