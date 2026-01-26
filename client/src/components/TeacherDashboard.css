@@ -897,3 +897,69 @@
   margin: 0;
   color: #334155;
 }
+
+/* History Actions Container */
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* View PDF Button (Existing - Ensure it shares style) */
+.view-pdf-link {
+  flex: 1;
+  text-align: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+}
+
+/* ✨ New Edit Button */
+.edit-feedback-btn {
+  flex: 0 0 auto; /* Don't grow */
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-feedback-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+/* Edit Form Styling */
+.edit-form-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.edit-form-wrapper label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #334155;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.edit-form-wrapper textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  resize: vertical;
+}
