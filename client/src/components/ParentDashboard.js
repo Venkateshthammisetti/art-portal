@@ -8,7 +8,6 @@ import logoImg from './new-logo.png';
 import titleImg from './logo-title-copy.png';
 import bannerImg from './banner4.png';
 import bannerMobile from './banner-001.png';
-// ✨ Make sure you have this image in your src folder
 import qrCodeImg from './qrcode.jpeg'; 
 
 const ParentDashboard = ({ user, onLogout }) => {
@@ -23,13 +22,14 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [attendanceMonth, setAttendanceMonth] = useState(new Date().toISOString().slice(0, 7));
   const [copyFeedback, setCopyFeedback] = useState("Copy Link");
   
-  // ✨ NEW: Modal States for Fees
+  // Modal States
   const [showFeeReminder, setShowFeeReminder] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  
-  // Modals & Menus
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  
+  // Toast State
+  const [showToast, setShowToast] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState(localStorage.getItem('appTheme') || 'light');
@@ -48,11 +48,10 @@ const ParentDashboard = ({ user, onLogout }) => {
     localStorage.setItem('appTheme', theme); 
   }, [theme]);
 
-  // ✨ NEW: Check Fee Status for CURRENT MONTH when profile loads
+  // Check Fee Status for CURRENT MONTH
   useEffect(() => {
     if (studentProfile) {
       const statusObj = getPaymentStatus();
-      // If status is Pending (current month not paid), show modal
       if (statusObj.status === 'Pending') {
         setShowFeeReminder(true);
       }
@@ -150,44 +149,59 @@ const ParentDashboard = ({ user, onLogout }) => {
     setAttendanceMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   };
 
-  // ✨ UPDATED: Logic to check if CURRENT MONTH is paid
   const getPaymentStatus = () => {
     const today = new Date();
-    // Format: YYYY-MM (e.g., 2026-01)
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
-    // Check if there is a payment record for the current month
     const hasPaidCurrentMonth = studentProfile?.payments?.some(p => p.month === currentMonthStr && p.status === 'Paid');
-
-    if (hasPaidCurrentMonth) {
-      return { status: 'Paid', color: 'green' };
-    } else {
-      return { status: 'Pending', color: 'red' };
-    }
+    if (hasPaidCurrentMonth) { return { status: 'Paid', color: 'green' }; } 
+    else { return { status: 'Pending', color: 'red' }; }
   };
 
-  // ✨ NEW: Generate List that includes "Pending" if current month is missing
+  // Generate Fee List (Includes "Pending" if current month missing)
   const getFeeList = () => {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
-    // Copy existing list or empty array
     let paymentsList = studentProfile?.payments ? [...studentProfile.payments] : [];
-
-    // Check if current month exists
     const hasCurrentMonthRecord = paymentsList.some(p => p.month === currentMonthStr);
-
+    
     if (!hasCurrentMonthRecord) {
-      // Add visual "Pending" row for this month
       paymentsList.push({
         month: currentMonthStr,
         amount: studentProfile?.monthlyFee || "---",
         status: 'Pending'
       });
     }
-
-    // Sort descending (Newest month first)
     return paymentsList.sort((a, b) => b.month.localeCompare(a.month));
+  };
+
+  // ✨ Helper: Calculate Total Pending Amount
+  const calculateTotalPending = (list) => {
+    return list
+      .filter(item => item.status === 'Pending')
+      .reduce((sum, item) => {
+        // Handle "---" or string numbers
+        const val = parseFloat(item.amount);
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+  };
+
+  const handleCopyPaymentDetails = () => {
+    const details = `
+*Payment Details for Thevenkyart Art Academy*
+---------------------------
+*Name:* Venkatesh Tammisetti
+*PhonePe:* +91 9963613404
+*UPI ID:* 9963613404@ybl
+---------------------------
+*Bank:* State Bank of India Bank
+*Account No:* 35360947257
+*IFSC:* SBIN0001424
+---------------------------
+Please share a screenshot after payment.
+    `;
+    navigator.clipboard.writeText(details.trim());
+    setShowToast(true);
+    setTimeout(() => { setShowToast(false); }, 3000);
   };
 
   const handleShare = (method) => {
@@ -206,7 +220,6 @@ const ParentDashboard = ({ user, onLogout }) => {
   const onTouchMove = (e) => { touchEnd.current = e.targetTouches[0].clientX; };
   const onTouchEnd = (e) => { if (!touchStart.current || !touchEnd.current) return; if (Math.abs(touchEndY.current - e.changedTouches[0].clientY) > 50) return; };
 
-  // Helper functions for new Modals
   const closeFeeReminder = () => setShowFeeReminder(false);
   const goToFees = () => { setShowFeeReminder(false); handleNavClick('fees'); };
 
@@ -220,7 +233,10 @@ const ParentDashboard = ({ user, onLogout }) => {
   }
 
   const attStats = calculateAttendanceStats();
-  const feeList = getFeeList(); // ✨ Get the smart fee list
+  const feeList = getFeeList(); 
+  // ✨ Calculate Pending Amount
+  const totalPendingAmount = calculateTotalPending(feeList);
+
   const chartData = [ { name: 'Attended', value: attStats.present, color: '#2563eb' }, { name: 'Absent', value: attStats.absent, color: '#ef4444' }, { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present - attStats.absent), color: '#e2e8f0' } ];
 
   return (
@@ -251,9 +267,9 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <div className="pd-refer-box"><span>Your Referral Code</span><code>{currentUser.username}</code></div>
                 <button className="pd-menu-btn theme-toggle" onClick={toggleTheme}>{theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}</button>
                 <button className="pd-menu-btn" onClick={() => handleNavClick('refer')}>📣 Refer & Support</button>
+                <button className="pd-menu-btn logout" onClick={() => { setShowLogoutModal(true); setShowProfileMenu(false); }}>🚪 Logout</button>
               </div>
             )}
-            <button className="logout-btn" onClick={() => setShowLogoutModal(true)}><span className="desktop-text">Logout</span><span className="mobile-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></span></button>
           </div>
         </header>
 
@@ -289,7 +305,6 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
               <div className="info-card fee-card">
                 <h3 onClick={() => handleNavClick('fees')} className="clickable-heading">💳 Fee Status</h3>
-                {/* ✨ UPDATED: Use logic for badge color */}
                 <div className={`fee-status-badge ${getPaymentStatus().color}`}>{getPaymentStatus().status}</div>
                 <p className="fee-note">{getPaymentStatus().status === "Paid" ? "All caught up!" : "Please clear dues."}</p>
               </div>
@@ -346,22 +361,27 @@ const ParentDashboard = ({ user, onLogout }) => {
             </div>
           )}
 
-          {/* 5. FEES - UPDATED TABLE LOGIC */}
           {activeTab === "fees" && (
             <div className="fees-view">
-              {/* ✨ Pay Now Button Header */}
               <div className="fees-header-bar">
                 <h3>Fee History</h3>
-                <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>
-                  💳 Pay Now
-                </button>
+                {/* ✨ UPDATED: Added Fee Actions Container */}
+                <div className="fee-actions">
+                  {totalPendingAmount > 0 && (
+                    <span className="pending-amount-text">
+                      Total fee due: ₹{totalPendingAmount}
+                    </span>
+                  )}
+                  <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>
+                    💳 Pay Now
+                  </button>
+                </div>
               </div>
 
               <div className="fee-table-wrapper">
                 <table className="fee-table">
                   <thead><tr><th>Month</th><th>Amount</th><th>Status</th></tr></thead>
                   <tbody>
-                    {/* ✨ Map over generated feeList (includes Pending) */}
                     {feeList.map((pay, idx) => (
                       <tr key={idx}>
                         <td>{formatFullMonthDate(pay.month)}</td>
@@ -412,7 +432,6 @@ const ParentDashboard = ({ user, onLogout }) => {
         <button className={activeTab === 'fees' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('fees')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></button>
       </nav>
 
-      {/* ✨ 1. LOGOUT MODAL */}
       {showLogoutModal && (
         <div className="logout-modal-overlay">
           <div className="logout-modal">
@@ -426,7 +445,6 @@ const ParentDashboard = ({ user, onLogout }) => {
         </div>
       )}
 
-      {/* ✨ 2. FEE REMINDER MODAL */}
       {showFeeReminder && (
         <div className="logout-modal-overlay">
           <div className="logout-modal fee-modal-alert">
@@ -438,7 +456,6 @@ const ParentDashboard = ({ user, onLogout }) => {
         </div>
       )}
 
-      {/* ✨ 3. PAYMENT DETAILS MODAL */}
       {showPaymentModal && (
         <div className="logout-modal-overlay">
           <div className="payment-modal">
@@ -452,17 +469,28 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <p>Scan to Pay via Any UPI App</p>
               </div>
               <div className="details-section">
-                <div className="ds-row"><span className="ds-label">Name</span><span className="ds-val">Thevenkyart Art Academy</span></div>
+                <div className="ds-row"><span className="ds-label">Name</span><span className="ds-val">Venkatesh Tammisetti</span></div>
                 <div className="ds-row"><span className="ds-label">PhonePe</span><span className="ds-val">+91 9963613404</span></div>
                 <div className="ds-row"><span className="ds-label">UPI ID</span><span className="ds-val">9963613404@ybl</span></div>
                 <div className="divider"></div>
-                <div className="ds-row"><span className="ds-label">Bank Name</span><span className="ds-val">HDFC Bank</span></div>
-                <div className="ds-row"><span className="ds-label">Account No</span><span className="ds-val">50100XXXXXXX</span></div>
-                <div className="ds-row"><span className="ds-label">IFSC Code</span><span className="ds-val">HDFC0000XXX</span></div>
+                <div className="ds-row"><span className="ds-label">Bank Name</span><span className="ds-val">State Bank of India Bank</span></div>
+                <div className="ds-row"><span className="ds-label">Account No</span><span className="ds-val">35360947257</span></div>
+                <div className="ds-row"><span className="ds-label">IFSC Code</span><span className="ds-val">SBIN0001424</span></div>
               </div>
             </div>
-            <div className="pm-footer"><p>After payment, please share a screenshot on WhatsApp.</p></div>
+            <div className="pm-footer">
+              <p>After payment, please share a screenshot on WhatsApp.</p>
+              <button className="copy-details-btn" onClick={handleCopyPaymentDetails}>
+                📋 Copy Details to Share
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {showToast && (
+        <div className="fee-toast-message">
+          Payment details copied! ✅
         </div>
       )}
 
