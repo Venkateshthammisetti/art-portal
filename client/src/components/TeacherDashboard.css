@@ -875,3 +875,25 @@
 .h-sentiment.blue { background: #dbeafe; color: #1e40af; }
 .h-sentiment.orange { background: #ffedd5; color: #9a3412; }
 .h-sentiment.red { background: #fee2e2; color: #991b1b; }
+
+/* Parent Reply in Teacher Dashboard */
+.teacher-reply-view {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #f8fafc;
+  border-left: 3px solid #3b82f6;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.9rem;
+}
+
+.teacher-reply-view strong {
+  display: block;
+  color: #1e40af;
+  font-size: 0.8rem;
+  margin-bottom: 2px;
+}
+
+.teacher-reply-view p {
+  margin: 0;
+  color: #334155;
+}
