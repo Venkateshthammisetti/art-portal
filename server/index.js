@@ -350,6 +350,32 @@ app.get('/api/attendance/student/:studentId', async (req, res) => {
   }
 });
 
+// ✨ 4. EDIT FEEDBACK (Update PDF or Text)
+app.put('/api/feedback/:id', upload.single('report'), async (req, res) => {
+  try {
+    const { feedbackText, rating } = req.body;
+    
+    // Find the existing feedback
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback) return res.status(404).json({ message: "Feedback not found" });
+
+    // Update text fields
+    if (feedbackText) feedback.feedbackText = feedbackText;
+    if (rating) feedback.rating = rating;
+
+    // ✨ If a new file is uploaded, replace the old path
+    if (req.file) {
+      feedback.reportFile = req.file.path;
+    }
+
+    await feedback.save();
+    res.json({ success: true, message: "Report updated successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error updating feedback" });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

@@ -24,11 +24,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [visibleColumns, setVisibleColumns] = useState({ name: true, id: true, className: true, gender: true, phone: true });
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
 
-  // Modal
+  // Modals (Class Detail & Edit Feedback)
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modalData, setModalData] = useState(null); 
   const [editingLink, setEditingLink] = useState('');
   const [isLinkInputVisible, setIsLinkInputVisible] = useState(false);
+  
+  // ✨ NEW: Edit Feedback State
+  const [editFeedbackData, setEditFeedbackData] = useState(null); // Holds the report being edited
 
   // Attendance
   const [attendanceView, setAttendanceView] = useState('daily'); 
@@ -44,7 +47,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [isClassScheduled, setIsClassScheduled] = useState(true);
   const [forceExtraSession, setForceExtraSession] = useState(false);
 
-  // Feedback State
+  // Feedback Form State
   const [feedbackStudent, setFeedbackStudent] = useState('');
   const [feedbackMonth, setFeedbackMonth] = useState(new Date().toISOString().slice(0, 7));
   const [feedbackText, setFeedbackText] = useState('');
@@ -90,19 +93,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
     } catch (err) { console.error(err); }
   };
 
-  // --- FETCH FEEDBACK HISTORY (Pure API) ---
+  // --- FETCH FEEDBACK HISTORY ---
   useEffect(() => {
-    if (activeTab === 'feedback') {
-      const fetchHistory = async () => {
-        try {
-          // ✨ Fetch history directly from API (which includes parent comments now)
-          const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
-          setFeedbackHistory(res.data);
-        } catch (err) { console.error(err); }
-      };
-      fetchHistory();
-    }
+    if (activeTab === 'feedback') fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, historyMonth, currentUser._id]);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
+      setFeedbackHistory(res.data);
+    } catch (err) { console.error(err); }
+  };
 
   // Month Navigation Helper
   const changeHistoryMonth = (offset) => {
@@ -231,12 +233,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setMsg("✅ Saved!");
       setTimeout(() => setMsg(''), 3000);
     } catch (error) {
-      console.error("Save failed", error);
       setMsg("❌ Error Saving");
       setTimeout(() => setMsg(''), 3000);
     }
   };
 
+  // --- CREATE NEW REPORT ---
   const sendFeedback = async (e) => {
     e.preventDefault();
     try {
@@ -246,25 +248,57 @@ const TeacherDashboard = ({ user, onLogout }) => {
       formData.append('month', feedbackMonth);
       formData.append('feedbackText', feedbackText);
       formData.append('rating', rating);
-      if (reportFile) {
-        formData.append('report', reportFile);
-      }
+      if (reportFile) formData.append('report', reportFile);
 
-      await axios.post('https://art-portal-7n6r.onrender.com/api/feedback', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await axios.post('https://art-portal-7n6r.onrender.com/api/feedback', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
       setMsg("Report Sent!");
       setFeedbackText('');
       setRating(5);
       setReportFile(null); 
-      
-      // Refresh History directly from API
-      const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
-      setFeedbackHistory(res.data);
-      
+      fetchHistory(); // Refresh
       setTimeout(()=>setMsg(''),3000);
     } catch (err) { console.error(err); }
+  };
+
+  // ✨ NEW: UPDATE EXISTING REPORT
+  const handleUpdateFeedback = async (e) => {
+    e.preventDefault();
+    if (!editFeedbackData) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('feedbackText', editFeedbackData.feedbackText);
+      formData.append('rating', editFeedbackData.rating);
+      // Only append file if a new one was selected (it will be a File object, not the old string path)
+      if (editFeedbackData.newFile) {
+        formData.append('report', editFeedbackData.newFile);
+      }
+
+      await axios.put(`https://art-portal-7n6r.onrender.com/api/feedback/${editFeedbackData._id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setMsg("Report Updated!");
+      setEditFeedbackData(null); // Close Modal
+      fetchHistory(); // Refresh List
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.error("Update failed", err);
+      setMsg("❌ Failed to update");
+    }
+  };
+
+  const openEditModal = (item) => {
+    setEditFeedbackData({
+      _id: item._id,
+      studentName: item.studentId?.childName,
+      feedbackText: item.feedbackText,
+      rating: item.rating,
+      month: item.month,
+      currentFile: item.reportFile, // Keep track of old file
+      newFile: null // Placeholder for new file
+    });
   };
 
   const handleBlockClick = (cls, t) => { setModalData({...cls, time:t}); setEditingLink(cls.meetingLink || ''); setIsLinkInputVisible(!cls.meetingLink); };
@@ -540,16 +574,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 </div>
                                 <div className="h-rating">{'★'.repeat(item.rating)}<span className="grey">{'★'.repeat(5-item.rating)}</span></div>
                                 <p className="h-text">"{item.feedbackText}"</p>
-                                
-                                {/* ✨ NEW: Show Parent Reply */}
-                                {item.parentComment && (
-                                  <div className="teacher-reply-view">
-                                    <strong>📩 Parent Reply:</strong>
-                                    <p>{item.parentComment}</p>
-                                  </div>
-                                )}
-
-                                {item.reportFile && <a href={`https://art-portal-7n6r.onrender.com/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
+                                {item.parentComment && (<div className="teacher-reply-view"><strong>📩 Parent Reply:</strong><p>{item.parentComment}</p></div>)}
+                                <div className="history-actions">
+                                  {item.reportFile && <a href={`https://art-portal-7n6r.onrender.com/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
+                                  
+                                  {/* ✨ EDIT BUTTON */}
+                                  <button className="edit-feedback-btn" onClick={() => openEditModal(item)}>✏️ Edit</button>
+                                </div>
                              </div>
                            );
                         })}
@@ -563,6 +594,61 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
       {/* MODAL */}
       {modalData && <div className="modal-overlay" onClick={() => setModalData(null)}><div className="class-detail-modal" onClick={(e) => e.stopPropagation()}><div className="modal-header"><h3>{modalData.className}</h3><button className="close-btn" onClick={() => setModalData(null)}>×</button></div><div className="modal-body"><div className="info-row"><span className="label">Time:</span><span className="value">{modalData.time}</span></div><div className="info-row"><span className="label">Level:</span><span className="value">{modalData.level}</span></div><div className="modal-actions">{modalData.meetingLink ? (!isLinkInputVisible ? <div className="launch-group"><a href={modalData.meetingLink} target="_blank" rel="noreferrer" className="launch-btn">🚀 Launch Class</a><button className="edit-link-icon" onClick={() => setIsLinkInputVisible(true)}>✏️</button></div> : <div className="link-input-group"><input type="text" placeholder="Paste Zoom Link..." value={editingLink} onChange={(e)=>setEditingLink(e.target.value)} /><button className="save-link-btn" onClick={handleSaveLink}>Save</button></div>) : <div className="link-input-group"><input type="text" placeholder="Paste Zoom Link..." value={editingLink} onChange={(e)=>setEditingLink(e.target.value)} /><button className="save-link-btn" onClick={handleSaveLink}>Save Link</button></div>}<button className="mark-att-btn" onClick={() => { setModalData(null); setActiveTab('attendance'); setSelectedClassIds([modalData._id]); setAttendanceDate(new Date().toISOString().slice(0, 10)); }}>📝 Mark Attendance</button></div></div></div></div>}
+
+      {/* ✨ EDIT FEEDBACK MODAL */}
+      {editFeedbackData && (
+        <div className="modal-overlay" onClick={() => setEditFeedbackData(null)}>
+          <div className="class-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Report: {editFeedbackData.studentName}</h3>
+              <button className="close-btn" onClick={() => setEditFeedbackData(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleUpdateFeedback} className="edit-form-wrapper">
+                
+                <div className="control-group">
+                  <label>Update Remarks</label>
+                  <textarea 
+                    rows="3" 
+                    value={editFeedbackData.feedbackText} 
+                    onChange={(e) => setEditFeedbackData({...editFeedbackData, feedbackText: e.target.value})}
+                    required
+                  ></textarea>
+                </div>
+
+                <div className="control-group">
+                  <label>Update Rating</label>
+                  <div className="star-rating">
+                    {[1,2,3,4,5].map(star => (
+                      <span 
+                        key={star} 
+                        onClick={() => setEditFeedbackData({...editFeedbackData, rating: star})} 
+                        style={{color: star <= editFeedbackData.rating ? '#f59e0b' : '#e2e8f0'}}
+                      >★</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="control-group">
+                  <label>Replace PDF (Optional)</label>
+                  <input 
+                    type="file" 
+                    accept="application/pdf" 
+                    onChange={(e) => setEditFeedbackData({...editFeedbackData, newFile: e.target.files[0]})} 
+                    className="file-input" 
+                  />
+                  {editFeedbackData.currentFile && !editFeedbackData.newFile && (
+                    <small style={{display:'block', marginTop:'5px', color:'#64748b'}}>Current file: Exists</small>
+                  )}
+                </div>
+
+                <button type="submit" className="submit-feedback-btn">Update Report</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
