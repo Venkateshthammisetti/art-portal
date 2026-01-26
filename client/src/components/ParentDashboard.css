@@ -479,3 +479,127 @@ body.dark .fee-icon-circle { background: #7f1d1d; color: #fecaca; border-color: 
 .pm-footer { background: #eff6ff; padding: 10px; text-align: center; font-size: 0.8rem; color: #1e40af; font-weight: 600; }
 body.dark .pm-footer { background: #1e293b; color: #94a3b8; }
 
+/* ... Keep existing CSS ... */
+
+/* Logout Button Inside Menu */
+.pd-menu-btn.logout {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  margin-top: 10px; /* Space from other buttons */
+}
+
+body.dark .pd-menu-btn.logout {
+  background: #450a0a;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+/* ========================================= */
+/* ✨ FIXED TOAST NOTIFICATION (TOP RIGHT)   */
+/* ========================================= */
+
+.fee-toast-message {
+  position: fixed;
+  top: 20px;       /* ⬆️ Positions it at the Top */
+  right: 20px;     /* ➡️ Positions it at the Right */
+  left: auto;      /* Resets default centering */
+  bottom: auto;    /* Resets default bottom */
+  transform: none; /* Removes the center transform */
+  
+  width: auto;
+  max-width: 90%; /* Prevents overflow on mobile */
+  
+  background-color: #10b981; /* Success Green */
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px; /* Slightly less rounded for a "card" feel */
+  
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  z-index: 10001; /* Higher than modal (usually 10000) */
+  
+  animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Animation to slide in from the right */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 📱 Mobile Adjustment: Keep it readable */
+@media (max-width: 768px) {
+  .fee-toast-message { 
+    top: 20px; 
+    right: 50%;
+    transform: translateX(50%); /* Center it on small mobile screens if preferred, or keep right */
+    width: max-content;
+  }
+}
+
+/* ========================================= */
+/* 📋 COPY BUTTON STYLES                     */
+/* ========================================= */
+
+.copy-details-btn {
+  background: var(--p-card); /* Matches card background */
+  border: 1px solid #bfdbfe; /* Light blue border */
+  color: #2563eb; /* Blue text */
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Centers text/icon if needed */
+  gap: 6px;
+  margin-top: 10px; /* Space from text above */
+}
+
+.copy-details-btn:hover {
+  background: #dbeafe; /* Slightly darker blue on hover */
+  border-color: #2563eb;
+}
+
+.copy-details-btn:active {
+  transform: scale(0.98); /* Subtle click effect */
+}
+
+/* --- Dark Mode Adjustments --- */
+body.dark .copy-details-btn {
+  background: #334155; /* Dark gray */
+  border-color: #475569;
+  color: #cbd5e1; /* Light gray text */
+}
+
+body.dark .copy-details-btn:hover {
+  background: #475569;
+  color: white;
+  border-color: #94a3b8;
+}
+
+/* ... Keep existing CSS ... */
+
+/* ✨ FEE HEADER ACTIONS (Pending Text + Button) */
+.fee-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Space between text and button */
+}
+
+.pending-amount-text {
+  font-weight: 700;
+  color: #ef4444; /* Red color for alerts */
+  font-size: 1rem;
+}
+
+body.dark .pending-amount-text {
+  color: #fca5a5; /* Lighter red for dark mode */
+}
