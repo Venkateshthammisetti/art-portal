@@ -603,3 +603,193 @@ body.dark .copy-details-btn:hover {
 body.dark .pending-amount-text {
   color: #fca5a5; /* Lighter red for dark mode */
 }
+
+/* ========================================= */
+/* 💬 REPORT COMMENTING STYLES               */
+/* ========================================= */
+
+.modern-report-item {
+  /* Ensure flex wrap allows the comment box to go to next line */
+  flex-wrap: wrap; 
+}
+
+.add-comment-btn {
+  background: none;
+  border: 1px solid var(--p-border);
+  color: var(--p-text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-top: 5px;
+  transition: all 0.2s;
+}
+
+.add-comment-btn:hover {
+  background: var(--p-border);
+}
+
+.report-comment-box {
+  width: 100%;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed var(--p-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--p-border);
+  border-radius: 8px;
+  background: var(--p-bg);
+  color: var(--p-text);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.send-comment-btn {
+  align-self: flex-end;
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.send-comment-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Animation for smooth opening */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================= */
+/* 💬 REPORT COMMENTING STYLES               */
+/* ========================================= */
+
+.rc-footer-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rc-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.rc-action-btn.pdf {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.rc-action-btn.comment {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.rc-action-btn.comment:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Comment Input Area */
+.comment-input-area {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  width: 100%;
+}
+
+.rc-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.cia-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cia-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+  font-weight: 600;
+}
+
+.cia-btn.cancel {
+  background: transparent;
+  color: #64748b;
+}
+
+.cia-btn.send {
+  background: #2563eb;
+  color: white;
+}
+
+/* Saved Comment Box */
+.saved-comment-box {
+  margin: 10px 0;
+  padding: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.sc-icon { font-size: 1.1rem; }
+.sc-content p { margin: 2px 0 0; font-size: 0.9rem; color: #166534; }
+.sc-content strong { font-size: 0.85rem; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Animation */
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Dark Mode Support */
+body.dark .rc-action-btn.comment { background: transparent; border-color: #475569; color: #cbd5e1; }
+body.dark .comment-input-area { background: #1e293b; border-color: #334155; }
+body.dark .rc-textarea { background: #0f172a; border-color: #334155; color: white; }
+body.dark .saved-comment-box { background: #064e3b; border-color: #065f46; }
+body.dark .sc-content p { color: #d1fae5; }
+body.dark .sc-content strong { color: #86efac; }

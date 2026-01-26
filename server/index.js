@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const multer = require('multer'); // ✨ NEW: File Uploads
+const multer = require('multer'); 
 const path = require('path');
 
 // Import Models
@@ -11,21 +11,19 @@ const Class = require('./models/Class');
 const Attendance = require('./models/Attendance');
 const Feedback = require('./models/Feedback');
 
-
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✨ NEW: Serve "uploads" folder publicly so PDFs can be viewed
+// Serve "uploads" folder publicly so PDFs can be viewed
 app.use('/uploads', express.static('uploads'));
 
-// ✨ NEW: Configure Multer Storage
+// Configure Multer Storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Files will be saved here
+    cb(null, 'uploads/'); 
   },
   filename: (req, file, cb) => {
-    // Unique filename: "123456789-report.pdf"
     cb(null, Date.now() + '-' + file.originalname);
   }
 });
@@ -43,7 +41,7 @@ function escapeRegex(text) {
 }
 
 // ===========================
-//         AUTH & USERS
+//        AUTH & USERS
 // ===========================
 
 app.post('/api/login', async (req, res) => {
@@ -177,12 +175,11 @@ app.delete('/api/classes/:id', async (req, res) => {
 //      FEEDBACK (WITH PDF)
 // ===========================
 
-// 1. SUBMIT FEEDBACK (Modified for File Upload)
+// 1. SUBMIT FEEDBACK (Teacher)
 app.post('/api/feedback', upload.single('report'), async (req, res) => {
   try {
-    // Multer handles the file, other fields are in req.body
     const { studentId, teacherId, month, feedbackText, rating } = req.body;
-    const reportFile = req.file ? req.file.path : null; // Get file path if uploaded
+    const reportFile = req.file ? req.file.path : null; 
 
     const newFeedback = new Feedback({ 
       studentId, 
@@ -190,7 +187,7 @@ app.post('/api/feedback', upload.single('report'), async (req, res) => {
       month, 
       feedbackText, 
       rating,
-      reportFile // Save the path
+      reportFile 
     });
     
     await newFeedback.save();
@@ -201,19 +198,40 @@ app.post('/api/feedback', upload.single('report'), async (req, res) => {
   }
 });
 
-// 2. GET HISTORY (Fixed: Now filters by month)
+// ✨ 2. SUBMIT PARENT COMMENT (New Route)
+app.post('/api/feedback/comment', async (req, res) => {
+  try {
+    const { reportId, comment } = req.body;
+    
+    // Update the specific report with the parent's comment
+    const updatedFeedback = await Feedback.findByIdAndUpdate(
+      reportId,
+      { $set: { parentComment: comment } },
+      { new: true }
+    );
+
+    if (!updatedFeedback) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    res.json({ success: true, message: "Comment saved", feedback: updatedFeedback });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error saving comment" });
+  }
+});
+
+// 3. GET HISTORY (Teacher)
 app.get('/api/feedback/teacher/:teacherId', async (req, res) => {
   try {
-    const { month } = req.query; // Get month from URL (e.g., "2026-02")
-    
-    // Default query: Match teacher
+    const { month } = req.query; 
     const query = { teacherId: req.params.teacherId };
     
-    // ✨ FIX: If a month is provided, add it to the query
     if (month) {
       query.month = month;
     }
 
+    // Fetches feedbacks (including parentComment if it exists)
     const feedback = await Feedback.find(query)
       .populate('studentId', 'childName')
       .sort({ createdAt: -1 });
@@ -292,13 +310,12 @@ app.post('/api/attendance', async (req, res) => {
 //      PARENT / STUDENT ROUTES
 // ===========================
 
-// 1. GET STUDENT DETAILS (Class, Schedule, Fees)
+// 1. GET STUDENT DETAILS
 app.get('/api/student/:id/profile', async (req, res) => {
   try {
     const student = await User.findById(req.params.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
 
-    // Fetch the class details if assigned
     let classDetails = null;
     if (student.assignedClass) {
       classDetails = await Class.findById(student.assignedClass).populate('teacher', 'fullName');
@@ -313,6 +330,7 @@ app.get('/api/student/:id/profile', async (req, res) => {
 // 2. GET STUDENT FEEDBACK (Reports)
 app.get('/api/feedback/student/:studentId', async (req, res) => {
   try {
+    // This will now include the parentComment field if it was saved via the new POST route
     const feedback = await Feedback.find({ studentId: req.params.studentId })
       .populate('teacherId', 'fullName')
       .sort({ createdAt: -1 });
@@ -325,7 +343,6 @@ app.get('/api/feedback/student/:studentId', async (req, res) => {
 // 3. GET STUDENT ATTENDANCE (History)
 app.get('/api/attendance/student/:studentId', async (req, res) => {
   try {
-    // Get all records for this student
     const records = await Attendance.find({ studentId: req.params.studentId });
     res.json(records);
   } catch (err) {

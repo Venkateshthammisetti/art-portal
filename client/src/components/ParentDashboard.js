@@ -30,9 +30,17 @@ const ParentDashboard = ({ user, onLogout }) => {
   
   // Toast State
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  // Comment States
+  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [commentText, setCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState(localStorage.getItem('appTheme') || 'light');
+  const [reportQuarter, setReportQuarter] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
 
   // Swipe Refs
   const touchStart = useRef(null);
@@ -48,7 +56,6 @@ const ParentDashboard = ({ user, onLogout }) => {
     localStorage.setItem('appTheme', theme); 
   }, [theme]);
 
-  // Check Fee Status for CURRENT MONTH
   useEffect(() => {
     if (studentProfile) {
       const statusObj = getPaymentStatus();
@@ -61,9 +68,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   useEffect(() => {
     const handleBackButton = (event) => {
-      if (activeTab !== 'overview') {
-        setActiveTab('overview');
-      }
+      if (activeTab !== 'overview') { setActiveTab('overview'); }
     };
     const handleClickOutside = (event) => {
       if (showProfileMenu && !event.target.closest('.header-profile') && !event.target.closest('.profile-dropdown')) {
@@ -87,6 +92,7 @@ const ParentDashboard = ({ user, onLogout }) => {
       setStudentProfile(profileRes.data.student);
       setAssignedClass(profileRes.data.classDetails);
 
+      // ✨ UPDATED: Fetch reports directly from API. Backend now provides 'parentComment'.
       const reportRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/student/${currentUser._id}`);
       setReports(reportRes.data);
 
@@ -149,6 +155,23 @@ const ParentDashboard = ({ user, onLogout }) => {
     setAttendanceMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   };
 
+  const changeReportQuarter = (direction) => {
+    let newQ = reportQuarter + direction;
+    let newY = reportYear;
+    if (newQ > 4) { newQ = 1; newY += 1; } else if (newQ < 1) { newQ = 4; newY -= 1; }
+    setReportQuarter(newQ);
+    setReportYear(newY);
+  };
+
+  const getFilteredReports = () => {
+    return reports.filter(rep => {
+      if (!rep.month) return false;
+      const [rYear, rMonth] = rep.month.split('-').map(Number);
+      const rQuarter = Math.ceil(rMonth / 3);
+      return rYear === reportYear && rQuarter === reportQuarter;
+    }).sort((a, b) => a.month.localeCompare(b.month));
+  };
+
   const getPaymentStatus = () => {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -157,7 +180,6 @@ const ParentDashboard = ({ user, onLogout }) => {
     else { return { status: 'Pending', color: 'red' }; }
   };
 
-  // Generate Fee List (Includes "Pending" if current month missing)
   const getFeeList = () => {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -174,34 +196,59 @@ const ParentDashboard = ({ user, onLogout }) => {
     return paymentsList.sort((a, b) => b.month.localeCompare(a.month));
   };
 
-  // ✨ Helper: Calculate Total Pending Amount
   const calculateTotalPending = (list) => {
     return list
       .filter(item => item.status === 'Pending')
       .reduce((sum, item) => {
-        // Handle "---" or string numbers
         const val = parseFloat(item.amount);
         return sum + (isNaN(val) ? 0 : val);
       }, 0);
   };
 
+  // --- ACTIONS ---
+
   const handleCopyPaymentDetails = () => {
-    const details = `
-*Payment Details for Thevenkyart Art Academy*
----------------------------
-*Name:* Venkatesh Tammisetti
-*PhonePe:* +91 9963613404
-*UPI ID:* 9963613404@ybl
----------------------------
-*Bank:* State Bank of India Bank
-*Account No:* 35360947257
-*IFSC:* SBIN0001424
----------------------------
-Please share a screenshot after payment.
-    `;
+    const details = `*Payment Details for Thevenkyart Art Academy*\nName: Venkatesh Tammisetti\nPhonePe: +91 9963613404\nUPI ID: 9963613404@ybl\nBank: State Bank of India\nAccount No: 35360947257\nIFSC: SBIN0001424`;
     navigator.clipboard.writeText(details.trim());
+    setToastMessage("Payment details copied! ✅");
     setShowToast(true);
     setTimeout(() => { setShowToast(false); }, 3000);
+  };
+
+  // ✨ NEW: Submit Comment to Backend
+  const handleSubmitComment = async (reportId) => {
+    if (!commentText.trim()) return;
+    setSubmittingComment(true);
+    
+    try {
+      // 1. Send to Backend
+      await axios.post(`https://art-portal-7n6r.onrender.com/api/feedback/comment`, {
+        reportId: reportId,
+        comment: commentText,
+        parentId: currentUser._id 
+      });
+
+      // 2. Optimistic Update (Update UI instantly)
+      const updatedReports = reports.map(r => 
+        r._id === reportId ? { ...r, parentComment: commentText } : r
+      );
+      setReports(updatedReports);
+      
+      // 3. Reset & Notify
+      setToastMessage("Comment sent to teacher! 📨");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      
+      setCommentText("");
+      setActiveCommentId(null);
+    } catch (err) {
+      console.error("Failed to post comment", err);
+      setToastMessage("Failed to send comment ❌");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
   const handleShare = (method) => {
@@ -233,10 +280,9 @@ Please share a screenshot after payment.
   }
 
   const attStats = calculateAttendanceStats();
+  const filteredReports = getFilteredReports();
   const feeList = getFeeList(); 
-  // ✨ Calculate Pending Amount
   const totalPendingAmount = calculateTotalPending(feeList);
-
   const chartData = [ { name: 'Attended', value: attStats.present, color: '#2563eb' }, { name: 'Absent', value: attStats.absent, color: '#ef4444' }, { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present - attStats.absent), color: '#e2e8f0' } ];
 
   return (
@@ -329,15 +375,58 @@ Please share a screenshot after payment.
             </div>
           )}
 
+          {/* ✨ REPORTS TAB */}
           {activeTab === "reports" && (
             <div className="reports-view">
-              {reports.length === 0 ? <div className="empty-state">No reports received yet.</div> : (
+              <div className="att-header-row"><h3>Academic Reports</h3><div className="month-nav-mini"><button onClick={() => changeReportQuarter(-1)}>‹</button><span>Q{reportQuarter} {reportYear}</span><button onClick={() => changeReportQuarter(1)}>›</button></div></div>
+              {filteredReports.length === 0 ? (<div className="empty-state">No reports found for Quarter {reportQuarter}, {reportYear}.</div>) : (
                 <div className="reports-list">
-                  {reports.map((rep) => (
+                  {filteredReports.map((rep) => (
                     <div key={rep._id} className="report-card">
                       <div className="rc-header"><span className="rc-month">{formatFullMonthDate(rep.month)} Report</span><div className="rc-rating">{"★".repeat(rep.rating)}</div></div>
                       <div className="rc-body"><p>"{rep.feedbackText}"</p></div>
-                      <div className="rc-footer"><span className="rc-teacher">By: Thevenkyart Art Academy</span>{rep.reportFile && (<a href={`https://art-portal-7n6r.onrender.com/${rep.reportFile}`} target="_blank" rel="noreferrer" className="download-pdf-btn">📄 View PDF</a>)}</div>
+                      
+                      {/* ✨ Persistent Comment from API */}
+                      {rep.parentComment && (
+                        <div className="saved-comment-box">
+                          <span className="sc-icon">✅</span>
+                          <div className="sc-content">
+                            <strong>Your Feedback:</strong>
+                            <p>{rep.parentComment}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ✨ Comment Input Form */}
+                      {activeCommentId === rep._id && (
+                        <div className="comment-input-area animate-fade-in">
+                          <textarea 
+                            placeholder="Write your feedback to the teacher..." 
+                            value={commentText} 
+                            onChange={(e) => setCommentText(e.target.value)} 
+                            className="rc-textarea"
+                          />
+                          <div className="cia-actions">
+                            <button className="cia-btn cancel" onClick={() => setActiveCommentId(null)}>Cancel</button>
+                            <button className="cia-btn send" onClick={() => handleSubmitComment(rep._id)} disabled={submittingComment}>
+                              {submittingComment ? 'Sending...' : 'Send'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="rc-footer">
+                        <span className="rc-teacher">By: Thevenkyart Art Academy</span>
+                        <div className="rc-footer-actions">
+                          {/* Show Comment Button ONLY if not yet commented */}
+                          {!rep.parentComment && (
+                            <button className="comment-trigger-btn" onClick={() => setActiveCommentId(activeCommentId === rep._id ? null : rep._id)}>
+                              💬 Comment
+                            </button>
+                          )}
+                          {rep.reportFile && (<a href={`https://art-portal-7n6r.onrender.com/${rep.reportFile}`} target="_blank" rel="noreferrer" className="download-pdf-btn">📄 View PDF</a>)}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -355,7 +444,18 @@ Please share a screenshot after payment.
               </div>
               <div className="att-table-wrapper">
                 {attStats.records.length === 0 ? <div className="empty-state">No attendance records for {formatMonthName(attendanceMonth)}.</div> : (
-                  <table className="att-table"><thead><tr><th>Date</th><th>Day</th><th>Status</th></tr></thead><tbody>{attStats.records.map((rec) => (<tr key={rec._id}><td>{formatDateDDMMYYYY(rec.date)}</td><td>{new Date(rec.date).toLocaleDateString("en-US", { weekday: "long" })}</td><td><span className={`status-pill ${rec.status.toLowerCase()}`}>{rec.status}</span></td></tr>))}</tbody></table>
+                  <table className="att-table">
+                    <thead><tr><th>Date</th><th>Day</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {attStats.records.map((rec) => (
+                        <tr key={rec._id}>
+                          <td>{formatDateDDMMYYYY(rec.date)}</td>
+                          <td>{new Date(rec.date).toLocaleDateString("en-US", { weekday: "long" })}</td>
+                          <td><span className={`status-pill ${rec.status.toLowerCase()}`}>{rec.status}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
             </div>
@@ -365,19 +465,11 @@ Please share a screenshot after payment.
             <div className="fees-view">
               <div className="fees-header-bar">
                 <h3>Fee History</h3>
-                {/* ✨ UPDATED: Added Fee Actions Container */}
                 <div className="fee-actions">
-                  {totalPendingAmount > 0 && (
-                    <span className="pending-amount-text">
-                      Total fee due: ₹{totalPendingAmount}
-                    </span>
-                  )}
-                  <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>
-                     Pay Now
-                  </button>
+                  {totalPendingAmount > 0 && <span className="pending-amount-text">Total fee due: ₹{totalPendingAmount}</span>}
+                  <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>💳 Pay Now</button>
                 </div>
               </div>
-
               <div className="fee-table-wrapper">
                 <table className="fee-table">
                   <thead><tr><th>Month</th><th>Amount</th><th>Status</th></tr></thead>
@@ -490,7 +582,7 @@ Please share a screenshot after payment.
 
       {showToast && (
         <div className="fee-toast-message">
-          Payment details copied! ✅
+          {toastMessage}
         </div>
       )}
 

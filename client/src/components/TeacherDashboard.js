@@ -53,7 +53,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   
   // Feedback History
   const [feedbackHistory, setFeedbackHistory] = useState([]);
-  const [historyMonth, setHistoryMonth] = useState(new Date().toISOString().slice(0, 7)); // Default: Current Month
+  const [historyMonth, setHistoryMonth] = useState(new Date().toISOString().slice(0, 7)); 
 
   const dropdownRef = useRef(null);
   useEffect(() => {
@@ -90,11 +90,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
     } catch (err) { console.error(err); }
   };
 
-  // --- FETCH FEEDBACK HISTORY (With Month Filter) ---
+  // --- FETCH FEEDBACK HISTORY (Pure API) ---
   useEffect(() => {
     if (activeTab === 'feedback') {
       const fetchHistory = async () => {
         try {
+          // ✨ Fetch history directly from API (which includes parent comments now)
           const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
           setFeedbackHistory(res.data);
         } catch (err) { console.error(err); }
@@ -107,7 +108,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const changeHistoryMonth = (offset) => {
     const [year, month] = historyMonth.split('-').map(Number);
     const date = new Date(year, month - 1 + offset, 1);
-    // Handle timezone offset to ensure correct YYYY-MM
     const newStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     setHistoryMonth(newStr);
   };
@@ -257,9 +257,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setMsg("Report Sent!");
       setFeedbackText('');
       setRating(5);
-      setReportFile(null); // Reset File
+      setReportFile(null); 
       
-      // Refresh History (Current Month)
+      // Refresh History directly from API
       const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/teacher/${currentUser._id}?month=${historyMonth}`);
       setFeedbackHistory(res.data);
       
@@ -388,19 +388,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
                <div className="std-toolbar">
                   <div className="std-search"><span className="search-icon">🔍</span><input type="text" placeholder="Search..." value={searchText} onChange={(e) => setSearchText(e.target.value)} /></div>
                   <div className="std-actions">
-                     <div className="col-menu-wrapper" style={{position:'relative'}}>
-                        <button className="personalize-btn" onClick={() => setIsColMenuOpen(!isColMenuOpen)}>⚙️ Columns</button>
-                        {isColMenuOpen && (<div className="col-dropdown"><label><input type="checkbox" checked={visibleColumns.name} onChange={()=>setVisibleColumns({...visibleColumns, name: !visibleColumns.name})} /> Name</label><label><input type="checkbox" checked={visibleColumns.id} onChange={()=>setVisibleColumns({...visibleColumns, id: !visibleColumns.id})} /> ID</label><label><input type="checkbox" checked={visibleColumns.className} onChange={()=>setVisibleColumns({...visibleColumns, className: !visibleColumns.className})} /> Class</label><label><input type="checkbox" checked={visibleColumns.gender} onChange={()=>setVisibleColumns({...visibleColumns, gender: !visibleColumns.gender})} /> Gender</label><label><input type="checkbox" checked={visibleColumns.phone} onChange={()=>setVisibleColumns({...visibleColumns, phone: !visibleColumns.phone})} /> Phone</label></div>)}
-                     </div>
-                     <div className="view-switcher"><button className={studentViewMode === 'list' ? 'active' : ''} onClick={() => setStudentViewMode('list')}>📋 List</button><button className={studentViewMode === 'analytics' ? 'active' : ''} onClick={() => setStudentViewMode('analytics')}>📊 Analytics</button></div>
+                      <div className="col-menu-wrapper" style={{position:'relative'}}>
+                         <button className="personalize-btn" onClick={() => setIsColMenuOpen(!isColMenuOpen)}>⚙️ Columns</button>
+                         {isColMenuOpen && (<div className="col-dropdown"><label><input type="checkbox" checked={visibleColumns.name} onChange={()=>setVisibleColumns({...visibleColumns, name: !visibleColumns.name})} /> Name</label><label><input type="checkbox" checked={visibleColumns.id} onChange={()=>setVisibleColumns({...visibleColumns, id: !visibleColumns.id})} /> ID</label><label><input type="checkbox" checked={visibleColumns.className} onChange={()=>setVisibleColumns({...visibleColumns, className: !visibleColumns.className})} /> Class</label><label><input type="checkbox" checked={visibleColumns.gender} onChange={()=>setVisibleColumns({...visibleColumns, gender: !visibleColumns.gender})} /> Gender</label><label><input type="checkbox" checked={visibleColumns.phone} onChange={()=>setVisibleColumns({...visibleColumns, phone: !visibleColumns.phone})} /> Phone</label></div>)}
+                      </div>
+                      <div className="view-switcher"><button className={studentViewMode === 'list' ? 'active' : ''} onClick={() => setStudentViewMode('list')}>📋 List</button><button className={studentViewMode === 'analytics' ? 'active' : ''} onClick={() => setStudentViewMode('analytics')}>📊 Analytics</button></div>
                   </div>
                </div>
                {studentViewMode === 'list' ? (
                   <div className="std-table-wrapper">
-                     <table className="std-table">
+                      <table className="std-table">
                         <thead><tr>{visibleColumns.name && <th onClick={() => handleSort('childName')}>Name</th>}{visibleColumns.id && <th onClick={() => handleSort('username')}>ID</th>}{visibleColumns.className && <th onClick={() => handleSort('className')}>Class</th>}{visibleColumns.gender && <th onClick={() => handleSort('gender')}>Gender</th>}{visibleColumns.phone && <th>Phone</th>}</tr></thead>
                         <tbody>{getProcessedStudents().map(s => (<tr key={s._id}>{visibleColumns.name && <td><div className="std-name-cell"><div className="s-avatar-sm">{s.childName.charAt(0)}</div>{s.childName}</div></td>}{visibleColumns.id && <td>{s.username}</td>}{visibleColumns.className && <td><span className="class-badge">{s.className}</span></td>}{visibleColumns.gender && <td>{s.gender}</td>}{visibleColumns.phone && <td>+91 98765 43210</td>}</tr>))}</tbody>
-                     </table>
+                      </table>
                   </div>
                ) : (
                   <div className="analytics-container"><div className="chart-card"><h4>Gender</h4><div className="pie-chart-wrapper"><div className="pie-chart" style={{background: `conic-gradient(#3b82f6 0% ${(getGenderStats().boys/getGenderStats().total)*100}%, #ec4899 ${(getGenderStats().boys/getGenderStats().total)*100}% 100%)`}}><div className="pie-hole"></div></div><div className="chart-legend"><div className="legend-item"><span className="dot blue"></span>Boys: {getGenderStats().boys}</div><div className="legend-item"><span className="dot pink"></span>Girls: {getGenderStats().girls}</div></div></div></div><div className="chart-card"><h4>Classes</h4><div className="bar-chart">{getClassStats().map((stat, i) => (<div key={i} className="bar-row"><div className="bar-label">{stat.name}</div><div className="bar-track"><div className="bar-fill" style={{width: `${(stat.count / myStudents.length) * 100}%`}}></div></div><div className="bar-value">{stat.count}</div></div>))}</div></div></div>
@@ -417,14 +417,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
               </div>
               {scheduleViewMode === 'grid' ? (
                   <div className="tt-grid-wrapper">
-                     <div className="tt-time-col"><div className="tt-header-placeholder"></div>{timeSlots.map(h => (<div key={h} className="tt-time-label" style={{height: `${ROW_HEIGHT}px`}}><span>{h}:00</span></div>))}</div>
-                     <div className="tt-main-area">
+                      <div className="tt-time-col"><div className="tt-header-placeholder"></div>{timeSlots.map(h => (<div key={h} className="tt-time-label" style={{height: `${ROW_HEIGHT}px`}}><span>{h}:00</span></div>))}</div>
+                      <div className="tt-main-area">
                         <div className="tt-header-row">{getWeekDates(currentDate).map((date, i) => (<div key={i} className={`tt-header-cell ${new Date().toDateString() === date.toDateString() ? 'active' : ''}`}><div className="day-name">{dayNamesFull[date.getDay()].slice(0, 3)}</div><div className="day-num">{date.getDate()}</div></div>))}</div>
                         <div className="tt-grid-body">
                            {timeSlots.map(h => (<div key={h} className="tt-grid-row" style={{height: `${ROW_HEIGHT}px`}}></div>))}
                            {classes.map(cls => (cls.schedule.map((sch, idx) => { const style = getBlockStyle(sch.day, sch.time); if (!style) return null; return (<div key={`${cls._id}-${idx}`} className={`tt-event-block ${getClassColor(cls.className)}`} style={style} onClick={() => handleBlockClick(cls, sch.time)}><div className="ev-time">{sch.time}</div><div className="ev-title">{cls.className}</div></div>) } )))}
                         </div>
-                     </div>
+                      </div>
                   </div>
               ) : (
                   <div className="schedule-list-view-wrapper"><div className="list-header-row table-header"><div className="col-day">Day</div><div className="col-time">Time</div><div className="col-details">Class Details</div><div className="col-action">Action</div></div><div className="schedule-list-body">{getAllScheduledClasses().map((cls, i) => (<div key={i} className="schedule-list-item"><div className="sli-day">{cls.day}</div><div className="sli-time">{cls.time}</div><div className="sli-info"><h4>{cls.className}</h4><span>{cls.level} • {cls.students.length} Students</span></div><div className="sli-action"><button className="sli-btn" onClick={() => handleBlockClick(cls, cls.time)}>Details</button></div></div>))}</div></div>
@@ -437,12 +437,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <div className="attendance-view">
                <div className="att-control-bar">
                   <div className="att-filters">
-                     <div className="filter-item" ref={dropdownRef}>
-                       <label>Select Classes ({selectedClassIds.length})</label>
-                       <div className="multi-select-box" onClick={() => setIsMultiSelectOpen(!isMultiSelectOpen)}><span>{selectedClassIds.length > 0 ? `${selectedClassIds.length} Selected` : '-- Choose Class --'}</span><span className="arrow">▼</span></div>
-                       {isMultiSelectOpen && (<div className="multi-select-dropdown">{classes.map(c => (<div key={c._id} className="ms-item" onClick={() => toggleClassSelection(c._id)}><input type="checkbox" checked={selectedClassIds.includes(c._id)} readOnly /><span>{c.className} ({c.level})</span></div>))}</div>)}
-                     </div>
-                     {attendanceView === 'daily' ? (<div className="filter-item"><label>Date</label><input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} /></div>) : (<div className="filter-item"><label>Report Month</label><input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} /></div>)}
+                      <div className="filter-item" ref={dropdownRef}>
+                        <label>Select Classes ({selectedClassIds.length})</label>
+                        <div className="multi-select-box" onClick={() => setIsMultiSelectOpen(!isMultiSelectOpen)}><span>{selectedClassIds.length > 0 ? `${selectedClassIds.length} Selected` : '-- Choose Class --'}</span><span className="arrow">▼</span></div>
+                        {isMultiSelectOpen && (<div className="multi-select-dropdown">{classes.map(c => (<div key={c._id} className="ms-item" onClick={() => toggleClassSelection(c._id)}><input type="checkbox" checked={selectedClassIds.includes(c._id)} readOnly /><span>{c.className} ({c.level})</span></div>))}</div>)}
+                      </div>
+                      {attendanceView === 'daily' ? (<div className="filter-item"><label>Date</label><input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} /></div>) : (<div className="filter-item"><label>Report Month</label><input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} /></div>)}
                   </div>
                   <div className="view-switcher"><button className={attendanceView === 'daily' ? 'active' : ''} onClick={() => setAttendanceView('daily')}>Daily Log</button><button className={attendanceView === 'monthly' ? 'active' : ''} onClick={() => setAttendanceView('monthly')}>Monthly Sheet</button></div>
                </div>
@@ -456,18 +456,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         <div className="daily-container animate-fade-in">
                            <div className="daily-header"><div className="dh-stats"><div className="stat-block"><span className="label">Present</span><span className="value green">{presentCount}</span></div><div className="stat-block"><span className="label">Total</span><span className="value">{attendanceList.length}</span></div></div><div className="dh-actions"><span className="action-label">Quick Actions:</span><button className="bulk-btn present" onClick={() => markAll('Present')}>Mark All Present</button><button className="bulk-btn absent" onClick={() => markAll('Absent')}>Mark All Absent</button><button className="bulk-btn missed" onClick={() => markAll('Missed')}>Mark All Missed</button></div></div>
                            <div className="modern-student-list">
-                              <div className="list-header-row"><div className="col-name">Student Name</div><div className="col-id">Class</div><div className="col-status">Status</div></div>
-                              {attendanceList.map(s => {
-                                const status = attendanceStatus[s._id];
-                                let switchClass = 'neutral';
-                                if(status === 'Present') switchClass = 'on'; else if(status === 'Absent') switchClass = 'off'; else if(status === 'Missed') switchClass = 'missed';
-                                return (
-                                  <div key={s._id} className={`modern-student-row`} onClick={() => toggleStatus(s._id)}>
-                                     <div className="col-name"><div className="s-avatar-sm">{s.childName.charAt(0)}</div>{s.childName}</div><div className="col-id">{s.className}</div>
-                                     <div className="col-status"><div className={`status-switch ${switchClass}`}><div className="switch-knob"></div><span className="switch-text">{status || 'Mark'}</span></div></div>
-                                  </div>
-                                );
-                              })}
+                             <div className="list-header-row"><div className="col-name">Student Name</div><div className="col-id">Class</div><div className="col-status">Status</div></div>
+                             {attendanceList.map(s => {
+                               const status = attendanceStatus[s._id];
+                               let switchClass = 'neutral';
+                               if(status === 'Present') switchClass = 'on'; else if(status === 'Absent') switchClass = 'off'; else if(status === 'Missed') switchClass = 'missed';
+                               return (
+                                 <div key={s._id} className={`modern-student-row`} onClick={() => toggleStatus(s._id)}>
+                                    <div className="col-name"><div className="s-avatar-sm">{s.childName.charAt(0)}</div>{s.childName}</div><div className="col-id">{s.className}</div>
+                                    <div className="col-status"><div className={`status-switch ${switchClass}`}><div className="switch-knob"></div><span className="switch-text">{status || 'Mark'}</span></div></div>
+                                 </div>
+                               );
+                             })}
                            </div>
                            <button className="save-attendance-btn" onClick={submitAttendance}>💾 Save Daily Log</button>
                         </div>
@@ -477,20 +477,20 @@ const TeacherDashboard = ({ user, onLogout }) => {
                      <div className="monthly-sheet-container animate-fade-in">
                         <div className="sheet-wrapper">
                            <table className="sheet-table">
-                              <thead><tr><th className="sticky-col name-col">Student Name</th>{monthDays.map(d => <th key={d.date} className={`date-col ${d.isWeekend ? 'weekend-col' : ''} ${d.isToday ? 'today-col' : ''}`}>{d.date}</th>)}<th className="summary-col present">P</th><th className="summary-col absent">A</th></tr></thead>
-                              <tbody>
-                                 {monthlyData.map(s => {
-                                    const presentCount = s.history.filter(h => h === 'P').length;
-                                    const absentCount = s.history.filter(h => h === 'A').length;
-                                    return (
-                                       <tr key={s._id}>
-                                          <td className="sticky-col name-col"><div className="row-name">{s.childName}</div><div className="row-sub">{s.className}</div></td>
-                                          {s.history.map((status, idx) => <td key={idx} className={`cell-status ${status || ''} ${monthDays[idx].isWeekend ? 'weekend-cell' : ''}`}>{status}</td>)}
-                                          <td className="summary-col present-val">{presentCount}</td><td className="summary-col absent-val">{absentCount}</td>
-                                       </tr>
-                                    )
-                                 })}
-                              </tbody>
+                             <thead><tr><th className="sticky-col name-col">Student Name</th>{monthDays.map(d => <th key={d.date} className={`date-col ${d.isWeekend ? 'weekend-col' : ''} ${d.isToday ? 'today-col' : ''}`}>{d.date}</th>)}<th className="summary-col present">P</th><th className="summary-col absent">A</th></tr></thead>
+                             <tbody>
+                                {monthlyData.map(s => {
+                                   const presentCount = s.history.filter(h => h === 'P').length;
+                                   const absentCount = s.history.filter(h => h === 'A').length;
+                                   return (
+                                      <tr key={s._id}>
+                                         <td className="sticky-col name-col"><div className="row-name">{s.childName}</div><div className="row-sub">{s.className}</div></td>
+                                         {s.history.map((status, idx) => <td key={idx} className={`cell-status ${status || ''} ${monthDays[idx].isWeekend ? 'weekend-cell' : ''}`}>{status}</td>)}
+                                         <td className="summary-col present-val">{presentCount}</td><td className="summary-col absent-val">{absentCount}</td>
+                                      </tr>
+                                   )
+                                })}
+                             </tbody>
                            </table>
                         </div>
                      </div>
@@ -540,6 +540,15 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 </div>
                                 <div className="h-rating">{'★'.repeat(item.rating)}<span className="grey">{'★'.repeat(5-item.rating)}</span></div>
                                 <p className="h-text">"{item.feedbackText}"</p>
+                                
+                                {/* ✨ NEW: Show Parent Reply */}
+                                {item.parentComment && (
+                                  <div className="teacher-reply-view">
+                                    <strong>📩 Parent Reply:</strong>
+                                    <p>{item.parentComment}</p>
+                                  </div>
+                                )}
+
                                 {item.reportFile && <a href={`https://art-portal-7n6r.onrender.com/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
                              </div>
                            );
