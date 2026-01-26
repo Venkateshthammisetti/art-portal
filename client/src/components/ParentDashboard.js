@@ -432,7 +432,7 @@ const ParentDashboard = ({ user, onLogout }) => {
           <div className="logout-modal fee-modal-alert">
             <div className="fee-icon-circle">!</div>
             <h3 className="lm-title">Fee Pending Remainder</h3>
-            <p className="lm-text">Your fees for the current month are pending. Please clear them to continue uninterrupted classes.</p>
+            <p className="lm-text">Hello Parent, Your fees for the current month are pending. Please clear them to continue uninterrupted classes.</p>
             <div className="lm-actions"><button className="lm-btn cancel" onClick={closeFeeReminder}>Close</button><button className="lm-btn confirm" onClick={goToFees}>Pay Now</button></div>
           </div>
         </div>
