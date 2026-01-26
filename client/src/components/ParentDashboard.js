@@ -285,7 +285,7 @@ Please share a screenshot after payment.
                   <ResponsiveContainer><PieChart><Pie data={chartData} cx="50%" cy="50%" innerRadius={45} outerRadius={60} startAngle={90} endAngle={-270} dataKey="value" stroke="none" isAnimationActive={false}>{chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie><Tooltip /></PieChart></ResponsiveContainer>
                   <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}><span style={{ fontSize: "1.4rem", fontWeight: "800", color: theme === 'dark' ? '#f1f5f9' : '#1e293b' }}>{attStats.percentage}%</span></div>
                 </div>
-                <div className="att-details-text"><div className="ad-row"><span>Attended:</span><strong className="green">{attStats.present} Classes</strong></div><div className="ad-row"><span>Absent:</span><strong className="red">{attStats.absent} Classes</strong></div><div className="ad-row"><span>Total Target:</span><strong>{attStats.target} Classes</strong></div></div>
+                <div className="att-details-text"><div className="ad-row"><span>Attended:</span><strong className="green">{attStats.present} Classes</strong></div><div className="ad-row"><span>Absent:</span><strong className="red">{attStats.absent} Classes</strong></div><div className="ad-row"><span>Total Classes:</span><strong>{attStats.target} Classes</strong></div></div>
               </div>
               <div className="info-card report-preview-card">
                 <h3 onClick={() => handleNavClick('reports')} className="clickable-heading">📝 Latest Report</h3>
@@ -351,7 +351,7 @@ Please share a screenshot after payment.
               <div className="att-summary-bar">
                 <div className="as-item"><span className="as-label">Attended</span><span className="as-val green">{attStats.present}</span></div>
                 <div className="as-item"><span className="as-label">Absent</span><span className="as-val red">{attStats.absent}</span></div>
-                <div className="as-item"><span className="as-label">Target</span><span className="as-val">{attStats.target}</span></div>
+                <div className="as-item"><span className="as-label">Total classes</span><span className="as-val">{attStats.target}</span></div>
               </div>
               <div className="att-table-wrapper">
                 {attStats.records.length === 0 ? <div className="empty-state">No attendance records for {formatMonthName(attendanceMonth)}.</div> : (
@@ -373,7 +373,7 @@ Please share a screenshot after payment.
                     </span>
                   )}
                   <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>
-                    💳 Pay Now
+                     Pay Now
                   </button>
                 </div>
               </div>
