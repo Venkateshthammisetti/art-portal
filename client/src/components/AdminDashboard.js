@@ -759,7 +759,16 @@ const UserManagementTab = () => {
   const filteredUsers = users.filter(user => {
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     const searchLower = searchTerm.toLowerCase();
-    return matchesRole && ((user.username && user.username.toLowerCase().includes(searchLower)) || (user.fullName && user.fullName.toLowerCase().includes(searchLower)) || (user.email && user.email.toLowerCase().includes(searchLower)) || (user.phone && user.phone.includes(searchLower)) || (user.location && user.location.toLowerCase().includes(searchLower)) || (user.childName && user.childName.toLowerCase().includes(searchLower)));
+    return matchesRole && (
+      (user.username && user.username.toLowerCase().includes(searchLower)) || 
+      (user.fullName && user.fullName.toLowerCase().includes(searchLower)) || 
+      (user.email && user.email.toLowerCase().includes(searchLower)) || 
+      (user.phone && user.phone.includes(searchLower)) || 
+      (user.location && user.location.toLowerCase().includes(searchLower)) || 
+      // ✨ ADDED: Search by City
+      (user.city && user.city.toLowerCase().includes(searchLower)) ||
+      (user.childName && user.childName.toLowerCase().includes(searchLower))
+    );
   });
   const sortedUsers = [...filteredUsers].sort((a, b) => { if (sortOrder === 'newest') return new Date(b.createdAt) - new Date(a.createdAt); if (sortOrder === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt); if (sortOrder === 'fee-high') return (b.monthlyFee || 0) - (a.monthlyFee || 0); if (sortOrder === 'fee-low') return (a.monthlyFee || 0) - (b.monthlyFee || 0); return 0; });
 
@@ -769,7 +778,7 @@ const UserManagementTab = () => {
       {selectedUser ? (<UserDetailsView user={selectedUser} onBack={() => setSelectedUser(null)} onDelete={() => initiateDelete(null, selectedUser._id)} />) : (
         <div className="table-wrapper">
            <div className="filter-bar">
-              <div className="search-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              <div className="search-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><input type="text" placeholder="Search Name, City, ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
               <div className="filter-actions">
                 <div className="filter-dropdown"><label>Role:</label><select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}><option value="all">All Users</option><option value="parent">Students</option><option value="teacher">Teachers</option><option value="admin">Admins</option></select></div>
                 <div className="filter-dropdown"><label>Sort:</label><select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}><option value="newest">Newest First</option><option value="oldest">Oldest First</option><option value="fee-high">Highest Fee</option><option value="fee-low">Lowest Fee</option></select></div>
@@ -803,27 +812,89 @@ const UserManagementTab = () => {
 
 const formatDateForInput = (isoDate) => { if (!isoDate) return ""; const date = new Date(isoDate); return date.toISOString().split('T')[0]; };
 
+// --- COMPONENT: EDIT USER MODAL ---
 const EditUserModal = ({ user, onClose, onSave }) => {
-  const [formData, setFormData] = useState({ ...user, joiningDate: formatDateForInput(user.joiningDate), childDob: formatDateForInput(user.childDob), dob: formatDateForInput(user.dob) });
+  const [formData, setFormData] = useState({ 
+    ...user, 
+    // ✨ Ensure city is initialized
+    city: user.city || "", 
+    joiningDate: formatDateForInput(user.joiningDate), 
+    childDob: formatDateForInput(user.childDob), 
+    dob: formatDateForInput(user.dob) 
+  });
+
   const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
   const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
+
   return (
-    <div className="modal-overlay"><div className="modal-content" style={{ maxWidth: '600px' }}><div className="modal-header"><h3>Edit Details: {user.username}</h3><button className="close-modal" onClick={onClose} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button></div><form onSubmit={handleSubmit}><div className="edit-form-grid"><div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></div><div className="form-group"><label>Phone Number</label><input name="phone" value={formData.phone || ''} onChange={handleChange} /></div><div className="form-group"><label>Email</label><input name="email" value={formData.email || ''} onChange={handleChange} /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location || ''} onChange={handleChange} /></div>{user.role !== 'admin' && <><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId || ''} onChange={handleChange} /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy || ''} onChange={handleChange} /></div></>}</div><div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-    {user.role === 'parent' ? (
-        <>
-            <h4 style={{ margin: '0 0 10px 0', color: '#0284c7' }}>Student Info</h4>
-            <div className="edit-form-grid">
-                <div className="form-group"><label>Child Name</label><input name="childName" value={formData.childName || ''} onChange={handleChange} /></div>
-                <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#16a34a' }} /></div>
-                {/* ✨ NEW FIELD: Monthly Class Target */}
-                <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={formData.monthlyClassesTarget || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#0284c7' }} /></div>
-                <div className="form-group"><label>Child Age</label><input name="childAge" value={formData.childAge || ''} onChange={handleChange} /></div>
-                <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div>
-                <div className="form-group"><label>Class/Grade</label><input name="childClass" value={formData.childClass || ''} onChange={handleChange} /></div>
-                <div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div>
-            </div>
-        </>
-    ) : user.role === 'teacher' ? (<><h4 style={{ margin: '0 0 10px 0', color: '#9333ea' }}>Teacher Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Monthly Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#9333ea' }} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>) : (<><h4 style={{ margin: '0 0 10px 0', color: '#334155' }}>Admin Info</h4><div className="edit-form-grid"><div className="form-group"><label>Specialization / Role</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div><div className="form-group"><label>Date of Birth</label><input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} /></div><div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div></div></>)}</div><div className="modal-actions" style={{justifyContent: 'flex-end'}}><button type="button" className="cancel-btn" onClick={onClose} style={{marginRight:'10px'}}>Cancel</button><button type="submit" className="save-btn" style={{width: 'auto', padding: '10px 25px'}}>Save Changes</button></div></form></div></div>
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ maxWidth: '600px' }}>
+        <div className="modal-header">
+          <h3>Edit Details: {user.username}</h3>
+          <button className="close-modal" onClick={onClose} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="edit-form-grid">
+            <div className="form-group"><label>Full Name</label><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></div>
+            <div className="form-group"><label>Phone Number</label><input name="phone" value={formData.phone || ''} onChange={handleChange} /></div>
+            
+            <div className="form-group"><label>Email</label><input name="email" value={formData.email || ''} onChange={handleChange} /></div>
+            <div className="form-group"><label>Location</label><input name="location" value={formData.location || ''} onChange={handleChange} /></div>
+            
+            {/* ✨ ADDED: City Field */}
+            <div className="form-group"><label>City</label><input name="city" value={formData.city || ''} onChange={handleChange} /></div>
+
+            {user.role !== 'admin' && (
+              <>
+                <div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId || ''} onChange={handleChange} /></div>
+                <div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy || ''} onChange={handleChange} /></div>
+              </>
+            )}
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px', marginTop: '15px' }}>
+            {user.role === 'parent' ? (
+                <>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#0284c7' }}>Student Info</h4>
+                    <div className="edit-form-grid">
+                        <div className="form-group"><label>Child Name</label><input name="childName" value={formData.childName || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#16a34a' }} /></div>
+                        <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={formData.monthlyClassesTarget || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#0284c7' }} /></div>
+                        <div className="form-group"><label>Child Age</label><input name="childAge" value={formData.childAge || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Class/Grade</label><input name="childClass" value={formData.childClass || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div>
+                    </div>
+                </>
+            ) : user.role === 'teacher' ? (
+                <>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#9333ea' }}>Teacher Info</h4>
+                    <div className="edit-form-grid">
+                        <div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Monthly Salary (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleChange} style={{ fontWeight: 'bold', color: '#9333ea' }} /></div>
+                        <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#334155' }}>Admin Info</h4>
+                    <div className="edit-form-grid">
+                        <div className="form-group"><label>Specialization / Role</label><input name="specialization" value={formData.specialization || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Date of Birth</label><input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} /></div>
+                        <div className="form-group"><label>Joining Date</label><input type="date" name="joiningDate" value={formData.joiningDate || ''} onChange={handleChange} /></div>
+                    </div>
+                </>
+            )}
+          </div>
+          
+          <div className="modal-actions" style={{justifyContent: 'flex-end'}}>
+            <button type="button" className="cancel-btn" onClick={onClose} style={{marginRight:'10px'}}>Cancel</button>
+            <button type="submit" className="save-btn" style={{width: 'auto', padding: '10px 25px'}}>Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 
@@ -869,6 +940,8 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
               <div className="info-row"><label>Email:</label> <span>{user.email || "N/A"}</span></div>
               <div className="info-row"><label>Phone:</label> <span>{user.phone || "N/A"}</span></div>
               <div className="info-row"><label>Location:</label> <span>{user.location || "N/A"}</span></div>
+              {/* ✨ Added City Field */}
+              <div className="info-row"><label>City:</label> <span>{user.city || "N/A"}</span></div>
               <div className="info-row"><label>Zoom ID:</label> <span>{user.zoomId || "N/A"}</span></div>
             </div>
         </div>
@@ -897,8 +970,7 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
                     <>
                       <div className="info-row"><label>Age:</label> <span>{user.childAge || "N/A"}</span></div>
                       <div className="info-row"><label>Class:</label> <span>{user.childClass || "N/A"}</span></div>
-                      {/* ✨ SHOW MONTHLY CLASS TARGET */}
-                      <div className="info-row"><label>Class Target:</label> <span style={{fontWeight:'bold'}}>{user.monthlyClassesTarget || 8} Classes/Mo</span></div>
+                      <div className="info-row"><label>Total Classes:</label> <span style={{fontWeight:'bold'}}>{user.monthlyClassesTarget || 8} Classes/Mo</span></div>
                       <div className="info-row"><label>Monthly Fee:</label><span style={{ color: "#16a34a", fontWeight: "bold", fontSize: "16px" }}>₹{user.monthlyFee || 0}</span></div>
                     </>
                   ) : user.role === "teacher" ? (
@@ -917,14 +989,15 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
 };
 
 // --- TAB 3: ADD USER ---
+// --- TAB 3: ADD USER ---
 const AddUserTab = () => {
   const [formData, setFormData] = useState({ 
     username: "", password: "", role: "parent", 
     firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
     studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
-    fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
-    childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: "", dob: "",
-    monthlyClassesTarget: 8 // ✨ Default to 8
+    fullName: "", email: "", phone: "", location: "", city: "", zoomId: "", referredBy: "", 
+    childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: new Date().toISOString().split('T')[0], dob: "",
+    monthlyClassesTarget: 8 
   });
 
   const [showSibling, setShowSibling] = useState(false);
@@ -932,14 +1005,38 @@ const AddUserTab = () => {
     username: "", password: "", 
     firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "",
     childAge: "", childDob: "", childClass: "", monthlyFee: "", zoomId: "",
-    monthlyClassesTarget: 8 // ✨ Default to 8
+    monthlyClassesTarget: 8
   });
   
   const [msg, setMsg] = useState("");
   const [autoFillMsg, setAutoFillMsg] = useState("");
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  const handleSiblingChange = (e) => setSiblingData({ ...siblingData, [e.target.name]: e.target.value });
+  // Helper: Calculate Age
+  const calculateAge = (dob) => {
+    if (!dob) return "";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let updatedData = { ...formData, [name]: value };
+    if (name === "childDob") updatedData.childAge = calculateAge(value);
+    setFormData(updatedData);
+  };
+
+  const handleSiblingChange = (e) => {
+    const { name, value } = e.target;
+    let updatedData = { ...siblingData, [name]: value };
+    if (name === "childDob") updatedData.childAge = calculateAge(value);
+    setSiblingData(updatedData);
+  };
 
   const handlePhoneBlur = async () => {
     if (formData.role === 'parent' && formData.phone.length > 9) {
@@ -951,6 +1048,7 @@ const AddUserTab = () => {
             fullName: res.data.fullName || "", 
             email: res.data.email || "", 
             location: res.data.location || "", 
+            city: res.data.city || "", 
             zoomId: res.data.zoomId || "", 
             referredBy: res.data.referredBy || "" 
           }));
@@ -990,13 +1088,13 @@ const AddUserTab = () => {
           childDob: siblingData.childDob, 
           childClass: siblingData.childClass, 
           monthlyFee: siblingData.monthlyFee,
-          monthlyClassesTarget: siblingData.monthlyClassesTarget, // ✨ New field
+          monthlyClassesTarget: siblingData.monthlyClassesTarget,
           zoomId: siblingData.zoomId || formData.zoomId, 
-          
           fullName: formData.fullName, 
           email: formData.email, 
           phone: formData.phone, 
           location: formData.location, 
+          city: formData.city, 
           referredBy: formData.referredBy, 
           joiningDate: formData.joiningDate, 
           studentEmail: formData.studentEmail, 
@@ -1012,8 +1110,8 @@ const AddUserTab = () => {
         username: "", password: "", role: "parent", 
         firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
         studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
-        fullName: "", email: "", phone: "", location: "", zoomId: "", referredBy: "", 
-        childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: "", dob: "",
+        fullName: "", email: "", phone: "", location: "", city: "", zoomId: "", referredBy: "", 
+        childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: new Date().toISOString().split('T')[0], dob: "",
         monthlyClassesTarget: 8 
       });
       setSiblingData({ 
@@ -1046,16 +1144,37 @@ const AddUserTab = () => {
         {formData.role === "parent" && (
           <div className="form-section student-section">
             <h4 className="section-title" style={{color: '#0284c7'}}>Student 1 Details</h4>
-            <div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} /></div></div>
-            <div className="form-row"><div className="form-group"><label>Gender *</label><select name="gender" value={formData.gender} onChange={handleChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
-            <div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} /></div><div className="form-group"><label>Age</label><input name="childAge" value={formData.childAge} onChange={handleChange} /></div></div>
+            <div className="form-row">
+                <div className="form-group"><label>First Name</label><input name="firstName" value={formData.firstName} onChange={handleChange} /></div>
+                <div className="form-group"><label>Last Name</label><input name="lastName" value={formData.lastName} onChange={handleChange} /></div>
+            </div>
+            
+            {/* Age Auto-Calculation */}
+            <div className="form-row">
+                <div className="form-group"><label>Date of Birth *</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} required /></div>
+                <div className="form-group"><label>Age (Auto)</label><input name="childAge" value={formData.childAge} readOnly style={{backgroundColor: '#f1f5f9', cursor: 'not-allowed'}} /></div>
+            </div>
+
+            <div className="form-row">
+                <div className="form-group"><label>Gender *</label><select name="gender" value={formData.gender} onChange={handleChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                <div className="form-group"><label>Admission ID</label><input name="admissionId" value={formData.admissionId} onChange={handleChange} /></div>
+            </div>
+
             <div className="form-row">
                 <div className="form-group"><label>Class / Grade</label><input name="childClass" value={formData.childClass} onChange={handleChange} /></div>
                 <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
-                {/* ✨ NEW FIELD: Monthly Class Target */}
                 <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={formData.monthlyClassesTarget} onChange={handleChange} style={{fontWeight:'bold', color:'#0284c7'}} /></div>
             </div>
-            <div className="form-row"><div className="form-group"><label>Student Email</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} /></div><div className="form-group"><label>Student Phone</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} /></div></div>
+
+            {/* Added Date of Joining */}
+            <div className="form-row">
+                <div className="form-group"><label>Date of Joining</label><input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} /></div>
+                <div className="form-group"><label>Student Phone</label><input name="studentPhone" value={formData.studentPhone} onChange={handleChange} /></div>
+            </div>
+
+            {/* Restored Student Email */}
+            <div className="form-group"><label>Student Email</label><input name="studentEmail" value={formData.studentEmail} onChange={handleChange} /></div>
+            
             <div className="form-group"><label>Short Bio</label><textarea name="shortBio" value={formData.shortBio} onChange={handleChange} style={{width:'100%', padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} /></div>
           </div>
         )}
@@ -1064,11 +1183,21 @@ const AddUserTab = () => {
             <div className="form-section parent-section">
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}><h4 className="section-title" style={{color: '#ea580c', margin:0}}>Parent / Guardian Details (Shared)</h4>{autoFillMsg && <span style={{fontSize:'0.85rem', color:'#16a34a', fontWeight:'bold'}}>{autoFillMsg}</span>}</div>
                 <div className="form-row"><div className="form-group"><label>Parent Phone *</label><input name="phone" value={formData.phone} onChange={handleChange} onBlur={handlePhoneBlur} placeholder="Search..." style={{border: '2px solid #fdba74'}} /></div><div className="form-group"><label>Parent Name</label><input name="fullName" value={formData.fullName} onChange={handleChange} /></div></div>
-                <div className="form-row"><div className="form-group"><label>Parent Email</label><input name="email" value={formData.email} onChange={handleChange} /></div><div className="form-group"><label>Location</label><input name="location" value={formData.location} onChange={handleChange} /></div></div>
-                <div className="form-row"><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} /></div><div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} /></div></div>
+                
+                {/* Restored Zoom ID */}
+                <div className="form-row"><div className="form-group"><label>Parent Email</label><input name="email" value={formData.email} onChange={handleChange} /></div><div className="form-group"><label>Zoom ID</label><input name="zoomId" value={formData.zoomId} onChange={handleChange} /></div></div>
+                
+                {/* Added City */}
+                <div className="form-row">
+                    <div className="form-group"><label>Location (Area/Street)</label><input name="location" value={formData.location} onChange={handleChange} /></div>
+                    <div className="form-group"><label>City</label><input name="city" value={formData.city} onChange={handleChange} placeholder="e.g. Hyderabad" /></div>
+                </div>
+
+                <div className="form-group"><label>Referred By</label><input name="referredBy" value={formData.referredBy} onChange={handleChange} /></div>
             </div>
         )}
 
+        {/* Sibling Section & Other roles remain unchanged, reusing the logic above */}
         {formData.role === "parent" && (<div style={{marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '8px', border: '1px dashed #0284c7', display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" id="siblingCheck" checked={showSibling} onChange={(e) => setShowSibling(e.target.checked)} style={{width:'20px', height:'20px', cursor:'pointer'}}/><label htmlFor="siblingCheck" style={{cursor:'pointer', fontWeight:'600', color:'#0369a1', fontSize:'1rem'}}>Register a Sibling?</label></div>)}
         
         {showSibling && formData.role === "parent" && (
@@ -1076,13 +1205,17 @@ const AddUserTab = () => {
                 <h4 className="section-title" style={{color: '#0284c7'}}>Student 2 Details (Sibling)</h4>
                 <div className="form-row" style={{background: '#fff', padding:'10px', borderRadius:'6px', marginBottom:'15px', border:'1px solid #ddd'}}><div className="form-group"><label>Sibling Username *</label><input name="username" value={siblingData.username} onChange={handleSiblingChange} required /></div><div className="form-group"><label>Sibling Password *</label><input name="password" type="password" value={siblingData.password} onChange={handleSiblingChange} required /></div></div>
                 <div className="form-row"><div className="form-group"><label>First Name</label><input name="firstName" value={siblingData.firstName} onChange={handleSiblingChange} /></div><div className="form-group"><label>Last Name</label><input name="lastName" value={siblingData.lastName} onChange={handleSiblingChange} /></div></div>
-                <div className="form-row"><div className="form-group"><label>Gender</label><select name="gender" value={siblingData.gender} onChange={handleSiblingChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={siblingData.childDob} onChange={handleSiblingChange} /></div></div>
-                <div className="form-row"><div className="form-group"><label>Admission ID</label><input name="admissionId" value={siblingData.admissionId} onChange={handleSiblingChange} /></div><div className="form-group"><label>Class / Grade</label><input name="childClass" value={siblingData.childClass} onChange={handleSiblingChange} /></div></div>
                 
                 <div className="form-row">
-                   <div className="form-group"><label>Sibling Zoom ID</label><input name="zoomId" value={siblingData.zoomId} onChange={handleSiblingChange} placeholder="If different from parent" /></div>
+                    <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={siblingData.childDob} onChange={handleSiblingChange} /></div>
+                    <div className="form-group"><label>Age (Auto)</label><input name="childAge" value={siblingData.childAge} readOnly style={{backgroundColor: '#f1f5f9', cursor: 'not-allowed'}} /></div>
+                </div>
+
+                <div className="form-row"><div className="form-group"><label>Gender</label><select name="gender" value={siblingData.gender} onChange={handleSiblingChange}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div><div className="form-group"><label>Admission ID</label><input name="admissionId" value={siblingData.admissionId} onChange={handleSiblingChange} /></div></div>
+                
+                <div className="form-row">
+                   <div className="form-group"><label>Class / Grade</label><input name="childClass" value={siblingData.childClass} onChange={handleSiblingChange} /></div>
                    <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" name="monthlyFee" value={siblingData.monthlyFee} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#16a34a'}} /></div>
-                   {/* ✨ NEW FIELD: Sibling Class Target */}
                    <div className="form-group"><label>Classes / Month</label><input type="number" name="monthlyClassesTarget" value={siblingData.monthlyClassesTarget} onChange={handleSiblingChange} style={{fontWeight:'bold', color:'#0284c7'}} /></div>
                 </div>
             </div>
@@ -1107,7 +1240,10 @@ const AddUserTab = () => {
                     <div className="form-group"><label>Specialization</label><input name="specialization" value={formData.specialization} onChange={handleChange} /></div>
                     <div className="form-group"><label>Salary</label><input type="number" name="monthlyFee" value={formData.monthlyFee} onChange={handleChange} /></div>
                  </div>
-                 <div className="form-row"><div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div></div>
+                 <div className="form-row">
+                    <div className="form-group"><label>Date of Birth</label><input type="date" name="childDob" value={formData.childDob} onChange={handleChange} /></div>
+                    <div className="form-group"><label>Age</label><input name="childAge" value={formData.childAge} readOnly style={{backgroundColor: '#f1f5f9'}} /></div>
+                 </div>
                </>
              )}
              
