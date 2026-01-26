@@ -283,7 +283,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   const filteredReports = getFilteredReports();
   const feeList = getFeeList(); 
   const totalPendingAmount = calculateTotalPending(feeList);
-  const chartData = [ { name: 'Attended', value: attStats.present, color: '#2563eb' }, { name: 'Absent', value: attStats.absent, color: '#ef4444' }, { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present - attStats.absent), color: '#e2e8f0' } ];
+  const chartData = [ { name: 'Attended', value: attStats.present, color: '#16a34a' }, { name: 'Absent', value: attStats.absent, color: '#ef4444' }, { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present - attStats.absent), color: '#e2e8f0' } ];
 
   return (
     <div className={`parent-container ${theme}`} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
@@ -313,7 +313,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <div className="pd-refer-box"><span>Your Referral Code</span><code>{currentUser.username}</code></div>
                 <button className="pd-menu-btn theme-toggle" onClick={toggleTheme}>{theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}</button>
                 <button className="pd-menu-btn" onClick={() => handleNavClick('refer')}>📣 Refer & Support</button>
-                <button className="pd-menu-btn logout" onClick={() => { setShowLogoutModal(true); setShowProfileMenu(false); }}>🚪 Logout</button>
+                <button className="pd-menu-btn logout" onClick={() => { setShowLogoutModal(true); setShowProfileMenu(false); }}> Logout</button>
               </div>
             )}
           </div>
@@ -323,7 +323,7 @@ const ParentDashboard = ({ user, onLogout }) => {
           {activeTab === "overview" && (
             <div className="overview-grid">
               <div className="welcome-card" style={{ '--desktop-bg': `url(${bannerImg})`, '--mobile-bg': `url(${bannerMobile})` }}>
-                <div className="wc-text"><h1>Hello, {currentUser.fullName}!</h1><p>Here is a quick summary of your child <strong>{currentUser.childName}'s</strong> progress at Thevenkyart Art Academy.</p></div>
+                <div className="wc-text"><h1>Hello, <span style={{ textTransform: 'capitalize' }}>{currentUser.fullName}</span>!</h1><p>Here is a quick summary of your child <strong>{currentUser.childName}'s</strong> progress at Thevenkyart Art Academy.</p></div>
               </div>
               <div className="info-card attendance-card">
                  <h3 onClick={() => handleNavClick('attendance')} className="clickable-heading">📅 Attendance</h3>
@@ -467,7 +467,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <h3>Fee History</h3>
                 <div className="fee-actions">
                   {totalPendingAmount > 0 && <span className="pending-amount-text">Total fee due: ₹{totalPendingAmount}</span>}
-                  <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>💳 Pay Now</button>
+                  <button className="pay-now-btn" onClick={() => setShowPaymentModal(true)}>Pay Now</button>
                 </div>
               </div>
               <div className="fee-table-wrapper">
