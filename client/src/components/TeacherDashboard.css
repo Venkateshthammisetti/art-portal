@@ -963,3 +963,131 @@
   border-radius: 6px;
   resize: vertical;
 }
+
+
+/* ========================================= */
+/* 📱 MOBILE & iPAD RESPONSIVE STYLES       */
+/* ========================================= */
+
+.mobile-bottom-nav { display: none; }
+.mobile-logout-dropdown { display: none; }
+
+@media (max-width: 768px) {
+  
+  /* 1. LAYOUT RESET */
+  .teacher-container {
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* 2. HIDE SIDEBAR */
+  .teacher-sidebar { display: none; }
+
+  /* 3. MAIN CONTENT ADJUSTMENT */
+  .teacher-main {
+    width: 100%;
+    flex: 1;
+    padding-bottom: 75px; /* Space for bottom nav */
+  }
+
+  .t-content { padding: 15px; }
+  .t-header { padding: 0 20px; height: 60px; }
+  .t-header-left h2 { font-size: 1.1rem; }
+  .t-header-left p { display: none; }
+
+  /* 4. SHOW BOTTOM NAV */
+  .mobile-bottom-nav {
+    display: flex; justify-content: space-around; alignItems: center;
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 65px;
+    background: white; border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.05); z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .nav-item {
+    background: transparent; border: none; color: #94a3b8;
+    padding: 10px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .nav-item svg { width: 24px; height: 24px; }
+  .nav-item.active { color: #2563eb; background: #eff6ff; }
+
+  /* 5. HEADER LOGOUT DROPDOWN */
+  .mobile-logout-dropdown {
+    display: block; position: absolute; top: 60px; right: 20px;
+    background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 5px; z-index: 200;
+  }
+  .mobile-logout-dropdown button {
+    background: white; border: none; padding: 12px 20px;
+    width: 100%; text-align: left; color: #ef4444; font-weight: 600;
+  }
+
+  /* 6. OVERVIEW CARDS (Side-by-Side) */
+  .stats-grid { 
+    grid-template-columns: 1fr 1fr; /* Two columns */
+    gap: 12px; 
+  }
+
+  .stat-card {
+    flex-direction: column; /* Icon Top, Text Bottom */
+    align-items: center;    
+    text-align: center;     
+    padding: 15px 10px;     
+    gap: 8px;               
+  }
+
+  .stat-card .icon-circle { width: 40px; height: 40px; font-size: 1.2rem; }
+  .stat-card .stat-value { font-size: 1.5rem; }
+  .stat-card .stat-label { font-size: 0.8rem; margin-top: 2px; }
+
+  /* 7. STUDENT DIRECTORY TOOLBAR FIX */
+  .std-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 15px;
+    height: auto;
+  }
+
+  .std-search { width: 100%; }
+
+  .std-actions {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 10px;
+    flex-wrap: wrap; /* Allows wrapping on very small screens */
+  }
+
+  /* Fix Columns Dropdown Position on Mobile */
+  .col-menu-wrapper { position: relative; }
+  .col-dropdown {
+    right: auto; 
+    left: 0; /* Align left on mobile so it doesn't go off-screen */
+    width: 220px;
+    top: 45px;
+  }
+
+  .view-switcher { flex: 1; display: flex; }
+  .view-switcher button { flex: 1; text-align: center; padding: 8px 5px; font-size: 0.85rem; }
+
+  /* 8. GENERAL STACKING */
+  .feedback-container-grid, .controls-row { 
+    grid-template-columns: 1fr; height: auto; 
+  }
+  
+  .att-control-bar { flex-direction: column; align-items: stretch; gap: 15px; }
+  .att-filters { flex-direction: column; }
+  .filter-item input, .filter-item select, .multi-select-box { width: 100%; }
+  
+  .daily-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .dh-actions { width: 100%; overflow-x: auto; padding-bottom: 5px; }
+  
+  .tt-toolbar { flex-direction: column; gap: 10px; align-items: stretch; }
+  .tt-date-display { text-align: center; }
+  .week-nav { justify-content: center; }
+  
+  /* Scrollable Tables */
+  .std-table-wrapper, .sheet-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

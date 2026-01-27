@@ -18,20 +18,21 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [scheduleViewMode, setScheduleViewMode] = useState('grid'); 
   const [studentViewMode, setStudentViewMode] = useState('list');
 
+  // Mobile State
+  const [showMobileLogout, setShowMobileLogout] = useState(false);
+
   // Sort & Filter
   const [searchText, setSearchText] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'childName', direction: 'asc' });
   const [visibleColumns, setVisibleColumns] = useState({ name: true, id: true, className: true, gender: true, phone: true });
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
 
-  // Modals (Class Detail & Edit Feedback)
+  // Modals
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modalData, setModalData] = useState(null); 
   const [editingLink, setEditingLink] = useState('');
   const [isLinkInputVisible, setIsLinkInputVisible] = useState(false);
-  
-  // ✨ NEW: Edit Feedback State
-  const [editFeedbackData, setEditFeedbackData] = useState(null); // Holds the report being edited
+  const [editFeedbackData, setEditFeedbackData] = useState(null); 
 
   // Attendance
   const [attendanceView, setAttendanceView] = useState('daily'); 
@@ -53,12 +54,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [feedbackText, setFeedbackText] = useState('');
   const [rating, setRating] = useState(5);
   const [reportFile, setReportFile] = useState(null);
-  
-  // Feedback History
   const [feedbackHistory, setFeedbackHistory] = useState([]);
   const [historyMonth, setHistoryMonth] = useState(new Date().toISOString().slice(0, 7)); 
 
   const dropdownRef = useRef(null);
+  
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -96,7 +96,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
   // --- FETCH FEEDBACK HISTORY ---
   useEffect(() => {
     if (activeTab === 'feedback') fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, historyMonth, currentUser._id]);
 
   const fetchHistory = async () => {
@@ -155,10 +154,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
            const daysArr = [];
            for(let i=1; i<=daysInMonth; i++) {
                const d = new Date(year, month - 1, i);
-               const dayOfWeek = d.getDay();
                daysArr.push({
                    date: i,
-                   isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+                   isWeekend: d.getDay() === 0 || d.getDay() === 6,
                    fullDateStr: `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`
                });
            }
@@ -261,7 +259,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     } catch (err) { console.error(err); }
   };
 
-  // ✨ NEW: UPDATE EXISTING REPORT
+  // --- UPDATE REPORT ---
   const handleUpdateFeedback = async (e) => {
     e.preventDefault();
     if (!editFeedbackData) return;
@@ -270,7 +268,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
       const formData = new FormData();
       formData.append('feedbackText', editFeedbackData.feedbackText);
       formData.append('rating', editFeedbackData.rating);
-      // Only append file if a new one was selected (it will be a File object, not the old string path)
       if (editFeedbackData.newFile) {
         formData.append('report', editFeedbackData.newFile);
       }
@@ -296,8 +293,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
       feedbackText: item.feedbackText,
       rating: item.rating,
       month: item.month,
-      currentFile: item.reportFile, // Keep track of old file
-      newFile: null // Placeholder for new file
+      currentFile: item.reportFile, 
+      newFile: null 
     });
   };
 
@@ -376,8 +373,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
     return filtered;
   };
 
+  const handleNavClick = (tab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="teacher-container">
+      {/* SIDEBAR (Hidden on Mobile/Tablet via CSS) */}
       <aside className="teacher-sidebar">
         <div className="sidebar-header"><div className="logo-icon">VA</div><h3>Venky Art</h3></div>
         <div className="t-nav">
@@ -396,7 +399,16 @@ const TeacherDashboard = ({ user, onLogout }) => {
              <h2>{activeTab === 'students' ? 'Student Directory' : activeTab === 'attendance' ? 'Attendance Register' : activeTab === 'schedule' ? 'Class Schedule' : 'Teacher Dashboard'}</h2>
              <p>Welcome back, {currentUser.fullName}</p>
            </div>
-           <div className="t-header-right"><div className="header-profile"><div className="avatar">{currentUser.fullName?.charAt(0) || 'T'}</div></div></div>
+           <div className="t-header-right">
+             <div className="header-profile" onClick={() => setShowMobileLogout(!showMobileLogout)}>
+               <div className="avatar">{currentUser.fullName?.charAt(0) || 'T'}</div>
+             </div>
+             {showMobileLogout && (
+               <div className="mobile-logout-dropdown">
+                 <button onClick={onLogout}>🚪 Logout</button>
+               </div>
+             )}
+           </div>
         </header>
 
         <div className="t-content">
@@ -591,6 +603,25 @@ const TeacherDashboard = ({ user, onLogout }) => {
           )}
         </div>
       </main>
+
+      {/* ✨ MOBILE BOTTOM NAVIGATION (THIS WAS MISSING) */}
+      <nav className="mobile-bottom-nav">
+        <button className={activeTab === 'overview' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('overview')}>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        </button>
+        <button className={activeTab === 'students' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('students')}>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </button>
+        <button className={activeTab === 'schedule' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('schedule')}>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+        </button>
+        <button className={activeTab === 'attendance' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('attendance')}>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        </button>
+        <button className={activeTab === 'feedback' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('feedback')}>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/></svg>
+        </button>
+      </nav>
 
       {/* MODAL */}
       {modalData && <div className="modal-overlay" onClick={() => setModalData(null)}><div className="class-detail-modal" onClick={(e) => e.stopPropagation()}><div className="modal-header"><h3>{modalData.className}</h3><button className="close-btn" onClick={() => setModalData(null)}>×</button></div><div className="modal-body"><div className="info-row"><span className="label">Time:</span><span className="value">{modalData.time}</span></div><div className="info-row"><span className="label">Level:</span><span className="value">{modalData.level}</span></div><div className="modal-actions">{modalData.meetingLink ? (!isLinkInputVisible ? <div className="launch-group"><a href={modalData.meetingLink} target="_blank" rel="noreferrer" className="launch-btn">🚀 Launch Class</a><button className="edit-link-icon" onClick={() => setIsLinkInputVisible(true)}>✏️</button></div> : <div className="link-input-group"><input type="text" placeholder="Paste Zoom Link..." value={editingLink} onChange={(e)=>setEditingLink(e.target.value)} /><button className="save-link-btn" onClick={handleSaveLink}>Save</button></div>) : <div className="link-input-group"><input type="text" placeholder="Paste Zoom Link..." value={editingLink} onChange={(e)=>setEditingLink(e.target.value)} /><button className="save-link-btn" onClick={handleSaveLink}>Save Link</button></div>}<button className="mark-att-btn" onClick={() => { setModalData(null); setActiveTab('attendance'); setSelectedClassIds([modalData._id]); setAttendanceDate(new Date().toISOString().slice(0, 10)); }}>📝 Mark Attendance</button></div></div></div></div>}
