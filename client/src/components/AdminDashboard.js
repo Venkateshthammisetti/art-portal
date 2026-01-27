@@ -571,7 +571,8 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
     className: initialData ? initialData.className : '', 
     level: initialData ? initialData.level : '', 
     subLevel: initialData ? initialData.subLevel : '', 
-    teacherId: initialData && initialData.teacher ? initialData.teacher._id : '',
+    // ✨ FIX: Renamed 'teacherId' to 'teacher' to match Database Schema
+    teacher: initialData && initialData.teacher ? initialData.teacher._id : '',
     meetingLink: initialData ? initialData.meetingLink : '',
     maxCapacity: initialData ? initialData.maxCapacity : 10,
     schedule: initialData && initialData.schedule && initialData.schedule.length > 0 
@@ -660,7 +661,16 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
             <button type="button" onClick={addScheduleSlot} style={{marginTop:'10px', fontSize:'0.85rem', color:'#0284c7', background:'none', border:'none', cursor:'pointer'}}>+ Add Another Day</button>
           </div>
           <div className="form-group" style={{marginTop:'15px'}}><label>Meeting Link</label><input placeholder="https://zoom.us/..." value={formData.meetingLink} onChange={e => setFormData({...formData, meetingLink: e.target.value})} /></div>
-          <div className="form-group"><label>Assign Teacher</label><select required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})}><option value="">Select Teacher</option>{teachers.map(t => (<option key={t._id} value={t._id}>{t.fullName || t.username}</option>))}</select></div>
+          
+          <div className="form-group">
+            <label>Assign Teacher</label>
+            {/* ✨ FIX: Bind select to 'formData.teacher' */}
+            <select required value={formData.teacher} onChange={e => setFormData({...formData, teacher: e.target.value})}>
+                <option value="">Select Teacher</option>
+                {teachers.map(t => (<option key={t._id} value={t._id}>{t.fullName || t.username}</option>))}
+            </select>
+          </div>
+          
           <button type="submit" className="save-btn" style={{marginTop:'15px'}} disabled={!!duplicateError}>{initialData ? 'Save Changes' : 'Create Class'}</button>
         </form>
       </div>
@@ -1262,6 +1272,7 @@ const AddUserTab = () => {
 };
 
 // --- TAB 5: FEE TRACKER ---
+// --- TAB 5: FEE TRACKER ---
 const FeeTrackerTab = () => {
   const [students, setStudents] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
@@ -1298,18 +1309,31 @@ const FeeTrackerTab = () => {
   };
 
   const getPaymentStatus = (student) => (student.payments || []).find(p => p.month === selectedMonth) ? 'Paid' : 'Pending';
+  
   const changeMonth = (offset) => {
     const d = new Date(selectedMonth + "-01"); d.setMonth(d.getMonth()+offset);
     setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   };
 
+  // ✨ FIX: Fee Calculation Logic Updated
   const calculateTotalPending = (student) => {
     const rawDate = student.joiningDate || student.createdAt || new Date();
     const joinDate = new Date(rawDate);
     const today = new Date();
+    
+    // 1. Determine the Start Date for Fee Calculation
+    // We start from Jan 1st of the CURRENT YEAR to avoid 2 years of backlog
+    const startOfYear = new Date(today.getFullYear(), 0, 1); 
+    
+    // If student joined AFTER Jan 1st, use their joining date.
+    // If they joined BEFORE Jan 1st, cap it at Jan 1st.
+    const effectiveStartDate = joinDate < startOfYear ? startOfYear : joinDate;
+
     let pendingCount = 0;
     let pendingAmount = 0;
-    let iterDate = new Date(joinDate.getFullYear(), joinDate.getMonth(), 1);
+    
+    // Normalize iterator to the 1st of the month
+    let iterDate = new Date(effectiveStartDate.getFullYear(), effectiveStartDate.getMonth(), 1);
     const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
 
     if (isNaN(joinDate.getTime()) || iterDate > checkUntil) return { count: 0, amount: 0 };
@@ -1317,7 +1341,11 @@ const FeeTrackerTab = () => {
     while (iterDate <= checkUntil) {
       const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
       const isPaid = (student.payments || []).some(p => p.month === monthStr && p.status === 'Paid');
-      if (!isPaid) { pendingCount++; pendingAmount += (student.monthlyFee || 0); }
+      
+      if (!isPaid) { 
+          pendingCount++; 
+          pendingAmount += (Number(student.monthlyFee) || 0); 
+      }
       iterDate.setMonth(iterDate.getMonth() + 1);
     }
     return { count: pendingCount, amount: pendingAmount };
@@ -1449,8 +1477,9 @@ const SlotManagementTab = () => {
 
   const TIME_SLOTS = {
     morning: [
-      { id: 'm1', start: '06:00', end: '07:00', label: '06:00 - 07:00 am' },
-      { id: 'm2', start: '07:00', end: '08:00', label: '07:00 - 08:00 am' },
+      { id: 'm0', start: '05:30', end: '06:30', label: '05:30 - 06:30 am' }, // New Slot
+      { id: 'm1', start: '06:30', end: '07:30', label: '06:30 - 07:30 am' }, // Shifted Slot
+      { id: 'm2', start: '07:30', end: '08:30', label: '07:30 - 08:30 am' }, // Shifted Slot
     ],
     evening: [
       { id: 'e1', start: '18:30', end: '19:30', label: '06:30 - 07:30 pm' }, 
