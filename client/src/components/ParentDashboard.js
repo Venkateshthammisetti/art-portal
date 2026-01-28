@@ -190,13 +190,21 @@ const ParentDashboard = ({ user, onLogout }) => {
     return next || sorted[0]; 
   };
 
+  // Helper: Calculate Attendance Stats & Sort Logs
   const calculateAttendanceStats = () => {
-    const currentMonthRecords = attendanceHistory.filter(rec => rec.date.startsWith(attendanceMonth));
+    // 1. Filter for selected month
+    // 2. Sort by Date (Ascending: Oldest -> Newest)
+    const currentMonthRecords = attendanceHistory
+      .filter(rec => rec.date.startsWith(attendanceMonth))
+      .sort((a, b) => new Date(a.date) - new Date(b.date)); // ✨ Added Sorting Logic
+
     const presentCount = currentMonthRecords.filter(r => r.status === 'Present').length;
     const absentCount = currentMonthRecords.filter(r => r.status === 'Absent').length;
     const targetClasses = studentProfile?.monthlyClassesTarget || 8; 
+    
     let percentage = Math.round((presentCount / targetClasses) * 100);
     if (percentage > 100) percentage = 100;
+    
     return { present: presentCount, absent: absentCount, target: targetClasses, percentage, records: currentMonthRecords };
   };
 
