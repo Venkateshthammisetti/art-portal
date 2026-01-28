@@ -1329,9 +1329,9 @@ const SlotManagementTab = () => {
 
   const TIME_SLOTS = {
     morning: [
-      { id: 'm0', start: '05:30', end: '06:30', label: '05:30 - 06:30 am' }, // New Slot
-      { id: 'm1', start: '06:30', end: '07:30', label: '06:30 - 07:30 am' }, // Shifted Slot
-      { id: 'm2', start: '07:30', end: '08:30', label: '07:30 - 08:30 am' }, // Shifted Slot
+      { id: 'm0', start: '05:00', end: '06:00', label: '05:00 - 06:00 am' }, // New Slot
+      { id: 'm1', start: '06:00', end: '07:00', label: '06:00 - 07:00 am' }, // Shifted Slot
+      { id: 'm2', start: '07:00', end: '08:00', label: '07:00 - 08:00 am' }, // Shifted Slot
     ],
     evening: [
       { id: 'e1', start: '18:30', end: '19:30', label: '06:30 - 07:30 pm' }, 
