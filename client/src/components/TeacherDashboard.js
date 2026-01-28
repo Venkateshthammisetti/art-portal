@@ -12,6 +12,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const ROW_HEIGHT = 60;
 
   // --- STATE ---
+  const [loading, setLoading] = useState(true); // ✨ NEW: Loading State
   const [activeTab, setActiveTab] = useState('overview'); 
   const [classes, setClasses] = useState([]);
   const [myStudents, setMyStudents] = useState([]);
@@ -75,6 +76,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   }, [currentUser]);
 
   const fetchData = async () => {
+    setLoading(true); // Start Loading
     try {
       const classRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/teacher/${currentUser._id}/classes`);
       setClasses(classRes.data);
@@ -90,7 +92,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
         });
       });
       setMyStudents(allStudents);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error(err); 
+    } finally {
+      setLoading(false); // Stop Loading
+    }
   };
 
   // --- FETCH FEEDBACK HISTORY ---
@@ -154,9 +160,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
            const daysArr = [];
            for(let i=1; i<=daysInMonth; i++) {
                const d = new Date(year, month - 1, i);
+               const dayOfWeek = d.getDay();
                daysArr.push({
                    date: i,
-                   isWeekend: d.getDay() === 0 || d.getDay() === 6,
+                   isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
                    fullDateStr: `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`
                });
            }
@@ -378,9 +385,24 @@ const TeacherDashboard = ({ user, onLogout }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ✨✨ LOADING STATE CHECK ✨✨
+  if (loading) {
+    return (
+      <div className="art-loading-screen">
+        <div className="paint-loader">
+          <div className="paint-drop red"></div>
+          <div className="paint-drop yellow"></div>
+          <div className="paint-drop blue"></div>
+          <div className="paint-drop green"></div>
+        </div>
+        <p className="loading-text">Preparing your creative space...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="teacher-container">
-      {/* SIDEBAR (Hidden on Mobile/Tablet via CSS) */}
+      {/* SIDEBAR (Hidden on Mobile) */}
       <aside className="teacher-sidebar">
         <div className="sidebar-header"><div className="logo-icon">VA</div><h3>Venky Art</h3></div>
         <div className="t-nav">
@@ -604,7 +626,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
         </div>
       </main>
 
-      {/* ✨ MOBILE BOTTOM NAVIGATION (THIS WAS MISSING) */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="mobile-bottom-nav">
         <button className={activeTab === 'overview' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('overview')}>
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
