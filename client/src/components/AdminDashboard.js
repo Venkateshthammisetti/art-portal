@@ -1677,7 +1677,7 @@ const FeeTrackerTab = () => {
                        <tr key={student._id}>
                          <td style={{fontWeight:'600', color:'#334155'}}>{student.childName}<div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'normal'}}>{student.fullName}</div></td>
                          <td style={{fontWeight:'bold'}}>₹{student.monthlyFee}</td>
-                         <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? '✅ Paid' : '⏳ Pending'}</span></td>
+                         <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? 'Paid' : 'Pending'}</span></td>
                          <td>{pendingStats.amount > 0 ? (<div style={{display:'flex', alignItems:'center', gap:'8px'}}><span style={{background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>₹{pendingStats.amount.toLocaleString()}</span><span style={{fontSize:'0.75rem', color:'#dc2626'}}>({pendingStats.count} Mo)</span></div>) : (<span style={{color:'#16a34a', fontSize:'0.85rem', fontWeight:'bold'}}>All Clear </span>)}</td>
                          <td><button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Pay This Month'}</button></td>
                        </tr>
