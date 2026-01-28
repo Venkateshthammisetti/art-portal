@@ -793,3 +793,102 @@ body.dark .rc-textarea { background: #0f172a; border-color: #334155; color: whit
 body.dark .saved-comment-box { background: #064e3b; border-color: #065f46; }
 body.dark .sc-content p { color: #d1fae5; }
 body.dark .sc-content strong { color: #86efac; }
+
+/* --- TUTORIAL MODAL STYLES (Add to ParentDashboard.css) --- */
+
+.tutorial-modal-card {
+  background: var(--p-card);
+  width: 90%;
+  max-width: 380px;
+  padding: 30px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tm-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  background: #eff6ff;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.tm-title {
+  margin: 0 0 10px 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--p-text);
+}
+
+.tm-desc {
+  font-size: 0.95rem;
+  color: var(--p-muted);
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.tm-dots {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 25px;
+}
+
+.tm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: all 0.3s;
+}
+
+.tm-dot.active {
+  background: var(--p-primary);
+  transform: scale(1.3);
+}
+
+.tm-actions {
+  display: flex;
+  width: 100%;
+  gap: 15px;
+}
+
+.tm-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-size: 0.9rem;
+  transition: transform 0.1s;
+}
+
+.tm-btn:active {
+  transform: scale(0.96);
+}
+
+.tm-btn.primary {
+  background: var(--p-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.tm-btn.secondary {
+  background: var(--p-bg);
+  color: var(--p-muted);
+  border: 1px solid var(--p-border);
+}
+
+/* Dark Mode Support for Tutorial */
+body.dark .tm-icon { background: #1e293b; }
+body.dark .tm-btn.secondary { background: #1e293b; border-color: #334155; color: #94a3b8; }

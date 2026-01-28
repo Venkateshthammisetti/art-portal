@@ -10,6 +10,40 @@ import bannerImg from './banner4.png';
 import bannerMobile from './banner-001.png';
 import qrCodeImg from './qrcode.jpeg'; 
 
+// --- TUTORIAL STEPS DATA ---
+const TUTORIAL_STEPS = [
+  { 
+    id: 1, 
+    title: "Welcome to Thevenkyart! 🎨", 
+    desc: <span>Welcome to your new <b>Parent Dashboard!</b> This is your central hub to track your child's artistic journey, attendance, and growth.</span>, 
+    icon: "👋" 
+  },
+  { 
+    id: 2, 
+    title: "Quick Overview 📊", 
+    desc: <span>The <b>'Overview'</b> tab gives you a snapshot. See upcoming classes, attendance percentage,latest teacher feedback at a glance, fee status, next class schedule, Basic details of the student</span>, 
+    icon: "🏠" 
+  },
+  { 
+    id: 3, 
+    title: "Join Classes 🚀", 
+    desc: <span>Go to the <b>'Class Schedule'</b> tab to find your child's timetable. The Zoom links for classes will appear there automatically.</span>, 
+    icon: "🗓️" 
+  },
+  { 
+    id: 4, 
+    title: "Track Progress 📝", 
+    desc: <span>Check <b>'Academic Reports'</b> to view detailed feedback from teachers, download report cards, and reply with your own comments.</span>, 
+    icon: "📈" 
+  },
+  { 
+    id: 5, 
+    title: "Manage Fees 💳", 
+    desc: <span>Visit <b>'Fee Status'</b> to check for pending dues. You can view payment history and get UPI details to pay securely.</span>, 
+    icon: "💸" 
+  }
+];
+
 const ParentDashboard = ({ user, onLogout }) => {
   const currentUser = user;
 
@@ -27,6 +61,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false); // ✨ NEW: Tutorial State
   
   // Toast State
   const [showToast, setShowToast] = useState(false);
@@ -129,82 +164,55 @@ const ParentDashboard = ({ user, onLogout }) => {
     return `${day}-${month}-${year}`;
   };
 
-  // ✨ NEW: Timezone Conversion Helper (IST to Local)
+  // Timezone Helper
   const convertScheduleToLocal = (dayName, timeStr) => {
     if (!dayName || !timeStr) return { day: dayName, time: timeStr };
-
     const daysMap = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
     const dayIndex = daysMap[dayName];
     if (dayIndex === undefined) return { day: dayName, time: timeStr };
-    
-    // 1. Find the date of the next occurrence of this 'dayName' relative to today
     const now = new Date();
     const currentDayIndex = now.getDay();
     let distance = (dayIndex - currentDayIndex + 7) % 7;
-    // If it's today but the time passed, you might treat it as next week, 
-    // but for static schedule display, focusing on the nearest upcoming day is fine.
-    
     const refDate = new Date(now);
     refDate.setDate(now.getDate() + distance);
-    
-    // 2. Parse IST time (e.g., "05:30")
     const [hours, minutes] = timeStr.split(':').map(Number);
-    
-    // 3. Create ISO string with IST Offset (+05:30)
-    // Format: YYYY-MM-DDTHH:mm:00+05:30
     const yyyy = refDate.getFullYear();
     const mm = String(refDate.getMonth() + 1).padStart(2, '0');
     const dd = String(refDate.getDate()).padStart(2, '0');
     const hh = String(hours).padStart(2, '0');
     const min = String(minutes).padStart(2, '0');
-    
     const isoStringIST = `${yyyy}-${mm}-${dd}T${hh}:${min}:00+05:30`;
-    const dateObject = new Date(isoStringIST); // Browser parses this to Local Time
-    
-    // 4. Format to User's Local Time/Day
+    const dateObject = new Date(isoStringIST);
     const localDay = dateObject.toLocaleDateString([], { weekday: 'long' });
     const localTime = dateObject.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-    
     return { day: localDay, time: localTime };
   };
 
-  // ✨ UPDATED: Get Local Schedule
   const getLocalSchedule = () => {
     if (!assignedClass || !assignedClass.schedule) return [];
     return assignedClass.schedule.map(slot => convertScheduleToLocal(slot.day, slot.time));
   };
 
-  // ✨ UPDATED: Get Next Class based on Local Time
   const getNextClass = () => {
     const localSchedule = getLocalSchedule();
     if (localSchedule.length === 0) return null;
-    
     const daysMap = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
     const today = new Date().getDay();
-    
-    // Sort schedule by day
     const sorted = [...localSchedule].sort((a, b) => daysMap[a.day] - daysMap[b.day]);
-    
-    // Find next class today or later
     const next = sorted.find(s => daysMap[s.day] >= today);
     return next || sorted[0]; 
   };
 
-  // Helper: Calculate Attendance Stats & Sort Logs
   const calculateAttendanceStats = () => {
-    // 1. Filter for selected month
-    // 2. Sort by Date (Ascending: Oldest -> Newest)
     const currentMonthRecords = attendanceHistory
       .filter(rec => rec.date.startsWith(attendanceMonth))
-      .sort((a, b) => new Date(a.date) - new Date(b.date)); // ✨ Added Sorting Logic
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const presentCount = currentMonthRecords.filter(r => r.status === 'Present').length;
     const absentCount = currentMonthRecords.filter(r => r.status === 'Absent').length;
     const targetClasses = studentProfile?.monthlyClassesTarget || 8; 
-    
     let percentage = Math.round((presentCount / targetClasses) * 100);
     if (percentage > 100) percentage = 100;
-    
     return { present: presentCount, absent: absentCount, target: targetClasses, percentage, records: currentMonthRecords };
   };
 
@@ -274,22 +282,26 @@ const ParentDashboard = ({ user, onLogout }) => {
     setTimeout(() => { setShowToast(false); }, 3000);
   };
 
+  // ✨ NEW: Submit Comment to Backend
   const handleSubmitComment = async (reportId) => {
     if (!commentText.trim()) return;
     setSubmittingComment(true);
     
     try {
+      // 1. Send to Backend
       await axios.post(`https://art-portal-7n6r.onrender.com/api/feedback/comment`, {
         reportId: reportId,
         comment: commentText,
         parentId: currentUser._id 
       });
 
+      // 2. Optimistic Update (Update UI instantly)
       const updatedReports = reports.map(r => 
         r._id === reportId ? { ...r, parentComment: commentText } : r
       );
       setReports(updatedReports);
       
+      // 3. Reset & Notify
       setToastMessage("Comment sent to teacher! 📨");
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -355,7 +367,9 @@ const ParentDashboard = ({ user, onLogout }) => {
           <button className={activeTab === "reports" ? "active" : ""} onClick={() => handleNavClick("reports")}><span>📝</span> Academic Reports</button>
           <button className={activeTab === "attendance" ? "active" : ""} onClick={() => handleNavClick("attendance")}><span>📅</span> Attendance Log</button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => handleNavClick("fees")}><span>💳</span> Fee Status</button>
-          <button className={activeTab === "refer" ? "active" : ""} onClick={() => handleNavClick("refer")}><span>📣</span> Refer and support</button>
+          <button className={activeTab === "refer" ? "active" : ""} onClick={() => handleNavClick("refer")}><span>📣</span> Refer & Support</button>
+          {/* ✨ NEW TUTORIAL BUTTON */}
+          <button onClick={() => setShowTutorial(true)} style={{marginTop:'10px', color:'#2563eb'}}><span>💡</span> App Tutorial</button>
         </div>
         <div className="sidebar-footer"><p>© 2026 Thevenkyart Art Academy</p></div>
       </aside>
@@ -371,6 +385,8 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <div className="pd-header"><strong>{currentUser.fullName}</strong><span>{currentUser.username}</span></div>
                 <div className="pd-refer-box"><span>Your Referral Code</span><code>{currentUser.username}</code></div>
                 <button className="pd-menu-btn theme-toggle" onClick={toggleTheme}>{theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}</button>
+                {/* ✨ TUTORIAL BUTTON IN DROPDOWN */}
+                <button className="pd-menu-btn" onClick={() => setShowTutorial(true)}>💡 App Tutorial</button>
                 <button className="pd-menu-btn" onClick={() => handleNavClick('refer')}>📣 Refer & Support</button>
                 <button className="pd-menu-btn logout" onClick={() => { setShowLogoutModal(true); setShowProfileMenu(false); }}> Logout</button>
               </div>
@@ -582,6 +598,11 @@ const ParentDashboard = ({ user, onLogout }) => {
         <button className={activeTab === 'fees' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('fees')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></button>
       </nav>
 
+      {/* ✨ TUTORIAL MODAL COMPONENT */}
+      {showTutorial && (
+        <TutorialModal onClose={() => setShowTutorial(false)} />
+      )}
+
       {showLogoutModal && (
         <div className="logout-modal-overlay">
           <div className="logout-modal">
@@ -644,6 +665,50 @@ const ParentDashboard = ({ user, onLogout }) => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+// ✨ NEW: TUTORIAL MODAL COMPONENT
+const TutorialModal = ({ onClose }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const nextStep = () => {
+    if (currentStep < TUTORIAL_STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      onClose(); // Finish tutorial
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) setCurrentStep(currentStep - 1);
+  };
+
+  const step = TUTORIAL_STEPS[currentStep];
+
+  return (
+    <div className="logout-modal-overlay">
+      <div className="tutorial-modal-card">
+        <div className="tm-icon">{step.icon}</div>
+        <h3 className="tm-title">{step.title}</h3>
+        <p className="tm-desc">{step.desc}</p>
+        
+        <div className="tm-dots">
+          {TUTORIAL_STEPS.map((_, idx) => (
+            <span key={idx} className={`tm-dot ${idx === currentStep ? 'active' : ''}`}></span>
+          ))}
+        </div>
+
+        <div className="tm-actions">
+          <button className="tm-btn secondary" onClick={currentStep === 0 ? onClose : prevStep}>
+            {currentStep === 0 ? 'Skip' : 'Back'}
+          </button>
+          <button className="tm-btn primary" onClick={nextStep}>
+            {currentStep === TUTORIAL_STEPS.length - 1 ? 'Finish' : 'Next'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
