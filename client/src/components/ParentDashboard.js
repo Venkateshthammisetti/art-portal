@@ -92,7 +92,6 @@ const ParentDashboard = ({ user, onLogout }) => {
       setStudentProfile(profileRes.data.student);
       setAssignedClass(profileRes.data.classDetails);
 
-      // ✨ UPDATED: Fetch reports directly from API. Backend now provides 'parentComment'.
       const reportRes = await axios.get(`https://art-portal-7n6r.onrender.com/api/feedback/student/${currentUser._id}`);
       setReports(reportRes.data);
 
@@ -130,22 +129,82 @@ const ParentDashboard = ({ user, onLogout }) => {
     return `${day}-${month}-${year}`;
   };
 
-  const getNextClass = () => {
-    if (!assignedClass || !assignedClass.schedule || assignedClass.schedule.length === 0) return null;
+  // ✨ NEW: Timezone Conversion Helper (IST to Local)
+  const convertScheduleToLocal = (dayName, timeStr) => {
+    if (!dayName || !timeStr) return { day: dayName, time: timeStr };
+
     const daysMap = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
-    const today = new Date().getDay();
-    const sortedSchedule = [...assignedClass.schedule].sort((a, b) => daysMap[a.day] - daysMap[b.day]);
-    const next = sortedSchedule.find(s => daysMap[s.day] >= today);
-    return next || sortedSchedule[0]; 
+    const dayIndex = daysMap[dayName];
+    if (dayIndex === undefined) return { day: dayName, time: timeStr };
+    
+    // 1. Find the date of the next occurrence of this 'dayName' relative to today
+    const now = new Date();
+    const currentDayIndex = now.getDay();
+    let distance = (dayIndex - currentDayIndex + 7) % 7;
+    // If it's today but the time passed, you might treat it as next week, 
+    // but for static schedule display, focusing on the nearest upcoming day is fine.
+    
+    const refDate = new Date(now);
+    refDate.setDate(now.getDate() + distance);
+    
+    // 2. Parse IST time (e.g., "05:30")
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    
+    // 3. Create ISO string with IST Offset (+05:30)
+    // Format: YYYY-MM-DDTHH:mm:00+05:30
+    const yyyy = refDate.getFullYear();
+    const mm = String(refDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(refDate.getDate()).padStart(2, '0');
+    const hh = String(hours).padStart(2, '0');
+    const min = String(minutes).padStart(2, '0');
+    
+    const isoStringIST = `${yyyy}-${mm}-${dd}T${hh}:${min}:00+05:30`;
+    const dateObject = new Date(isoStringIST); // Browser parses this to Local Time
+    
+    // 4. Format to User's Local Time/Day
+    const localDay = dateObject.toLocaleDateString([], { weekday: 'long' });
+    const localTime = dateObject.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    
+    return { day: localDay, time: localTime };
   };
 
+  // ✨ UPDATED: Get Local Schedule
+  const getLocalSchedule = () => {
+    if (!assignedClass || !assignedClass.schedule) return [];
+    return assignedClass.schedule.map(slot => convertScheduleToLocal(slot.day, slot.time));
+  };
+
+  // ✨ UPDATED: Get Next Class based on Local Time
+  const getNextClass = () => {
+    const localSchedule = getLocalSchedule();
+    if (localSchedule.length === 0) return null;
+    
+    const daysMap = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+    const today = new Date().getDay();
+    
+    // Sort schedule by day
+    const sorted = [...localSchedule].sort((a, b) => daysMap[a.day] - daysMap[b.day]);
+    
+    // Find next class today or later
+    const next = sorted.find(s => daysMap[s.day] >= today);
+    return next || sorted[0]; 
+  };
+
+  // Helper: Calculate Attendance Stats & Sort Logs
   const calculateAttendanceStats = () => {
-    const currentMonthRecords = attendanceHistory.filter(rec => rec.date.startsWith(attendanceMonth));
+    // 1. Filter for selected month
+    // 2. Sort by Date (Ascending: Oldest -> Newest)
+    const currentMonthRecords = attendanceHistory
+      .filter(rec => rec.date.startsWith(attendanceMonth))
+      .sort((a, b) => new Date(a.date) - new Date(b.date)); // ✨ Added Sorting Logic
+
     const presentCount = currentMonthRecords.filter(r => r.status === 'Present').length;
     const absentCount = currentMonthRecords.filter(r => r.status === 'Absent').length;
     const targetClasses = studentProfile?.monthlyClassesTarget || 8; 
+    
     let percentage = Math.round((presentCount / targetClasses) * 100);
     if (percentage > 100) percentage = 100;
+    
     return { present: presentCount, absent: absentCount, target: targetClasses, percentage, records: currentMonthRecords };
   };
 
@@ -215,26 +274,22 @@ const ParentDashboard = ({ user, onLogout }) => {
     setTimeout(() => { setShowToast(false); }, 3000);
   };
 
-  // ✨ NEW: Submit Comment to Backend
   const handleSubmitComment = async (reportId) => {
     if (!commentText.trim()) return;
     setSubmittingComment(true);
     
     try {
-      // 1. Send to Backend
       await axios.post(`https://art-portal-7n6r.onrender.com/api/feedback/comment`, {
         reportId: reportId,
         comment: commentText,
         parentId: currentUser._id 
       });
 
-      // 2. Optimistic Update (Update UI instantly)
       const updatedReports = reports.map(r => 
         r._id === reportId ? { ...r, parentComment: commentText } : r
       );
       setReports(updatedReports);
       
-      // 3. Reset & Notify
       setToastMessage("Comment sent to teacher! 📨");
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -284,6 +339,10 @@ const ParentDashboard = ({ user, onLogout }) => {
   const feeList = getFeeList(); 
   const totalPendingAmount = calculateTotalPending(feeList);
   const chartData = [ { name: 'Attended', value: attStats.present, color: '#16a34a' }, { name: 'Absent', value: attStats.absent, color: '#ef4444' }, { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present - attStats.absent), color: '#e2e8f0' } ];
+  
+  // ✨ USE LOCAL SCHEDULE FOR RENDER
+  const localSchedule = getLocalSchedule();
+  const nextClass = getNextClass();
 
   return (
     <div className={`parent-container ${theme}`} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
@@ -344,9 +403,10 @@ const ParentDashboard = ({ user, onLogout }) => {
                 ) : (<div className="empty-mini">No reports released yet.</div>)}
               </div>
               <div className="info-card next-class-card">
-                <h3 onClick={() => handleNavClick('schedule')} className="clickable-heading">🚀 Next Class</h3>
+                <h3 onClick={() => handleNavClick('schedule')} className="clickable-heading">🚀 Next Class (Local Time)</h3>
                 {assignedClass ? (
-                  <div className="nc-details"><div className="nc-row"><span className="nc-label">Class:</span><span className="nc-val">{assignedClass.className}</span></div><div className="nc-row"><span className="nc-label">Time:</span><span className="nc-val highlight">{getNextClass()?.day} @ {getNextClass()?.time}</span></div>{assignedClass.meetingLink ? (<a href={assignedClass.meetingLink} target="_blank" rel="noreferrer" className="join-btn">Join Zoom Class</a>) : (<button className="join-btn disabled" disabled>No Link Yet</button>)}</div>
+                  // ✨ UPDATED: Showing Local Time
+                  <div className="nc-details"><div className="nc-row"><span className="nc-label">Class:</span><span className="nc-val">{assignedClass.className}</span></div><div className="nc-row"><span className="nc-label">Time:</span><span className="nc-val highlight">{nextClass?.day} @ {nextClass?.time}</span></div>{assignedClass.meetingLink ? (<a href={assignedClass.meetingLink} target="_blank" rel="noreferrer" className="join-btn">Join Zoom Class</a>) : (<button className="join-btn disabled" disabled>No Link Yet</button>)}</div>
                 ) : (<div className="empty-mini">No class assigned yet. Contact Admin.</div>)}
               </div>
               <div className="info-card fee-card">
@@ -369,13 +429,14 @@ const ParentDashboard = ({ user, onLogout }) => {
               {assignedClass ? (
                 <div className="class-detail-card">
                   <div className="cdc-header"><div><h2>{assignedClass.className}</h2><p>Teacher: {assignedClass.teacher?.fullName || "Not Assigned"}</p></div><span className="level-tag">{assignedClass.level}</span></div>
-                  <div className="cdc-grid">{assignedClass.schedule.map((slot, idx) => (<div key={idx} className="slot-item"><span className="slot-day">{slot.day}</span><span className="slot-time">{slot.time}</span></div>))}</div>
+                  {/* ✨ UPDATED: Use localSchedule for mapping */}
+                  <div className="cdc-grid">{localSchedule.map((slot, idx) => (<div key={idx} className="slot-item"><span className="slot-day">{slot.day}</span><span className="slot-time">{slot.time}</span></div>))}</div>
                 </div>
               ) : (<div className="empty-state">No class assigned. Please contact admin.</div>)}
             </div>
           )}
 
-          {/* ✨ REPORTS TAB */}
+          {/* REPORTS TAB */}
           {activeTab === "reports" && (
             <div className="reports-view">
               <div className="att-header-row"><h3>Academic Reports</h3><div className="month-nav-mini"><button onClick={() => changeReportQuarter(-1)}>‹</button><span>Q{reportQuarter} {reportYear}</span><button onClick={() => changeReportQuarter(1)}>›</button></div></div>
@@ -386,7 +447,6 @@ const ParentDashboard = ({ user, onLogout }) => {
                       <div className="rc-header"><span className="rc-month">{formatFullMonthDate(rep.month)} Report</span><div className="rc-rating">{"★".repeat(rep.rating)}</div></div>
                       <div className="rc-body"><p>"{rep.feedbackText}"</p></div>
                       
-                      {/* ✨ Persistent Comment from API */}
                       {rep.parentComment && (
                         <div className="saved-comment-box">
                           <span className="sc-icon">✅</span>
@@ -397,7 +457,6 @@ const ParentDashboard = ({ user, onLogout }) => {
                         </div>
                       )}
 
-                      {/* ✨ Comment Input Form */}
                       {activeCommentId === rep._id && (
                         <div className="comment-input-area animate-fade-in">
                           <textarea 
@@ -418,13 +477,12 @@ const ParentDashboard = ({ user, onLogout }) => {
                       <div className="rc-footer">
                         <span className="rc-teacher">By: Thevenkyart Art Academy</span>
                         <div className="rc-footer-actions">
-                          {/* Show Comment Button ONLY if not yet commented */}
                           {!rep.parentComment && (
-                            <button className="comment-trigger-btn" onClick={() => setActiveCommentId(activeCommentId === rep._id ? null : rep._id)}>
+                            <button className="rc-action-btn comment" onClick={() => setActiveCommentId(activeCommentId === rep._id ? null : rep._id)}>
                               💬 Comment
                             </button>
                           )}
-                          {rep.reportFile && (<a href={`https://art-portal-7n6r.onrender.com/${rep.reportFile}`} target="_blank" rel="noreferrer" className="download-pdf-btn">📄 View PDF</a>)}
+                          {rep.reportFile && (<a href={`https://art-portal-7n6r.onrender.com/${rep.reportFile}`} target="_blank" rel="noreferrer" className="rc-action-btn pdf">📄 View PDF</a>)}
                         </div>
                       </div>
                     </div>
