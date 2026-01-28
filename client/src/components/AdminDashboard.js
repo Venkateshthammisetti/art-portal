@@ -6,7 +6,7 @@ import {
 import axios from "axios";
 import "./AdminDashboard.css";
 
-// ✨ 1. ADD IMAGE IMPORTS
+// IMAGES
 import logoImg from './new-logo.png'; 
 import titleImg from './logo-title-copy.png';
 
@@ -23,15 +23,16 @@ const LEVEL_STRUCTURE = {
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
+  const [showMobileLogout, setShowMobileLogout] = useState(false);
 
   // ICONS
-  const IconHome = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>);
-  const IconAdd = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>);
-  const IconUsers = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
-  const IconClasses = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>);
-  const IconLogout = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>);
-  const IconFee = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5"></path></svg>);
-  const IconClock = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>);
+  const IconHome = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>);
+  const IconAdd = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>);
+  const IconUsers = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
+  const IconClasses = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>);
+  const IconLogout = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>);
+  const IconFee = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5"></path></svg>);
+  const IconClock = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>);
 
   const fetchStats = () => {
     axios.get('https://art-portal-7n6r.onrender.com/api/dashboard/stats')
@@ -41,10 +42,15 @@ const AdminDashboard = ({ onLogout }) => {
 
   useEffect(() => { fetchStats(); }, [activeTab]);
 
+  const handleNavClick = (tab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="admin-container">
+      {/* DESKTOP SIDEBAR - Hidden on Mobile/Tablet via CSS */}
       <aside className="admin-sidebar">
-        {/* ✨ 2. UPDATED SIDEBAR LOGO SECTION (Images instead of text) */}
         <div className="sidebar-brand">
            <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
            <img src={titleImg} alt="Venky Art" className="sidebar-title-img" />
@@ -59,17 +65,29 @@ const AdminDashboard = ({ onLogout }) => {
         </nav>
         <div className="sidebar-footer"><p>Admin Portal v1.0</p></div>
       </aside>
+
       <main className="admin-main">
         <header className="top-header">
           <div className="header-title">
-            <h2>{activeTab === "overview" ? "Overview" : activeTab === "users" ? "All Users" : activeTab === "classes" ? "Class Management" : activeTab === "fees" ? "Fee Tracker" : "Register User"}</h2>
+            <h2>{activeTab === "overview" ? "Overview" : activeTab === "users" ? "All Users" : activeTab === "classes" ? "Class Management" : activeTab === "fees" ? "Fee Tracker" : activeTab === "slots" ? "Slot Manager" : "Register User"}</h2>
             <p>Welcome back, Admin</p>
           </div>
           <div className="header-actions">
-            <div className="user-profile-pill"><span>Super Admin</span></div>
-            <button onClick={onLogout} className="header-logout-btn" title="Logout"><IconLogout /></button>
+            <div className="user-profile-pill" onClick={() => setShowMobileLogout(!showMobileLogout)}>
+              <span>Super Admin</span>
+              {/* Optional: Add an avatar image here if available */}
+            </div>
+            <button onClick={onLogout} className="header-logout-btn desktop-only" title="Logout"><IconLogout /></button>
+            
+            {/* Mobile Logout Dropdown */}
+            {showMobileLogout && (
+               <div className="mobile-logout-dropdown">
+                 <button onClick={onLogout}>🚪 Logout</button>
+               </div>
+             )}
           </div>
         </header>
+
         <div className="content-scrollable">
           {activeTab === "overview" && <OverviewTab stats={stats} />}
           {activeTab === "users" && <UserManagementTab />}
@@ -79,6 +97,34 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "slots" && <SlotManagementTab />}
         </div>
       </main>
+
+      {/* ✨ MOBILE BOTTOM NAVIGATION BAR (This was missing) */}
+      <nav className="mobile-bottom-nav">
+        <button className={activeTab === 'overview' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('overview')}>
+          <IconHome />
+          <span>Home</span>
+        </button>
+        <button className={activeTab === 'users' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('users')}>
+          <IconUsers />
+          <span>Users</span>
+        </button>
+        <button className={activeTab === 'classes' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('classes')}>
+          <IconClasses />
+          <span>Classes</span>
+        </button>
+        <button className={activeTab === 'fees' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('fees')}>
+          <IconFee />
+          <span>Fees</span>
+        </button>
+        <button className={activeTab === 'add-user' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('add-user')}>
+          <IconAdd />
+          <span>Add</span>
+        </button>
+        <button className={activeTab === 'slots' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('slots')}>
+          <IconClock />
+          <span>Slots</span>
+        </button>
+      </nav>
     </div>
   );
 };
@@ -999,7 +1045,6 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
 };
 
 // --- TAB 3: ADD USER ---
-// --- TAB 3: ADD USER ---
 const AddUserTab = () => {
   const [formData, setFormData] = useState({ 
     username: "", password: "", role: "parent", 
@@ -1271,199 +1316,6 @@ const AddUserTab = () => {
   );
 };
 
-// --- TAB 5: FEE TRACKER ---
-// --- TAB 5: FEE TRACKER ---
-const FeeTrackerTab = () => {
-  const [students, setStudents] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all"); 
-  const [sortOrder, setSortOrder] = useState("name-asc");
-  const [showAnalytics, setShowAnalytics] = useState(false);
-
-  useEffect(() => { fetchStudents(); }, []);
-
-  const fetchStudents = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
-      setStudents(res.data.filter(u => u.role === 'parent'));
-    } catch (err) { console.error(err); } finally { setLoading(false); }
-  };
-
-  const handleTogglePayment = async (studentId, currentStatus, feeAmount) => {
-    const newStatus = currentStatus === 'Paid' ? 'Pending' : 'Paid';
-    const updatedStudents = students.map(s => {
-      if (s._id === studentId) {
-        let newPayments = [...(s.payments || [])];
-        if (newStatus === 'Paid') { newPayments.push({ month: selectedMonth, status: 'Paid', amount: feeAmount }); } 
-        else { newPayments = newPayments.filter(p => p.month !== selectedMonth); }
-        return { ...s, payments: newPayments };
-      }
-      return s;
-    });
-    setStudents(updatedStudents);
-    try { await axios.post('https://art-portal-7n6r.onrender.com/api/fees/update', { userId: studentId, month: selectedMonth, status: newStatus, amount: feeAmount }); } 
-    catch (err) { alert("Error updating payment"); fetchStudents(); }
-  };
-
-  const getPaymentStatus = (student) => (student.payments || []).find(p => p.month === selectedMonth) ? 'Paid' : 'Pending';
-  
-  const changeMonth = (offset) => {
-    const d = new Date(selectedMonth + "-01"); d.setMonth(d.getMonth()+offset);
-    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
-  };
-
-  // ✨ FIX: Fee Calculation Logic Updated
-  const calculateTotalPending = (student) => {
-    const rawDate = student.joiningDate || student.createdAt || new Date();
-    const joinDate = new Date(rawDate);
-    const today = new Date();
-    
-    // 1. Determine the Start Date for Fee Calculation
-    // We start from Jan 1st of the CURRENT YEAR to avoid 2 years of backlog
-    const startOfYear = new Date(today.getFullYear(), 0, 1); 
-    
-    // If student joined AFTER Jan 1st, use their joining date.
-    // If they joined BEFORE Jan 1st, cap it at Jan 1st.
-    const effectiveStartDate = joinDate < startOfYear ? startOfYear : joinDate;
-
-    let pendingCount = 0;
-    let pendingAmount = 0;
-    
-    // Normalize iterator to the 1st of the month
-    let iterDate = new Date(effectiveStartDate.getFullYear(), effectiveStartDate.getMonth(), 1);
-    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    if (isNaN(joinDate.getTime()) || iterDate > checkUntil) return { count: 0, amount: 0 };
-
-    while (iterDate <= checkUntil) {
-      const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
-      const isPaid = (student.payments || []).some(p => p.month === monthStr && p.status === 'Paid');
-      
-      if (!isPaid) { 
-          pendingCount++; 
-          pendingAmount += (Number(student.monthlyFee) || 0); 
-      }
-      iterDate.setMonth(iterDate.getMonth() + 1);
-    }
-    return { count: pendingCount, amount: pendingAmount };
-  };
-
-  const totalEstRevenue = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
-  const currentCollected = students.reduce((acc, s) => getPaymentStatus(s) === 'Paid' ? acc + (s.monthlyFee || 0) : acc, 0);
-  const currentPending = totalEstRevenue - currentCollected;
-  const totalOutstandingAllTime = students.reduce((acc, s) => acc + calculateTotalPending(s).amount, 0);
-
-  const processedStudents = students
-    .filter(s => (filterStatus === "all" || getPaymentStatus(s) === filterStatus) && ((s.childName||"").toLowerCase().includes(searchTerm.toLowerCase()) || (s.fullName||"").toLowerCase().includes(searchTerm.toLowerCase())))
-    .sort((a, b) => {
-      if (sortOrder === 'name-asc') return (a.childName || "").localeCompare(b.childName || "");
-      if (sortOrder === 'fee-high') return (b.monthlyFee || 0) - (a.monthlyFee || 0);
-      if (sortOrder === 'total-pending-high') return calculateTotalPending(b).amount - calculateTotalPending(a).amount;
-      if (sortOrder === 'status-paid') return getPaymentStatus(b) === 'Paid' ? 1 : -1;
-      return 0;
-    });
-
-  const DonutChart = ({ value, total, color, label }) => {
-    const percentage = total > 0 ? (value / total) * 100 : 0;
-    const strokeDasharray = `${percentage}, 100`;
-    return (
-      <div style={{display:'flex', flexDirection:'column', alignItems:'center', background:'#fff', padding:'20px', borderRadius:'12px', boxShadow:'0 2px 5px rgba(0,0,0,0.05)', flex:1}}>
-        <h4 style={{margin:'0 0 15px 0', color:'#64748b', fontSize:'0.9rem', textTransform:'uppercase'}}>{label}</h4>
-        <div style={{position:'relative', width:'120px', height:'120px'}}>
-          <svg viewBox="0 0 36 36" style={{transform:'rotate(-90deg)', width:'100%', height:'100%'}}>
-            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" strokeWidth="4" />
-            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={color} strokeWidth="4" strokeDasharray={strokeDasharray} />
-          </svg>
-          <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)', textAlign:'center'}}>
-            <span style={{fontSize:'1.2rem', fontWeight:'bold', color:'#334155'}}>{Math.round(percentage)}%</span>
-          </div>
-        </div>
-        <div style={{marginTop:'15px', textAlign:'center'}}>
-          <div style={{fontSize:'1.1rem', fontWeight:'bold', color:'#334155'}}>₹{value.toLocaleString()}</div>
-          <div style={{fontSize:'0.8rem', color:'#94a3b8'}}>out of ₹{total.toLocaleString()}</div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <div className="table-wrapper">
-        <div className="filter-bar" style={{flexWrap:'wrap', gap:'15px'}}>
-           <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
-             <button onClick={() => changeMonth(-1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&lt;</button>
-             <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding:'6px', borderRadius:'4px', border:'1px solid #cbd5e1', fontWeight:'600', color:'#0284c7'}} />
-             <button onClick={() => changeMonth(1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&gt;</button>
-           </div>
-           
-           <button onClick={() => setShowAnalytics(!showAnalytics)} className="save-btn" style={{display:'flex', alignItems:'center', gap:'8px', backgroundColor: showAnalytics ? '#334155' : '#0284c7'}}>
-             {showAnalytics ? '📄 View List' : '📊 View Analytics'}
-           </button>
-
-           {!showAnalytics && (
-             <>
-                <div className="search-box"><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                <div className="filter-dropdown"><select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}><option value="all">All Status</option><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
-                <div className="filter-dropdown"><select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}><option value="name-asc">Name (A-Z)</option><option value="total-pending-high">Highest Dues</option></select></div>
-             </>
-           )}
-        </div>
-
-        {showAnalytics ? (
-          <div style={{padding:'30px', background:'#f8fafc'}}>
-              <h3 style={{marginBottom:'20px', color:'#334155'}}>Analytics for {new Date(selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
-              <div style={{display:'flex', gap:'20px', flexWrap:'wrap', marginBottom:'30px'}}>
-                <DonutChart value={currentCollected} total={totalEstRevenue} color="#10b981" label="Collection Rate (Month)" />
-                <DonutChart value={currentPending} total={totalEstRevenue} color="#f59e0b" label="Pending Dues (Month)" />
-                <DonutChart value={totalOutstandingAllTime} total={totalOutstandingAllTime + currentCollected} color="#ef4444" label="Total Outstanding Risk" />
-              </div>
-              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px'}}>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{students.length}</div></div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{students.filter(s => getPaymentStatus(s) === 'Paid').length}</div></div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{students.filter(s => getPaymentStatus(s) === 'Pending').length}</div></div>
-              </div>
-          </div>
-        ) : (
-          <>
-            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px', padding:'15px 20px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0'}}>
-                <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>EST. REVENUE</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#334155'}}>₹{totalEstRevenue.toLocaleString()}</div></div>
-                <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>COLLECTED</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#16a34a'}}>₹{currentCollected.toLocaleString()}</div></div>
-                <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>PENDING</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#f59e0b'}}>₹{currentPending.toLocaleString()}</div></div>
-                <div style={{background:'#fee2e2', padding:'10px', borderRadius:'8px', border:'1px solid #fecaca'}}><div style={{fontSize:'0.75rem', color:'#991b1b', fontWeight:'bold'}}>TOTAL OUTSTANDING</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#dc2626'}}>₹{totalOutstandingAllTime.toLocaleString()}</div></div>
-            </div>
-            <div className="table-container">
-              <table className="custom-table">
-                <thead><tr><th>Student Name</th><th>Monthly Fee</th><th>Status ({new Date(selectedMonth).toLocaleString('default', { month: 'short' })})</th><th>Total Pending Dues</th><th>Action</th></tr></thead>
-                <tbody>
-                  {loading ? <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>Loading...</td></tr> : 
-                   processedStudents.length === 0 ? <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>No students found.</td></tr> :
-                   processedStudents.map(student => {
-                     const status = getPaymentStatus(student);
-                     const isPaid = status === 'Paid';
-                     const pendingStats = calculateTotalPending(student);
-                     return (
-                       <tr key={student._id}>
-                         <td style={{fontWeight:'600', color:'#334155'}}>{student.childName}<div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'normal'}}>{student.fullName}</div></td>
-                         <td style={{fontWeight:'bold'}}>₹{student.monthlyFee}</td>
-                         <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? '✅ Paid' : '⏳ Pending'}</span></td>
-                         <td>{pendingStats.amount > 0 ? (<div style={{display:'flex', alignItems:'center', gap:'8px'}}><span style={{background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>₹{pendingStats.amount.toLocaleString()}</span><span style={{fontSize:'0.75rem', color:'#dc2626'}}>({pendingStats.count} Mo)</span></div>) : (<span style={{color:'#16a34a', fontSize:'0.85rem', fontWeight:'bold'}}>All Clear </span>)}</td>
-                         <td><button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Pay This Month'}</button></td>
-                       </tr>
-                     );
-                   })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  );
-};
-
 // --- TAB: SLOT MANAGEMENT ---
 const SlotManagementTab = () => {
   const [classes, setClasses] = useState([]);
@@ -1651,6 +1503,192 @@ const SlotManagementTab = () => {
             onSuccess={handleModalSuccess} 
         />
       )}
+    </>
+  );
+};
+
+// --- TAB 5: FEE TRACKER ---
+const FeeTrackerTab = () => {
+  const [students, setStudents] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all"); 
+  const [sortOrder, setSortOrder] = useState("name-asc");
+  const [showAnalytics, setShowAnalytics] = useState(false);
+
+  useEffect(() => { fetchStudents(); }, []);
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
+      setStudents(res.data.filter(u => u.role === 'parent'));
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleTogglePayment = async (studentId, currentStatus, feeAmount) => {
+    const newStatus = currentStatus === 'Paid' ? 'Pending' : 'Paid';
+    const updatedStudents = students.map(s => {
+      if (s._id === studentId) {
+        let newPayments = [...(s.payments || [])];
+        if (newStatus === 'Paid') { newPayments.push({ month: selectedMonth, status: 'Paid', amount: feeAmount }); } 
+        else { newPayments = newPayments.filter(p => p.month !== selectedMonth); }
+        return { ...s, payments: newPayments };
+      }
+      return s;
+    });
+    setStudents(updatedStudents);
+    try { await axios.post('https://art-portal-7n6r.onrender.com/api/fees/update', { userId: studentId, month: selectedMonth, status: newStatus, amount: feeAmount }); } 
+    catch (err) { alert("Error updating payment"); fetchStudents(); }
+  };
+
+  const getPaymentStatus = (student) => (student.payments || []).find(p => p.month === selectedMonth) ? 'Paid' : 'Pending';
+  
+  const changeMonth = (offset) => {
+    const d = new Date(selectedMonth + "-01"); d.setMonth(d.getMonth()+offset);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  };
+
+  const calculateTotalPending = (student) => {
+    const rawDate = student.joiningDate || student.createdAt || new Date();
+    const joinDate = new Date(rawDate);
+    const today = new Date();
+    
+    // Start from Jan 1st of the CURRENT YEAR to avoid massive backlog
+    const startOfYear = new Date(today.getFullYear(), 0, 1); 
+    const effectiveStartDate = joinDate < startOfYear ? startOfYear : joinDate;
+
+    let pendingCount = 0;
+    let pendingAmount = 0;
+    
+    let iterDate = new Date(effectiveStartDate.getFullYear(), effectiveStartDate.getMonth(), 1);
+    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    if (isNaN(joinDate.getTime()) || iterDate > checkUntil) return { count: 0, amount: 0 };
+
+    while (iterDate <= checkUntil) {
+      const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
+      const isPaid = (student.payments || []).some(p => p.month === monthStr && p.status === 'Paid');
+      
+      if (!isPaid) { 
+          pendingCount++; 
+          pendingAmount += (Number(student.monthlyFee) || 0); 
+      }
+      iterDate.setMonth(iterDate.getMonth() + 1);
+    }
+    return { count: pendingCount, amount: pendingAmount };
+  };
+
+  const totalEstRevenue = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
+  const currentCollected = students.reduce((acc, s) => getPaymentStatus(s) === 'Paid' ? acc + (s.monthlyFee || 0) : acc, 0);
+  const currentPending = totalEstRevenue - currentCollected;
+  const totalOutstandingAllTime = students.reduce((acc, s) => acc + calculateTotalPending(s).amount, 0);
+
+  const processedStudents = students
+    .filter(s => (filterStatus === "all" || getPaymentStatus(s) === filterStatus) && ((s.childName||"").toLowerCase().includes(searchTerm.toLowerCase()) || (s.fullName||"").toLowerCase().includes(searchTerm.toLowerCase())))
+    .sort((a, b) => {
+      if (sortOrder === 'name-asc') return (a.childName || "").localeCompare(b.childName || "");
+      if (sortOrder === 'fee-high') return (b.monthlyFee || 0) - (a.monthlyFee || 0);
+      if (sortOrder === 'total-pending-high') return calculateTotalPending(b).amount - calculateTotalPending(a).amount;
+      if (sortOrder === 'status-paid') return getPaymentStatus(b) === 'Paid' ? 1 : -1;
+      return 0;
+    });
+
+  const DonutChart = ({ value, total, color, label }) => {
+    const percentage = total > 0 ? (value / total) * 100 : 0;
+    const strokeDasharray = `${percentage}, 100`;
+    return (
+      <div style={{display:'flex', flexDirection:'column', alignItems:'center', background:'#fff', padding:'20px', borderRadius:'12px', boxShadow:'0 2px 5px rgba(0,0,0,0.05)', flex:1}}>
+        <h4 style={{margin:'0 0 15px 0', color:'#64748b', fontSize:'0.9rem', textTransform:'uppercase'}}>{label}</h4>
+        <div style={{position:'relative', width:'120px', height:'120px'}}>
+          <svg viewBox="0 0 36 36" style={{transform:'rotate(-90deg)', width:'100%', height:'100%'}}>
+            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={color} strokeWidth="4" strokeDasharray={strokeDasharray} />
+          </svg>
+          <div style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)', textAlign:'center'}}>
+            <span style={{fontSize:'1.2rem', fontWeight:'bold', color:'#334155'}}>{Math.round(percentage)}%</span>
+          </div>
+        </div>
+        <div style={{marginTop:'15px', textAlign:'center'}}>
+          <div style={{fontSize:'1.1rem', fontWeight:'bold', color:'#334155'}}>₹{value.toLocaleString()}</div>
+          <div style={{fontSize:'0.8rem', color:'#94a3b8'}}>out of ₹{total.toLocaleString()}</div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="table-wrapper">
+        <div className="filter-bar" style={{flexWrap:'wrap', gap:'15px'}}>
+           <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+             <button onClick={() => changeMonth(-1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&lt;</button>
+             <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding:'6px', borderRadius:'4px', border:'1px solid #cbd5e1', fontWeight:'600', color:'#0284c7'}} />
+             <button onClick={() => changeMonth(1)} className="icon-btn" style={{background:'#e2e8f0', width:'30px', height:'30px', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center'}}>&gt;</button>
+           </div>
+           
+           <button onClick={() => setShowAnalytics(!showAnalytics)} className="save-btn" style={{display:'flex', alignItems:'center', gap:'8px', backgroundColor: showAnalytics ? '#334155' : '#0284c7'}}>
+             {showAnalytics ? '📄 View List' : '📊 View Analytics'}
+           </button>
+
+           {!showAnalytics && (
+             <>
+                <div className="search-box"><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                <div className="filter-dropdown"><select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}><option value="all">All Status</option><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
+                <div className="filter-dropdown"><select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}><option value="name-asc">Name (A-Z)</option><option value="total-pending-high">Highest Dues</option></select></div>
+             </>
+           )}
+        </div>
+
+        {showAnalytics ? (
+          <div style={{padding:'30px', background:'#f8fafc'}}>
+              <h3 style={{marginBottom:'20px', color:'#334155'}}>Analytics for {new Date(selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+              <div style={{display:'flex', gap:'20px', flexWrap:'wrap', marginBottom:'30px'}}>
+                <DonutChart value={currentCollected} total={totalEstRevenue} color="#10b981" label="Collection Rate (Month)" />
+                <DonutChart value={currentPending} total={totalEstRevenue} color="#f59e0b" label="Pending Dues (Month)" />
+                <DonutChart value={totalOutstandingAllTime} total={totalOutstandingAllTime + currentCollected} color="#ef4444" label="Total Outstanding Risk" />
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px'}}>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{students.length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{students.filter(s => getPaymentStatus(s) === 'Paid').length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{students.filter(s => getPaymentStatus(s) === 'Pending').length}</div></div>
+              </div>
+          </div>
+        ) : (
+          <>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px', padding:'15px 20px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0'}}>
+                <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>EST. REVENUE</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#334155'}}>₹{totalEstRevenue.toLocaleString()}</div></div>
+                <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>COLLECTED</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#16a34a'}}>₹{currentCollected.toLocaleString()}</div></div>
+                <div style={{background:'#fff', padding:'10px', borderRadius:'8px', border:'1px solid #e2e8f0'}}><div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold'}}>PENDING</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#f59e0b'}}>₹{currentPending.toLocaleString()}</div></div>
+                <div style={{background:'#fee2e2', padding:'10px', borderRadius:'8px', border:'1px solid #fecaca'}}><div style={{fontSize:'0.75rem', color:'#991b1b', fontWeight:'bold'}}>TOTAL OUTSTANDING</div><div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#dc2626'}}>₹{totalOutstandingAllTime.toLocaleString()}</div></div>
+            </div>
+            <div className="table-container">
+              <table className="custom-table">
+                <thead><tr><th>Student Name</th><th>Monthly Fee</th><th>Status ({new Date(selectedMonth).toLocaleString('default', { month: 'short' })})</th><th>Total Pending Dues</th><th>Action</th></tr></thead>
+                <tbody>
+                  {loading ? <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>Loading...</td></tr> : 
+                   processedStudents.length === 0 ? <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>No students found.</td></tr> :
+                   processedStudents.map(student => {
+                     const status = getPaymentStatus(student);
+                     const isPaid = status === 'Paid';
+                     const pendingStats = calculateTotalPending(student);
+                     return (
+                       <tr key={student._id}>
+                         <td style={{fontWeight:'600', color:'#334155'}}>{student.childName}<div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'normal'}}>{student.fullName}</div></td>
+                         <td style={{fontWeight:'bold'}}>₹{student.monthlyFee}</td>
+                         <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? '✅ Paid' : '⏳ Pending'}</span></td>
+                         <td>{pendingStats.amount > 0 ? (<div style={{display:'flex', alignItems:'center', gap:'8px'}}><span style={{background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>₹{pendingStats.amount.toLocaleString()}</span><span style={{fontSize:'0.75rem', color:'#dc2626'}}>({pendingStats.count} Mo)</span></div>) : (<span style={{color:'#16a34a', fontSize:'0.85rem', fontWeight:'bold'}}>All Clear </span>)}</td>
+                         <td><button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Pay This Month'}</button></td>
+                       </tr>
+                     );
+                   })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 };
