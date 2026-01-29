@@ -414,7 +414,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <div className="latest-report-box">
                     <div className="lrb-header"><span className="lrb-month">{formatFullMonthDate(reports[0].month)} Report</span><span className="lrb-rating">{"★".repeat(reports[0].rating)}</span></div>
                     <p className="lrb-text">"{reports[0].feedbackText.substring(0, 60)}..."</p>
-                    {reports[0].reportFile ? (<a href={`https://art-portal-7n6r.onrender.com/${reports[0].reportFile}`} target="_blank" rel="noreferrer" className="mini-link-btn">📄 View PDF</a>) : (<button className="mini-link-btn" onClick={() => handleNavClick("reports")}>View Details</button>)}
+                    {reports[0].reportFile ? (<a href={reports[0].reportFile} target="_blank" rel="noreferrer" className="mini-link-btn">📄 View PDF</a>) : (<button className="mini-link-btn" onClick={() => handleNavClick("reports")}>View Details</button>)}
                   </div>
                 ) : (<div className="empty-mini">No reports released yet.</div>)}
               </div>
@@ -498,7 +498,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                               💬 Comment
                             </button>
                           )}
-                          {rep.reportFile && (<a href={`https://art-portal-7n6r.onrender.com/${rep.reportFile}`} target="_blank" rel="noreferrer" className="rc-action-btn pdf">📄 View PDF</a>)}
+                          {rep.reportFile && (<a href={rep.reportFile} target="_blank" rel="noreferrer" className="rc-action-btn pdf">📄 View PDF</a>)}
                         </div>
                       </div>
                     </div>
