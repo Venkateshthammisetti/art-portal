@@ -610,7 +610,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 <p className="h-text">"{item.feedbackText}"</p>
                                 {item.parentComment && (<div className="teacher-reply-view"><strong>📩 Parent Reply:</strong><p>{item.parentComment}</p></div>)}
                                 <div className="history-actions">
-                                  {item.reportFile && <a href={`https://art-portal-7n6r.onrender.com/${item.reportFile}`} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
+                                  {item.reportFile && <a href={item.reportFile} target="_blank" rel="noreferrer" className="view-pdf-link">📎 View PDF</a>}
                                   
                                   {/* ✨ EDIT BUTTON */}
                                   <button className="edit-feedback-btn" onClick={() => openEditModal(item)}>✏️ Edit</button>

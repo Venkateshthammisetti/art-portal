@@ -6,6 +6,8 @@ const multer = require('multer');
 const path = require('path');
 
 // Import Models
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Attendance = require('./models/Attendance');
@@ -15,19 +17,38 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 2. Configure Cloudinary (Replace with your actual keys from Step 1)
+cloudinary.config({
+  cloud_name: 'dvb9pv3td',
+  api_key: '455651346973742',
+  api_secret: 'mu0GQEANFqZSDzgwwFZJCPc3ilY'
+});
+
+// 3. Configure Storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'art-academy-reports', // Folder name in Cloudinary
+    allowed_formats: ['pdf', 'jpg', 'png'],
+    resource_type: 'auto' // Important for detecting PDFs vs Images
+  },
+});
+
+const upload = multer({ storage: storage });
+
 // Serve "uploads" folder publicly so PDFs can be viewed
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+//app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configure Multer Storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); 
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-const upload = multer({ storage: storage });
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, 'uploads/'); 
+//   },
+//   filename: (req, file, cb) => {
+//     cb(null, Date.now() + '-' + file.originalname);
+//   }
+// });
+//const upload = multer({ storage: storage });
 
 // --- CONNECT TO DATABASE ---
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/art_academy')
