@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve "uploads" folder publicly so PDFs can be viewed
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configure Multer Storage
 const storage = multer.diskStorage({
