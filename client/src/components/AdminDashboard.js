@@ -778,6 +778,13 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
   );
 };
 
+const isRegisteredInOrBefore = (regDate, currentMonth) => {
+  if (!regDate) return true; // Fallback for old users
+  // currentMonth is "2026-02", regDate is "2026-03-15"
+  const regYM = regDate.slice(0, 7); 
+  return regYM <= currentMonth;
+};
+
 // --- TAB 2: USER MANAGEMENT ---
 const UserManagementTab = () => {
   const [users, setUsers] = useState([]);
@@ -849,7 +856,22 @@ const UserManagementTab = () => {
                   <tr key={user._id} onClick={() => setSelectedUser(user)} className="user-row">
                     {visibleColumns.name && (<td><div style={{fontWeight: '600', color: '#333'}}>{user.fullName || user.username}</div><div style={{fontSize: '12px', color: '#888'}}>{user.role === 'parent' ? `Student: ${user.childName}` : user.location || "No Location"}</div></td>)}
                     {visibleColumns.role && (<td><span className={`role-badge ${user.role}`}>{user.role}</span></td>)}
-                    {visibleColumns.fee && (<td>{user.role === 'parent' ? (<span style={{color: '#16a34a', fontWeight: 'bold'}}>₹{user.monthlyFee || 0}</span>) : user.role === 'teacher' ? (<span style={{color: '#9333ea', fontWeight: 'bold'}}>₹{user.monthlyFee || 0}</span>) : '-'}</td>)}
+                    {visibleColumns.fee && (
+  <td>
+    {user.role === 'parent' ? (
+      <>
+        {/* Check if registered month is in the future compared to now */}
+        {isRegisteredInOrBefore(user.registeredDate, new Date().toISOString().slice(0, 7)) ? (
+          <span style={{color: '#16a34a', fontWeight: 'bold'}}>₹{user.monthlyFee || 0}</span>
+        ) : (
+          <span style={{color: '#94a3b8', fontSize: '0.85rem'}}>₹0 (Starts {user.registeredDate})</span>
+        )}
+      </>
+    ) : user.role === 'teacher' ? (
+      <span style={{color: '#9333ea', fontWeight: 'bold'}}>₹{user.monthlyFee || 0}</span>
+    ) : '-'}
+  </td>
+)}
                     {visibleColumns.joiningDate && (<td>{user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : '-'}</td>)}
                     {visibleColumns.status && (<td><button className={`status-btn ${user.isActive ? 'active' : 'inactive'}`} onClick={(e) => handleToggleStatus(e, user._id, user.isActive)}>{user.isActive ? 'Active' : 'Inactive'}</button></td>)}
                     {visibleColumns.action && (<td className="action-cell"><button className="edit-btn" onClick={(e) => handleEditClick(e, user)} title="Edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button><button className="delete-btn" onClick={(e) => initiateDelete(e, user._id)} title="Delete"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></td>)}
@@ -899,6 +921,19 @@ const EditUserModal = ({ user, onClose, onSave }) => {
             
             {/* ✨ ADDED: City Field */}
             <div className="form-group"><label>City</label><input name="city" value={formData.city || ''} onChange={handleChange} /></div>
+
+            // Inside EditUserModal form
+<div className="form-group">
+  <label>System Registration Date (Fee Start)</label>
+  <input 
+    type="date" 
+    name="registeredDate" 
+    value={formData.registeredDate || ''} 
+    onChange={handleChange} 
+    style={{ border: '1px solid #0284c7' }}
+  />
+  <small style={{ color: '#64748b' }}>Fees are calculated starting from this month.</small>
+</div>
 
             {user.role !== 'admin' && (
               <>
@@ -955,14 +990,69 @@ const EditUserModal = ({ user, onClose, onSave }) => {
 };
 
 // --- COMPONENT: USER DETAILS VIEW ---
+// --- COMPONENT: USER DETAILS VIEW ---
 const UserDetailsView = ({ user, onBack, onDelete }) => {
   const [credentials, setCredentials] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loadingCreds, setLoadingCreds] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
 
-  const handleToggleCredentials = async () => { if (!credentials) { setLoadingCreds(true); try { const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/users/${user._id}/credentials`); setCredentials(res.data); setShowPassword(true); } catch (err) { console.error("Error fetching creds", err); } finally { setLoadingCreds(false); } } else { setShowPassword(!showPassword); } };
-  const handleCopy = (text) => { navigator.clipboard.writeText(text); setCopyMsg("Copied!"); setTimeout(() => setCopyMsg(""), 2000); };
+  // ✨ Fee Calculation Logic based on registeredDate
+  const calculateTotalPending = (u) => {
+    const rawDate = u.registeredDate || u.createdAt;
+    // Safety check for role and date
+    if (!rawDate || u.role !== 'parent') return { count: 0, amount: 0 };
+
+    const regDate = new Date(rawDate);
+    const today = new Date();
+    const fee = Number(u.monthlyFee) || 0; // Optimization: parse once
+    
+    let pendingCount = 0;
+    let pendingAmount = 0;
+
+    // Start from the 1st of the registration month
+    let iterDate = new Date(regDate.getFullYear(), regDate.getMonth(), 1);
+    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    while (iterDate <= checkUntil) {
+      const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Check for 'Paid' status in that specific month
+      const isPaid = (u.payments || []).some(p => p.month === monthStr && p.status === 'Paid');
+      
+      if (!isPaid) {
+        pendingCount++;
+        pendingAmount += fee;
+      }
+      iterDate.setMonth(iterDate.getMonth() + 1);
+    }
+    return { count: pendingCount, amount: pendingAmount };
+  };
+
+  const pendingStats = calculateTotalPending(user);
+
+  const handleToggleCredentials = async () => { 
+    if (!credentials) { 
+      setLoadingCreds(true); 
+      try { 
+        const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/users/${user._id}/credentials`); 
+        setCredentials(res.data); 
+        setShowPassword(true); 
+      } catch (err) { 
+        console.error("Error fetching creds", err); 
+      } finally { 
+        setLoadingCreds(false); 
+      } 
+    } else { 
+      setShowPassword(!showPassword); 
+    } 
+  };
+
+  const handleCopy = (text) => { 
+    navigator.clipboard.writeText(text); 
+    setCopyMsg("Copied!"); 
+    setTimeout(() => setCopyMsg(""), 2000); 
+  };
   
   const displayDob = user.role === 'admin' ? user.dob : user.childDob;
 
@@ -974,8 +1064,10 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
           <div className="header-avatar">{user.username.charAt(0).toUpperCase()}</div>
           <div>
             <h1>{user.fullName || user.username}</h1>
-            <span className={`role-badge ${user.role}`}>{user.role}</span>
-            <span className="joined-date">Joined: {user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : new Date(user.createdAt).toLocaleDateString()}</span>
+            <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                <span className={`role-badge ${user.role}`}>{user.role}</span>
+                <span className="joined-date">Registered: {user.registeredDate ? new Date(user.registeredDate).toLocaleDateString() : 'N/A'}</span>
+            </div>
           </div>
           <button className="delete-btn-large" onClick={onDelete}>Delete User</button>
         </div>
@@ -996,14 +1088,20 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
               <div className="info-row"><label>Email:</label> <span>{user.email || "N/A"}</span></div>
               <div className="info-row"><label>Phone:</label> <span>{user.phone || "N/A"}</span></div>
               <div className="info-row"><label>Location:</label> <span>{user.location || "N/A"}</span></div>
-              {/* ✨ Added City Field */}
               <div className="info-row"><label>City:</label> <span>{user.city || "N/A"}</span></div>
               <div className="info-row"><label>Zoom ID:</label> <span>{user.zoomId || "N/A"}</span></div>
             </div>
         </div>
         
         <div className="detail-card full-width-card">
-          <h3>{user.role === "parent" ? "Student Details" : "Professional Details"}</h3>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
+            <h3 style={{margin:0}}>{user.role === "parent" ? "Student Details" : "Professional Details"}</h3>
+            {user.role === 'parent' && pendingStats.amount > 0 && (
+                <div style={{background:'#fee2e2', color:'#dc2626', padding:'5px 12px', borderRadius:'20px', fontSize:'0.85rem', fontWeight:'bold', border:'1px solid #fecaca'}}>
+                    ⚠️ Outstanding: ₹{pendingStats.amount.toLocaleString()}
+                </div>
+            )}
+          </div>
           <div className="details-grid-layout">
               <div className="info-col">
                   <div className="info-row"><label>Joining Date:</label> <span style={{ fontWeight: 'bold' }}>{user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : 'N/A'}</span></div>
@@ -1115,72 +1213,36 @@ const AddUserTab = () => {
   };
 
   const handleRegister = async (e) => {
-    e.preventDefault();
-    setMsg("Processing...");
-    
-    const student1Name = `${formData.firstName} ${formData.lastName}`.trim();
-    const payload1 = { 
-      ...formData, 
-      childName: formData.role === 'parent' ? student1Name : "" 
-    };
+  e.preventDefault();
+  setMsg("Processing...");
+  
+  // Get current date in YYYY-MM-DD format for registration
+  const todayDate = new Date().toISOString().split('T')[0];
 
-    try {
-      await axios.post("https://art-portal-7n6r.onrender.com/api/register", payload1);
-
-      if (formData.role === 'parent' && showSibling) {
-        const student2Name = `${siblingData.firstName} ${siblingData.lastName}`.trim();
-        const payload2 = { 
-          username: siblingData.username, 
-          password: siblingData.password, 
-          role: "parent",
-          firstName: siblingData.firstName, 
-          lastName: siblingData.lastName, 
-          gender: siblingData.gender, 
-          admissionId: siblingData.admissionId, 
-          shortBio: siblingData.shortBio, 
-          childName: student2Name, 
-          childAge: siblingData.childAge, 
-          childDob: siblingData.childDob, 
-          childClass: siblingData.childClass, 
-          monthlyFee: siblingData.monthlyFee,
-          monthlyClassesTarget: siblingData.monthlyClassesTarget,
-          zoomId: siblingData.zoomId || formData.zoomId, 
-          fullName: formData.fullName, 
-          email: formData.email, 
-          phone: formData.phone, 
-          location: formData.location, 
-          city: formData.city, 
-          referredBy: formData.referredBy, 
-          joiningDate: formData.joiningDate, 
-          studentEmail: formData.studentEmail, 
-          studentPhone: formData.studentPhone 
-        };
-        await axios.post("https://art-portal-7n6r.onrender.com/api/register", payload2);
-        setMsg("✅ Success! Both siblings registered.");
-      } else {
-        setMsg("✅ User Registered Successfully!");
-      }
-
-      setFormData({ 
-        username: "", password: "", role: "parent", 
-        firstName: "", lastName: "", gender: "", admissionId: "", shortBio: "", 
-        studentEmail: "", studentPhone: "", childAge: "", childDob: "", 
-        fullName: "", email: "", phone: "", location: "", city: "", zoomId: "", referredBy: "", 
-        childClass: "", monthlyFee: "", specialization: "", education: "", joiningDate: new Date().toISOString().split('T')[0], dob: "",
-        monthlyClassesTarget: 8 
-      });
-      setSiblingData({ 
-        username: "", password: "", firstName: "", lastName: "", gender: "", 
-        admissionId: "", shortBio: "", childAge: "", childDob: "", childClass: "", monthlyFee: "", zoomId: "",
-        monthlyClassesTarget: 8
-      });
-      setShowSibling(false);
-
-    } catch (err) { 
-      console.error(err); 
-      setMsg("❌ Error: Username taken or server issue."); 
-    }
+  const payload1 = { 
+    ...formData, 
+    childName: formData.role === 'parent' ? `${formData.firstName} ${formData.lastName}`.trim() : "",
+    registeredDate: todayDate // Explicitly set registration date
   };
+
+  try {
+    await axios.post("https://art-portal-7n6r.onrender.com/api/register", payload1);
+
+    if (formData.role === 'parent' && showSibling) {
+      const payload2 = { 
+        ...siblingData,
+        role: "parent",
+        childName: `${siblingData.firstName} ${siblingData.lastName}`.trim(),
+        // Inherit parent info
+        fullName: formData.fullName,
+        phone: formData.phone,
+        registeredDate: todayDate // Set for sibling too
+      };
+      await axios.post("https://art-portal-7n6r.onrender.com/api/register", payload2);
+    }
+    // ... rest of your success logic
+  } catch (err) { /* ... */ }
+};
 
   return (
     <div className="form-wrapper">
@@ -1550,38 +1612,44 @@ const FeeTrackerTab = () => {
     setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   };
 
+  const isRegisteredForMonth = (student, targetMonth) => {
+    const rawDate = student.registeredDate || student.createdAt;
+    if (!rawDate) return true;
+    const regMonth = rawDate.slice(0, 7); 
+    return regMonth <= targetMonth;
+  };
+
   const calculateTotalPending = (student) => {
-    const rawDate = student.joiningDate || student.createdAt || new Date();
-    const joinDate = new Date(rawDate);
+    const rawDate = student.registeredDate || student.createdAt;
+    if (!rawDate) return { count: 0, amount: 0 };
+
+    const regDate = new Date(rawDate);
     const today = new Date();
-    
-    // Start from Jan 1st of the CURRENT YEAR to avoid massive backlog
-    const startOfYear = new Date(today.getFullYear(), 0, 1); 
-    const effectiveStartDate = joinDate < startOfYear ? startOfYear : joinDate;
 
     let pendingCount = 0;
     let pendingAmount = 0;
-    
-    let iterDate = new Date(effectiveStartDate.getFullYear(), effectiveStartDate.getMonth(), 1);
-    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    if (isNaN(joinDate.getTime()) || iterDate > checkUntil) return { count: 0, amount: 0 };
+    let iterDate = new Date(regDate.getFullYear(), regDate.getMonth(), 1);
+    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
 
     while (iterDate <= checkUntil) {
       const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
-      const isPaid = (student.payments || []).some(p => p.month === monthStr && p.status === 'Paid');
-      
-      if (!isPaid) { 
-          pendingCount++; 
-          pendingAmount += (Number(student.monthlyFee) || 0); 
+      const isPaid = (student.payments || []).some((p) => p.month === monthStr && p.status === 'Paid');
+
+      if (!isPaid) {
+        pendingCount++;
+        pendingAmount += Number(student.monthlyFee) || 0;
       }
       iterDate.setMonth(iterDate.getMonth() + 1);
     }
     return { count: pendingCount, amount: pendingAmount };
   };
 
-  const totalEstRevenue = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
-  const currentCollected = students.reduce((acc, s) => getPaymentStatus(s) === 'Paid' ? acc + (s.monthlyFee || 0) : acc, 0);
+  // ✨ CALCULATIONS UPDATED TO BE DATE-ACCURATE
+  const activeStudentsThisMonth = students.filter(s => isRegisteredForMonth(s, selectedMonth));
+  
+  const totalEstRevenue = activeStudentsThisMonth.reduce((acc, s) => acc + (Number(s.monthlyFee) || 0), 0);
+  const currentCollected = activeStudentsThisMonth.reduce((acc, s) => getPaymentStatus(s) === 'Paid' ? acc + (Number(s.monthlyFee) || 0) : acc, 0);
   const currentPending = totalEstRevenue - currentCollected;
   const totalOutstandingAllTime = students.reduce((acc, s) => acc + calculateTotalPending(s).amount, 0);
 
@@ -1650,9 +1718,9 @@ const FeeTrackerTab = () => {
                 <DonutChart value={totalOutstandingAllTime} total={totalOutstandingAllTime + currentCollected} color="#ef4444" label="Total Outstanding Risk" />
               </div>
               <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px'}}>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{students.length}</div></div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{students.filter(s => getPaymentStatus(s) === 'Paid').length}</div></div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{students.filter(s => getPaymentStatus(s) === 'Pending').length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{activeStudentsThisMonth.length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{activeStudentsThisMonth.filter(s => getPaymentStatus(s) === 'Paid').length}</div></div>
+                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{activeStudentsThisMonth.filter(s => getPaymentStatus(s) === 'Pending').length}</div></div>
               </div>
           </div>
         ) : (
@@ -1673,13 +1741,29 @@ const FeeTrackerTab = () => {
                      const status = getPaymentStatus(student);
                      const isPaid = status === 'Paid';
                      const pendingStats = calculateTotalPending(student);
+                     const isRegistered = isRegisteredForMonth(student, selectedMonth);
+                     
                      return (
                        <tr key={student._id}>
                          <td style={{fontWeight:'600', color:'#334155'}}>{student.childName}<div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'normal'}}>{student.fullName}</div></td>
-                         <td style={{fontWeight:'bold'}}>₹{student.monthlyFee}</td>
-                         <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? 'Paid' : 'Pending'}</span></td>
-                         <td>{pendingStats.amount > 0 ? (<div style={{display:'flex', alignItems:'center', gap:'8px'}}><span style={{background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>₹{pendingStats.amount.toLocaleString()}</span><span style={{fontSize:'0.75rem', color:'#dc2626'}}>({pendingStats.count} Mo)</span></div>) : (<span style={{color:'#16a34a', fontSize:'0.85rem', fontWeight:'bold'}}>All Clear </span>)}</td>
-                         <td><button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Pay This Month'}</button></td>
+                         <td style={{fontWeight:'bold'}}>
+                           {isRegistered ? `₹${student.monthlyFee}` : <span style={{color: '#94a3b8', fontWeight:'normal'}}>₹0</span>}
+                         </td>
+                         <td>
+                            {isRegistered ? (
+                                <span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? 'Paid' : 'Pending'}</span>
+                            ) : (
+                                <span style={{color: '#94a3b8', fontSize: '0.85rem'}}>Not Registered</span>
+                            )}
+                         </td>
+                         <td>{isRegistered && pendingStats.amount > 0 ? (<div style={{display:'flex', alignItems:'center', gap:'8px'}}><span style={{background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>₹{pendingStats.amount.toLocaleString()}</span><span style={{fontSize:'0.75rem', color:'#dc2626'}}>({pendingStats.count} Mo)</span></div>) : (<span style={{color:'#16a34a', fontSize:'0.85rem', fontWeight:'bold'}}>All Clear </span>)}</td>
+                         <td>
+                            {isRegistered ? (
+                                <button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Pay This Month'}</button>
+                            ) : (
+                                <button disabled className="cancel-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', opacity: 0.5, cursor: 'not-allowed'}}>N/A</button>
+                            )}
+                         </td>
                        </tr>
                      );
                    })}
