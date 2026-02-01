@@ -1,54 +1,53 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  // --- LOGIN CREDENTIALS ---
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'teacher', 'parent'], required: true },
+  role: { type: String, enum: ['admin', 'teacher', 'parent'], default: 'parent' },
   
-  // --- PERSONAL DETAILS ---
-  fullName: { type: String, required: true },
-  firstName: String, 
-  lastName: String, 
-  gender: String, 
-  dob: Date,
-  email: String, 
-  phone: String, 
-  location: String, 
+  // Basic Info
+  fullName: String,
+  email: String,
+  phone: String,
+  location: String,
+  city: String, // Added recently
+  zoomId: String,
+  referredBy: String,
+  
+  // Student Specific
+  childName: String,
+  childAge: Number,
+  childDob: String,
+  gender: String,
+  admissionId: String,
   shortBio: String,
+  childClass: String, // e.g. "Grade 5"
   
-  // --- SYSTEM FIELDS ---
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  
-  // ==================================================
-  //       SPECIFIC TO PARENTS / STUDENTS
-  // ==================================================
-  
-  childName: String, 
-  childAge: String, 
-  childDob: Date, 
-  admissionId: String, 
-  
-  assignedClass: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', default: null },
-
-  // ✨ NEW: CUSTOMIZABLE CLASS TARGET
-  // Default is 8, but can be changed to 4, 12, etc. per student
-  monthlyClassesTarget: { type: Number, default: 8 }, 
-
+  // Fee & Class Info
+  assignedClass: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
   monthlyFee: { type: Number, default: 0 },
-  payments: [{
-    month: { type: String, required: true }, 
-    amount: Number,
-    status: { type: String, enum: ['Paid', 'Pending'], default: 'Pending' },
-    paidDate: { type: Date }
-  }],
+  monthlyClassesTarget: { type: Number, default: 8 },
+  
+  // Dates
+  joiningDate: String, // Original joining date (for reference)
+  
+  // ✨ NEW FIELD: This controls when Fee Calculation starts
+  registeredDate: { type: String, default: new Date().toISOString().split('T')[0] }, 
 
-  // ... (Teacher fields remain same)
-  specialization: String, 
+  // Teacher/Admin Specific
+  specialization: String,
   education: String,
-  zoomId: String, 
-  joiningDate: Date,
-});
+  dob: String,
+
+  isActive: { type: Boolean, default: true },
+  
+  // Payment History
+  payments: [{
+    month: String, // Format: "YYYY-MM"
+    status: { type: String, enum: ['Paid', 'Pending'], default: 'Pending' },
+    amount: Number,
+    paidDate: Date
+  }]
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -249,18 +249,42 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   const getFeeList = () => {
     const today = new Date();
-    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    let paymentsList = studentProfile?.payments ? [...studentProfile.payments] : [];
-    const hasCurrentMonthRecord = paymentsList.some(p => p.month === currentMonthStr);
+    const currentUserPayments = studentProfile?.payments || [];
     
-    if (!hasCurrentMonthRecord) {
-      paymentsList.push({
-        month: currentMonthStr,
-        amount: studentProfile?.monthlyFee || "---",
-        status: 'Pending'
-      });
+    // 1. Identify when to start calculating from
+    const rawDate = studentProfile?.registeredDate || studentProfile?.createdAt;
+    if (!rawDate) return currentUserPayments;
+
+    const regDate = new Date(rawDate);
+    let iterDate = new Date(regDate.getFullYear(), regDate.getMonth(), 1);
+    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const fullHistory = [];
+
+    // 2. Loop through every month from Registration until Today
+    while (iterDate <= checkUntil) {
+      const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Check if the student has a payment record for this month in the database
+      const existingRecord = currentUserPayments.find(p => p.month === monthStr);
+
+      if (existingRecord) {
+        fullHistory.push(existingRecord);
+      } else {
+        // If no record exists in the DB, it is a pending month
+        fullHistory.push({
+          month: monthStr,
+          amount: studentProfile?.monthlyFee || 0,
+          status: 'Pending'
+        });
+      }
+
+      // Move to next month
+      iterDate.setMonth(iterDate.getMonth() + 1);
     }
-    return paymentsList.sort((a, b) => b.month.localeCompare(a.month));
+
+    // 3. Return sorted list (newest first)
+    return fullHistory.sort((a, b) => b.month.localeCompare(a.month));
   };
 
   const calculateTotalPending = (list) => {
