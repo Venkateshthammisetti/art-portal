@@ -892,3 +892,42 @@ body.dark .sc-content strong { color: #86efac; }
 /* Dark Mode Support for Tutorial */
 body.dark .tm-icon { background: #1e293b; }
 body.dark .tm-btn.secondary { background: #1e293b; border-color: #334155; color: #94a3b8; }
+
+.refresh-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  color: var(--text-color); /* Adjust based on your theme variables */
+}
+
+.refresh-btn:hover {
+  transform: scale(1.1);
+}
+
+.refresh-btn:active {
+  transform: scale(0.9);
+}
+
+/* Spin animation when loading is true */
+.spin {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .refresh-btn {
+    font-size: 1rem;
+    padding: 5px;
+  }
+}

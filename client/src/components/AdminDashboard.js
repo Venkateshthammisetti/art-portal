@@ -152,7 +152,11 @@ const OverviewTab = ({ stats }) => {
 
   const students = users.filter(u => u.role === 'parent');
   const teachers = users.filter(u => u.role === 'teacher');
-  const recentStudents = [...students].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
+  const recentStudents = [...students].sort((a, b) => {
+  const dateA = new Date(a.joiningDate || a.createdAt);
+  const dateB = new Date(b.joiningDate || b.createdAt);
+  return dateB - dateA; 
+}).slice(0, 3);
 
   const maleCount = students.filter(s => s.gender === 'Male').length;
   const femaleCount = students.filter(s => s.gender === 'Female').length;
@@ -199,6 +203,13 @@ const OverviewTab = ({ stats }) => {
     
     return { name: label, revenue: totalForMonth };
   });
+
+  const formatDateShort = (dateInput) => {
+  if (!dateInput) return "N/A";
+  const date = new Date(dateInput);
+  // Returns date in DD/MM/YYYY format
+  return date.toLocaleDateString('en-GB'); 
+};
 
   const teacherLoadData = teachers.map(t => {
     const teacherClasses = classes.filter(c => c.teacher && c.teacher._id === t._id);
@@ -316,7 +327,7 @@ const OverviewTab = ({ stats }) => {
                   </div>
                   <div>
                      <div style={{fontSize:'0.9rem', fontWeight:'700', color:'#334155'}}>{student.childName}</div>
-                     <div style={{fontSize:'0.75rem', color:'#64748b'}}>Joined: {new Date(student.createdAt).toLocaleDateString()}</div>
+                     <div style={{fontSize:'0.75rem', color:'#64748b'}}>Joined: {formatDateShort(student.joiningDate || student.createdAt)}</div>
                   </div>
                </div>
              ))

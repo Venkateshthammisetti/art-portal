@@ -402,6 +402,14 @@ const ParentDashboard = ({ user, onLogout }) => {
         <header className="p-header">
           <div className="p-header-left"><h2>{activeTab === "overview" ? "My Dashboard" : activeTab === "refer" ? "Refer a Friend" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2></div>
           <div className="p-header-right">
+            <button 
+              className="refresh-btn" 
+              onClick={fetchParentData} 
+              title="Refresh Data"
+              disabled={loading}
+            >
+              <span className={loading ? "spin" : ""}>🔄</span>
+            </button>
             <span className="role-badge desktop-only">Parent</span>
             <div className="header-profile" onClick={() => setShowProfileMenu(!showProfileMenu)}><div className="avatar">{currentUser.fullName?.charAt(0)}</div></div>
             {showProfileMenu && (
