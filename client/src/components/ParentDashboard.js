@@ -86,7 +86,7 @@ const ParentGalleryTab = ({ studentId }) => {
     e.stopPropagation();
     setShareLoading(true);
 
-    const promoText = `🌟 Proud Moment! My child created this amazing ${art.medium} artwork at *Venky Art Academy*! 🎨✨\n\nWant to learn art like this?\n🚀 *Admissions Open Now!*\n🌐 Visit: thevenkyart.com\n📞 Call: +91 9963613404`;
+    const promoText = `🌟 Proud Moment! My child created this amazing ${art.medium} artwork at *Thevenkyart online Art Academy*! 🎨✨`;
 
     try {
       const response = await fetch(art.imageUrl, { mode: 'cors' });
