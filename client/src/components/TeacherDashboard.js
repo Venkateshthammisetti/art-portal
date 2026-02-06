@@ -99,7 +99,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     }
   };
 
-  // 4. Multi-Image Upload
+  // 4. Multi-Image Upload (Updated with Batch Notification)
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!selectedStudent || selectedStudent === "all") return alert("Please select a specific student.");
@@ -108,6 +108,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     setUploading(true);
     let successCount = 0;
 
+    // 1. UPLOAD LOOP (Uploads images one by one)
     for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
         setProgressMsg(`Uploading ${i + 1} of ${imageFiles.length}...`);
@@ -133,8 +134,25 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     setUploading(false);
     setProgressMsg(successCount === imageFiles.length ? "✅ All Uploaded!" : `⚠️ Uploaded ${successCount}/${imageFiles.length}`);
     
+    // 2. SEND BATCH NOTIFICATION (Runs only once after all uploads finish)
     if (successCount === imageFiles.length) {
-        setTitle(""); setImageFiles([]); setPreviewUrls([]);
+        try {
+           // Calls the new route we just created
+           await axios.post("https://art-portal-7n6r.onrender.com/api/notifications/batch-alert", {
+             studentId: selectedStudent,
+             count: successCount
+           });
+           // Optional: You can remove this alert if you find it annoying, 
+           // but it's good confirmation for the teacher.
+           alert(`Success! Uploaded ${successCount} images and notified the parent.`);
+        } catch (err) {
+           console.error("Failed to send notification", err);
+        }
+
+        // 3. CLEAN UP
+        setTitle(""); 
+        setImageFiles([]); 
+        setPreviewUrls([]);
         setTimeout(() => setProgressMsg(""), 3000);
     }
   };

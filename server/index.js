@@ -13,6 +13,7 @@ const Class = require('./models/Class');
 const Attendance = require('./models/Attendance');
 const Feedback = require('./models/Feedback');
 const Artwork = require('./models/Artwork');
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -61,6 +62,15 @@ function escapeRegex(text) {
     if (!text) return "";
     return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
+
+// Configure your Gmail "Postman"
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'thevenkyart@gmail.com', // ⚠️ REPLACE THIS
+    pass: 'VenkyArtPortal'    // ⚠️ REPLACE WITH APP PASSWORD
+  }
+});
 
 // ===========================
 //        AUTH & USERS
@@ -462,6 +472,52 @@ app.delete('/api/gallery/:id', async (req, res) => {
     res.json({ success: true, message: "Artwork deleted" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting artwork" });
+  }
+});
+
+// ✨ BATCH NOTIFICATION ROUTE
+app.post('/api/notifications/batch-alert', async (req, res) => {
+  const { studentId, count } = req.body; // e.g., count = 10 images
+
+  try {
+    const student = await User.findById(studentId);
+
+    if (student && student.email) {
+      const mailOptions = {
+        from: '"Venky Art Academy" <your-email@gmail.com>',
+        to: student.email,
+        subject: `🎨 Monthly Art Update: ${count} New Artworks Added!`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #2563eb;">New Artworks Uploaded! 🎨</h2>
+            <p>Hello <strong>${student.fullName}</strong>,</p>
+            <p>We just updated <strong>${student.childName}'s</strong> gallery.</p>
+            
+            <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
+              <span style="font-size: 24px; font-weight: bold; color: #333;">${count}</span>
+              <span style="font-size: 18px; color: #555;"> New Masterpieces Added</span>
+            </div>
+
+            <p>Visit the parent dashboard to view them and share them on WhatsApp!</p>
+            
+            <a href="https://art-portal-7n6r.onrender.com" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              View Gallery
+            </a>
+          </div>
+        `
+      };
+
+      transporter.sendMail(mailOptions, (err, info) => {
+        if (err) console.error("Email error:", err);
+        else console.log("Batch Email sent:", info.response);
+      });
+    }
+
+    res.json({ message: "Notification sent" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to send alert" });
   }
 });
 
