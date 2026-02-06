@@ -68,7 +68,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'thevenkyart@gmail.com', // ⚠️ REPLACE THIS
-    pass: 'VenkyArtPortal'    // ⚠️ REPLACE WITH APP PASSWORD
+    pass: 'vqke eepn thma jnek'    // ⚠️ REPLACE WITH APP PASSWORD
   }
 });
 
