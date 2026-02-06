@@ -44,6 +44,212 @@ const TUTORIAL_STEPS = [
   }
 ];
 
+// ==========================================
+// 1. PARENT GALLERY COMPONENT (With Swipe & Keyboard Support)
+// ==========================================
+const ParentGalleryTab = ({ studentId }) => {
+  const [artwork, setArtwork] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [shareLoading, setShareLoading] = useState(false);
+
+  // Filters
+  const [filterYear, setFilterYear] = useState("all");
+  const [filterMonth, setFilterMonth] = useState("all");
+
+  // ✨ Swipe Refs
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+
+  useEffect(() => {
+    setLoading(true);
+    // NOTE: Change to live URL for production
+    const baseUrl = "https://art-portal-7n6r.onrender.com"; 
+    
+    axios.get(`${baseUrl}/api/gallery/student/${studentId}`)
+      .then(res => setArtwork(res.data))
+      .catch(err => console.error("Gallery Error:", err))
+      .finally(() => setLoading(false));
+  }, [studentId]);
+
+  const filteredArtwork = artwork.filter((art) => {
+    if (!art.dateCreated) return false;
+    const date = new Date(art.dateCreated);
+    const artYear = date.getFullYear().toString();
+    const artMonth = date.getMonth(); 
+    return (filterYear === "all" || artYear === filterYear) && 
+           (filterMonth === "all" || artMonth === parseInt(filterMonth));
+  });
+
+  // ✨ SMART SHARE LOGIC
+  const handleWhatsAppStatus = async (e, art) => {
+    e.stopPropagation();
+    setShareLoading(true);
+
+    const promoText = `🌟 Proud Moment! My child created this amazing ${art.medium} artwork at *Venky Art Academy*! 🎨✨\n\nWant to learn art like this?\n🚀 *Admissions Open Now!*\n🌐 Visit: thevenkyart.com\n📞 Call: +91 9963613404`;
+
+    try {
+      const response = await fetch(art.imageUrl, { mode: 'cors' });
+      const blob = await response.blob();
+      const file = new File([blob], "venky-art.jpg", { type: "image/jpeg" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Venky Art Academy',
+          text: promoText,
+        });
+      } else {
+        // Desktop Fallback
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = `VenkyArt_${art.title || 'Artwork'}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        await navigator.clipboard.writeText(promoText);
+        alert("💻 On Desktop/Windows:\n\n1. The image has been DOWNLOADED.\n2. The caption is COPIED to your clipboard.\n\n👉 Open WhatsApp Web and drag-drop the image to your status!");
+      }
+    } catch (err) {
+      console.error("Share failed:", err);
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(promoText + " " + art.imageUrl)}`;
+      window.open(whatsappUrl, '_blank');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  // Navigation Helpers
+  const handleNext = (e) => { 
+    if(e) e.stopPropagation(); 
+    setLightboxIndex((prev) => (prev + 1) % filteredArtwork.length); 
+  };
+
+  const handlePrev = (e) => { 
+    if(e) e.stopPropagation(); 
+    setLightboxIndex((prev) => (prev - 1 + filteredArtwork.length) % filteredArtwork.length); 
+  };
+
+  // ✨ KEYBOARD NAVIGATION (Fixed)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (lightboxIndex === null) return;
+      if (e.key === "ArrowRight") handleNext();
+      if (e.key === "ArrowLeft") handlePrev();
+      if (e.key === "Escape") setLightboxIndex(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, filteredArtwork]); // Added dependencies to keep state fresh
+
+  // ✨ SWIPE HANDLERS
+  const onTouchStart = (e) => {
+    touchEndX.current = null; 
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) handleNext();
+    if (isRightSwipe) handlePrev();
+  };
+
+  const years = [2024, 2025, 2026, 2027];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  return (
+    <div className="form-wrapper" style={{padding: '20px'}}>
+      {/* HEADER */}
+      <div style={{background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px'}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'15px'}}>
+            <h3 style={{margin:0, color:'#334155'}}>🎨 My Art Gallery</h3>
+            <div style={{display:'flex', gap:'10px'}}>
+                <select value={filterYear} onChange={e => setFilterYear(e.target.value)} style={{padding:'8px', borderRadius:'6px', border:'1px solid #cbd5e1', cursor:'pointer'}}><option value="all">All Years</option>{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} style={{padding:'8px', borderRadius:'6px', border:'1px solid #cbd5e1', cursor:'pointer'}}><option value="all">All Months</option>{months.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+            </div>
+        </div>
+      </div>
+
+      {/* GRID */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'20px'}}>
+        {loading ? <p>Loading...</p> : 
+         filteredArtwork.length === 0 ? <div style={{gridColumn:'1/-1', textAlign:'center', padding:'40px', background:'#fff', borderRadius:'12px', color:'#94a3b8'}}>No artwork found yet.</div> : 
+         filteredArtwork.map((art, index) => (
+            <div key={art._id} style={{border:'1px solid #e2e8f0', borderRadius:'12px', overflow:'hidden', background:'#fff', position:'relative', cursor:'pointer'}} onClick={() => setLightboxIndex(index)}>
+               <img src={art.imageUrl} alt={art.title} style={{width:'100%', height:'200px', objectFit:'cover'}} />
+               <div style={{padding:'12px'}}>
+                  <div style={{fontWeight:'bold', color:'#334155', fontSize:'1rem'}}>{art.title || "Untitled"}</div>
+                  <div style={{fontSize:'0.8rem', color:'#64748b'}}>{art.medium}</div>
+                  <div style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'5px'}}>{new Date(art.dateCreated).toLocaleDateString()}</div>
+               </div>
+               {/* WhatsApp Button */}
+               <button 
+                 onClick={(e) => handleWhatsAppStatus(e, art)}
+                 disabled={shareLoading}
+                 style={{
+                   position:'absolute', top:'10px', right:'10px', 
+                   background:'#25D366', border:'none', 
+                   borderRadius:'50%', width:'40px', height:'40px', 
+                   cursor:'pointer', color:'white', fontSize:'1.2rem',
+                   display:'flex', alignItems:'center', justifyContent:'center',
+                   boxShadow:'0 2px 5px rgba(0,0,0,0.2)'
+                 }}
+               >
+                 💬
+               </button>
+            </div>
+         ))
+        }
+      </div>
+
+      {/* LIGHTBOX */}
+      {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
+        <div 
+          className="lightbox-overlay" 
+          style={{position:'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.95)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column'}} 
+          onClick={() => setLightboxIndex(null)}
+          // ✨ Add Swipe Listeners to the Overlay
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <button style={{position:'absolute', top:'20px', right:'30px', background:'none', border:'none', color:'white', fontSize:'3rem', cursor:'pointer', zIndex:10001}} onClick={() => setLightboxIndex(null)}>×</button>
+          
+          <button style={{position:'absolute', left:'20px', background:'rgba(255,255,255,0.2)', border:'none', color:'white', fontSize:'2rem', padding:'10px 15px', borderRadius:'50%', cursor:'pointer', zIndex:10001}} onClick={handlePrev}>‹</button>
+          
+          <div onClick={(e) => e.stopPropagation()} style={{maxWidth:'90vw', maxHeight:'80vh', position:'relative'}}>
+            <img src={filteredArtwork[lightboxIndex].imageUrl} alt={filteredArtwork[lightboxIndex].title} style={{maxWidth:'100%', maxHeight:'80vh', borderRadius:'8px'}} />
+          </div>
+          
+          <button style={{position:'absolute', right:'20px', background:'rgba(255,255,255,0.2)', border:'none', color:'white', fontSize:'2rem', padding:'10px 15px', borderRadius:'50%', cursor:'pointer', zIndex:10001}} onClick={handleNext}>›</button>
+          
+          <div style={{marginTop:'15px', textAlign:'center', color:'white', padding:'0 20px'}}>
+            <h3 style={{margin:'0 0 5px 0'}}>{filteredArtwork[lightboxIndex].title || "Untitled"}</h3>
+            <p style={{margin:0, opacity:0.8}}>{filteredArtwork[lightboxIndex].medium} • {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}</p>
+            
+            {/* WhatsApp Large Button */}
+            <div style={{marginTop:'20px'}}>
+                <button onClick={(e) => handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])} disabled={shareLoading} style={{background:'#25D366', color:'white', border:'none', padding:'12px 30px', borderRadius:'30px', cursor:'pointer', fontSize:'1.1rem', fontWeight:'bold', display:'flex', alignItems:'center', gap:'10px', margin:'0 auto'}}>
+                {shareLoading ? "Processing..." : <><span>💬</span> Share to WhatsApp Status</>}
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+// ==========================================
+// 2. MAIN COMPONENT
+// ==========================================
 const ParentDashboard = ({ user, onLogout }) => {
   const currentUser = user;
 
@@ -61,7 +267,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false); // ✨ NEW: Tutorial State
+  const [showTutorial, setShowTutorial] = useState(false); 
   
   // Toast State
   const [showToast, setShowToast] = useState(false);
@@ -251,7 +457,6 @@ const ParentDashboard = ({ user, onLogout }) => {
     const today = new Date();
     const currentUserPayments = studentProfile?.payments || [];
     
-    // 1. Identify when to start calculating from
     const rawDate = studentProfile?.registeredDate || studentProfile?.createdAt;
     if (!rawDate) return currentUserPayments;
 
@@ -261,29 +466,21 @@ const ParentDashboard = ({ user, onLogout }) => {
 
     const fullHistory = [];
 
-    // 2. Loop through every month from Registration until Today
     while (iterDate <= checkUntil) {
       const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
-      
-      // Check if the student has a payment record for this month in the database
       const existingRecord = currentUserPayments.find(p => p.month === monthStr);
 
       if (existingRecord) {
         fullHistory.push(existingRecord);
       } else {
-        // If no record exists in the DB, it is a pending month
         fullHistory.push({
           month: monthStr,
           amount: studentProfile?.monthlyFee || 0,
           status: 'Pending'
         });
       }
-
-      // Move to next month
       iterDate.setMonth(iterDate.getMonth() + 1);
     }
-
-    // 3. Return sorted list (newest first)
     return fullHistory.sort((a, b) => b.month.localeCompare(a.month));
   };
 
@@ -306,30 +503,22 @@ const ParentDashboard = ({ user, onLogout }) => {
     setTimeout(() => { setShowToast(false); }, 3000);
   };
 
-  // ✨ NEW: Submit Comment to Backend
   const handleSubmitComment = async (reportId) => {
     if (!commentText.trim()) return;
     setSubmittingComment(true);
-    
     try {
-      // 1. Send to Backend
       await axios.post(`https://art-portal-7n6r.onrender.com/api/feedback/comment`, {
         reportId: reportId,
         comment: commentText,
         parentId: currentUser._id 
       });
-
-      // 2. Optimistic Update (Update UI instantly)
       const updatedReports = reports.map(r => 
         r._id === reportId ? { ...r, parentComment: commentText } : r
       );
       setReports(updatedReports);
-      
-      // 3. Reset & Notify
       setToastMessage("Comment sent to teacher! 📨");
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
-      
       setCommentText("");
       setActiveCommentId(null);
     } catch (err) {
@@ -376,7 +565,6 @@ const ParentDashboard = ({ user, onLogout }) => {
   const totalPendingAmount = calculateTotalPending(feeList);
   const chartData = [ { name: 'Attended', value: attStats.present, color: '#16a34a' }, { name: 'Absent', value: attStats.absent, color: '#ef4444' }, { name: 'Remaining', value: Math.max(0, attStats.target - attStats.present - attStats.absent), color: '#e2e8f0' } ];
   
-  // ✨ USE LOCAL SCHEDULE FOR RENDER
   const localSchedule = getLocalSchedule();
   const nextClass = getNextClass();
 
@@ -387,12 +575,16 @@ const ParentDashboard = ({ user, onLogout }) => {
         <div className="sidebar-header"><img src={logoImg} alt="Logo" className="sidebar-logo-img" /><img src={titleImg} alt="Title" className="sidebar-title-img" /></div>
         <div className="p-nav">
           <button className={activeTab === "overview" ? "active" : ""} onClick={() => handleNavClick("overview")}><span>📊</span> Overview</button>
+          {/* ✨ NEW GALLERY BUTTON IN SIDEBAR */}
+          <button className={activeTab === "gallery" ? "active" : ""} onClick={() => handleNavClick("gallery")}><span>🎨</span> My Gallery</button>
           <button className={activeTab === "schedule" ? "active" : ""} onClick={() => handleNavClick("schedule")}><span>🗓️</span> Class Schedule</button>
           <button className={activeTab === "reports" ? "active" : ""} onClick={() => handleNavClick("reports")}><span>📝</span> Academic Reports</button>
           <button className={activeTab === "attendance" ? "active" : ""} onClick={() => handleNavClick("attendance")}><span>📅</span> Attendance Log</button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => handleNavClick("fees")}><span>💳</span> Fee Status</button>
           <button className={activeTab === "refer" ? "active" : ""} onClick={() => handleNavClick("refer")}><span>📣</span> Refer & Support</button>
-          {/* ✨ NEW TUTORIAL BUTTON */}
+          
+          
+
           <button onClick={() => setShowTutorial(true)} style={{marginTop:'10px', color:'#2563eb'}}><span>💡</span> App Tutorial</button>
         </div>
         <div className="sidebar-footer"><p>© 2026 Thevenkyart Art Academy</p></div>
@@ -400,7 +592,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
       <main className="parent-main">
         <header className="p-header">
-          <div className="p-header-left"><h2>{activeTab === "overview" ? "My Dashboard" : activeTab === "refer" ? "Refer a Friend" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2></div>
+          <div className="p-header-left"><h2>{activeTab === "overview" ? "My Dashboard" : activeTab === "refer" ? "Refer a Friend" : activeTab === "gallery" ? "My Art Gallery" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2></div>
           <div className="p-header-right">
             <button 
               className="refresh-btn" 
@@ -417,7 +609,6 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <div className="pd-header"><strong>{currentUser.fullName}</strong><span>{currentUser.username}</span></div>
                 <div className="pd-refer-box"><span>Your Referral Code</span><code>{currentUser.username}</code></div>
                 <button className="pd-menu-btn theme-toggle" onClick={toggleTheme}>{theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}</button>
-                {/* ✨ TUTORIAL BUTTON IN DROPDOWN */}
                 <button className="pd-menu-btn" onClick={() => setShowTutorial(true)}>💡 App Tutorial</button>
                 <button className="pd-menu-btn" onClick={() => handleNavClick('refer')}>📣 Refer & Support</button>
                 <button className="pd-menu-btn logout" onClick={() => { setShowLogoutModal(true); setShowProfileMenu(false); }}> Logout</button>
@@ -453,7 +644,6 @@ const ParentDashboard = ({ user, onLogout }) => {
               <div className="info-card next-class-card">
                 <h3 onClick={() => handleNavClick('schedule')} className="clickable-heading">🚀 Next Class (Local Time)</h3>
                 {assignedClass ? (
-                  // ✨ UPDATED: Showing Local Time
                   <div className="nc-details"><div className="nc-row"><span className="nc-label">Class:</span><span className="nc-val">{assignedClass.className}</span></div><div className="nc-row"><span className="nc-label">Time:</span><span className="nc-val highlight">{nextClass?.day} @ {nextClass?.time}</span></div>{assignedClass.meetingLink ? (<a href={assignedClass.meetingLink} target="_blank" rel="noreferrer" className="join-btn">Join Zoom Class</a>) : (<button className="join-btn disabled" disabled>No Link Yet</button>)}</div>
                 ) : (<div className="empty-mini">No class assigned yet. Contact Admin.</div>)}
               </div>
@@ -477,14 +667,12 @@ const ParentDashboard = ({ user, onLogout }) => {
               {assignedClass ? (
                 <div className="class-detail-card">
                   <div className="cdc-header"><div><h2>{assignedClass.className}</h2><p>Teacher: {assignedClass.teacher?.fullName || "Not Assigned"}</p></div><span className="level-tag">{assignedClass.level}</span></div>
-                  {/* ✨ UPDATED: Use localSchedule for mapping */}
                   <div className="cdc-grid">{localSchedule.map((slot, idx) => (<div key={idx} className="slot-item"><span className="slot-day">{slot.day}</span><span className="slot-time">{slot.time}</span></div>))}</div>
                 </div>
               ) : (<div className="empty-state">No class assigned. Please contact admin.</div>)}
             </div>
           )}
 
-          {/* REPORTS TAB */}
           {activeTab === "reports" && (
             <div className="reports-view">
               <div className="att-header-row"><h3>Academic Reports</h3><div className="month-nav-mini"><button onClick={() => changeReportQuarter(-1)}>‹</button><span>Q{reportQuarter} {reportYear}</span><button onClick={() => changeReportQuarter(1)}>›</button></div></div>
@@ -619,14 +807,25 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
             </div>
           )}
+
+          {/* ✨✨ NEW GALLERY TAB CONTENT ✨✨ */}
+          {activeTab === "gallery" && (
+            <ParentGalleryTab studentId={currentUser._id} />
+          )}
+
          </div>
       </main>
 
       <nav className="mobile-bottom-nav">
         <button className={activeTab === 'overview' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('overview')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
         <button className={activeTab === 'schedule' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('schedule')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></button>
+        
+        {/* ✨ ADDED GALLERY ICON TO MOBILE NAV */}
+        <button className={activeTab === 'gallery' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('gallery')}>
+          <span style={{fontSize:'1.5rem'}}>🎨</span>
+        </button>
+
         <button className={activeTab === 'reports' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('reports')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></button>
-        <button className={activeTab === 'attendance' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('attendance')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg></button>
         <button className={activeTab === 'fees' ? 'nav-item active' : 'nav-item'} onClick={() => handleNavClick('fees')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></button>
       </nav>
 
@@ -701,7 +900,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   );
 };
 
-// ✨ NEW: TUTORIAL MODAL COMPONENT
+// ✨ TUTORIAL MODAL COMPONENT
 const TutorialModal = ({ onClose }) => {
   const [currentStep, setCurrentStep] = useState(0);
 

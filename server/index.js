@@ -12,6 +12,7 @@ const User = require('./models/User');
 const Class = require('./models/Class');
 const Attendance = require('./models/Attendance');
 const Feedback = require('./models/Feedback');
+const Artwork = require('./models/Artwork');
 
 const app = express();
 app.use(cors());
@@ -394,6 +395,73 @@ app.put('/api/feedback/:id', upload.single('report'), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error updating feedback" });
+  }
+});
+
+// ===========================
+//       ART GALLERY ROUTES 🎨
+// ===========================
+
+// 1. UPLOAD ARTWORK (Teacher/Admin)
+app.post('/api/gallery/upload', upload.single('image'), async (req, res) => {
+  try {
+    const { studentId, teacherId, title, medium, dateCreated } = req.body;
+    
+    // Check if file was uploaded to Cloudinary
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file uploaded" });
+    }
+
+    const newArtwork = new Artwork({
+      studentId,
+      teacherId,
+      imageUrl: req.file.path, // Cloudinary URL
+      title,
+      medium,
+      dateCreated
+    });
+
+    await newArtwork.save();
+    res.json({ success: true, message: "Artwork uploaded successfully!", artwork: newArtwork });
+  } catch (err) {
+    console.error("Gallery Upload Error:", err);
+    res.status(500).json({ message: "Error uploading artwork" });
+  }
+});
+
+// 1. GET ALL ARTWORK (For Admin Gallery "All" View)
+app.get('/api/gallery', async (req, res) => {
+  try {
+    // .populate() grabs the 'childName' from the User table using the studentId
+    const artwork = await Artwork.find()
+      .populate('studentId', 'childName fullName') 
+      .sort({ dateCreated: -1 }); // Newest first
+    res.json(artwork);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching all gallery items" });
+  }
+});
+
+// 2. GET ARTWORK FOR A SPECIFIC STUDENT (For Parents/Profile)
+app.get('/api/gallery/student/:studentId', async (req, res) => {
+  try {
+    const artwork = await Artwork.find({ studentId: req.params.studentId })
+      .sort({ dateCreated: -1 }); // Newest first
+    res.json(artwork);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching gallery" });
+  }
+});
+
+// 3. DELETE ARTWORK (Admin/Teacher)
+app.delete('/api/gallery/:id', async (req, res) => {
+  try {
+    await Artwork.findByIdAndDelete(req.params.id);
+    // Note: This deletes from DB. To delete from Cloudinary (Free Tier), 
+    // we usually just leave it or handle it separately to avoid complexity.
+    res.json({ success: true, message: "Artwork deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting artwork" });
   }
 });
 

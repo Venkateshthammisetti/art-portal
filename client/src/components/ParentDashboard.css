@@ -931,3 +931,40 @@ body.dark .tm-btn.secondary { background: #1e293b; border-color: #334155; color:
     padding: 5px;
   }
 }
+
+/* --- SHARED GALLERY STYLES --- */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 10000; /* Ensure it's on top of everything */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.lightbox-content img {
+  max-height: 80vh;
+  max-width: 90vw;
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5);
+}
+
+.lightbox-caption {
+  color: white;
+  margin-top: 15px;
+  text-align: center;
+}
+
+/* Close/Nav Buttons */
+.lightbox-overlay button {
+  transition: all 0.2s ease;
+}
+.lightbox-overlay button:hover {
+  transform: scale(1.1);
+  background: rgba(255,255,255,0.3) !important;
+}
