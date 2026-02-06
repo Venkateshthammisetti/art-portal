@@ -498,3 +498,82 @@ body {
 .column-menu-dropdown label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #64748b; padding: 6px 0; cursor: pointer; }
 .column-menu-dropdown label:hover { color: #0284c7; }
 .column-menu-dropdown input[type="checkbox"] { accent-color: #0284c7; width: 16px; height: 16px; cursor: pointer; }
+
+/* --- LIGHTBOX GALLERY STYLES --- */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: 85vh;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  object-fit: contain;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 3rem;
+  cursor: pointer;
+  z-index: 10000;
+}
+
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 2rem;
+  padding: 10px 15px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.lightbox-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.lightbox-nav-btn.prev { left: 20px; }
+.lightbox-nav-btn.next { right: 20px; }
+
+.lightbox-caption {
+  color: white;
+  margin-top: 15px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.lightbox-caption span {
+  display: block;
+  font-size: 0.8rem;
+  color: #ccc;
+  margin-top: 5px;
+}
