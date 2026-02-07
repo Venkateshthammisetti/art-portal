@@ -629,7 +629,7 @@ const ParentDashboard = ({ user, onLogout }) => {
           <button className={activeTab === "attendance" ? "active" : ""} onClick={() => handleNavClick("attendance")}><span>📅</span> Attendance Log</button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => handleNavClick("fees")}><span>💳</span> Fee Status</button>
           <button className={activeTab === "refer" ? "active" : ""} onClick={() => handleNavClick("refer")}><span>📣</span> Refer & Support</button>
-          <button 
+          {/* <button 
             onClick={subscribeToPush} 
             style={{
               marginTop: '15px', 
@@ -647,9 +647,9 @@ const ParentDashboard = ({ user, onLogout }) => {
             }}
           >
             🔔 Enable Alerts
-          </button>
+          </button> */}
 
-          <button onClick={onLogout} className="logout-btn">Logout</button>
+          
           
           <button onClick={() => setShowTutorial(true)} style={{marginTop:'10px', color:'#2563eb'}}><span>💡</span> App Tutorial</button>
         </div>
@@ -677,6 +677,14 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <button className="pd-menu-btn theme-toggle" onClick={toggleTheme}>{theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}</button>
                 <button className="pd-menu-btn" onClick={() => setShowTutorial(true)}>💡 App Tutorial</button>
                 <button className="pd-menu-btn" onClick={() => handleNavClick('refer')}>📣 Refer & Support</button>
+               {/* ✨ NEW: Enable Alerts Button for Mobile Menu */}
+                <button 
+                  className="pd-menu-btn" 
+                  onClick={() => { subscribeToPush(); setShowProfileMenu(false); }}
+                  style={{  fontWeight: 'bold' }}
+                >
+                  🔔 Enable Alerts
+                </button> 
                 <button className="pd-menu-btn logout" onClick={() => { setShowLogoutModal(true); setShowProfileMenu(false); }}> Logout</button>
               </div>
             )}
