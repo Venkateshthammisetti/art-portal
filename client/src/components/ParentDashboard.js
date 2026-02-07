@@ -1,14 +1,27 @@
-// src/components/ParentDashboard.js
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './ParentDashboard.css';
+
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
+// Ensure these image paths are correct in your project
 import logoImg from './new-logo.png'; 
 import titleImg from './logo-title-copy.png';
 import bannerImg from './banner4.png';
 import bannerMobile from './banner-001.png';
 import qrCodeImg from './qrcode.jpeg'; 
+
+// --- ZONE 1: HELPER FUNCTIONS (Outside Component) ---
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 // --- TUTORIAL STEPS DATA ---
 const TUTORIAL_STEPS = [
@@ -21,7 +34,7 @@ const TUTORIAL_STEPS = [
   { 
     id: 2, 
     title: "Quick Overview 📊", 
-    desc: <span>The <b>'Overview'</b> tab gives you a snapshot. See upcoming classes, attendance percentage,latest teacher feedback at a glance, fee status, next class schedule, Basic details of the student</span>, 
+    desc: <span>The <b>'Overview'</b> tab gives you a snapshot. See upcoming classes, attendance percentage, latest teacher feedback at a glance, fee status, next class schedule, Basic details of the student</span>, 
     icon: "🏠" 
   },
   { 
@@ -45,7 +58,7 @@ const TUTORIAL_STEPS = [
 ];
 
 // ==========================================
-// 1. PARENT GALLERY COMPONENT (With Swipe & Keyboard Support)
+// 1. PARENT GALLERY COMPONENT
 // ==========================================
 const ParentGalleryTab = ({ studentId }) => {
   const [artwork, setArtwork] = useState([]);
@@ -57,13 +70,12 @@ const ParentGalleryTab = ({ studentId }) => {
   const [filterYear, setFilterYear] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
 
-  // ✨ Swipe Refs
+  // Swipe Refs
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
   useEffect(() => {
     setLoading(true);
-    // NOTE: Change to live URL for production
     const baseUrl = "https://art-portal-7n6r.onrender.com"; 
     
     axios.get(`${baseUrl}/api/gallery/student/${studentId}`)
@@ -81,7 +93,7 @@ const ParentGalleryTab = ({ studentId }) => {
            (filterMonth === "all" || artMonth === parseInt(filterMonth));
   });
 
-  // ✨ SMART SHARE LOGIC
+  // SMART SHARE LOGIC
   const handleWhatsAppStatus = async (e, art) => {
     e.stopPropagation();
     setShareLoading(true);
@@ -130,7 +142,7 @@ const ParentGalleryTab = ({ studentId }) => {
     setLightboxIndex((prev) => (prev - 1 + filteredArtwork.length) % filteredArtwork.length); 
   };
 
-  // ✨ KEYBOARD NAVIGATION (Fixed)
+  // KEYBOARD NAVIGATION
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (lightboxIndex === null) return;
@@ -140,9 +152,9 @@ const ParentGalleryTab = ({ studentId }) => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxIndex, filteredArtwork]); // Added dependencies to keep state fresh
+  }, [lightboxIndex, filteredArtwork]);
 
-  // ✨ SWIPE HANDLERS
+  // SWIPE HANDLERS
   const onTouchStart = (e) => {
     touchEndX.current = null; 
     touchStartX.current = e.targetTouches[0].clientX;
@@ -216,7 +228,6 @@ const ParentGalleryTab = ({ studentId }) => {
           className="lightbox-overlay" 
           style={{position:'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.95)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column'}} 
           onClick={() => setLightboxIndex(null)}
-          // ✨ Add Swipe Listeners to the Overlay
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -247,8 +258,9 @@ const ParentGalleryTab = ({ studentId }) => {
     </div>
   );
 };
+
 // ==========================================
-// 2. MAIN COMPONENT
+// 2. MAIN COMPONENT (ParentDashboard)
 // ==========================================
 const ParentDashboard = ({ user, onLogout }) => {
   const currentUser = user;
@@ -495,6 +507,41 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   // --- ACTIONS ---
 
+  // ✨ PUSH NOTIFICATION LOGIC (MOVED TO CORRECT LOCATION)
+  const subscribeToPush = async () => {
+    // 1. Check if browser supports it
+    if (!("serviceWorker" in navigator)) {
+      return alert("Sorry, this browser does not support notifications.");
+    }
+
+    try {
+      // 2. Register the Service Worker (sw.js)
+      // We look for this file in your 'public' folder
+      const register = await navigator.serviceWorker.register("/sw.js");
+
+      // 3. Subscribe using your VAPID Key
+      // ⚠️ REPLACE THIS STRING WITH YOUR TERMINAL OUTPUT (PUBLIC KEY)
+      const publicVapidKey = "BC0ajb0fFmrJohj0JlE5fseL4l4BU2gNRP8cPkQXVlAaXw4W6uGAevDqLgrD9Qzy4-W-FQvR-DNf0ccmo0YYkmM"; 
+      
+      const subscription = await register.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+      });
+
+      // 4. Send subscription to Backend to save in MongoDB
+      // Uses the 'user' prop to get the ID
+      await axios.post("https://art-portal-7n6r.onrender.com/api/notifications/subscribe", {
+        userId: user._id,
+        subscription: subscription
+      });
+
+      alert("✅ Notifications Enabled! You will now receive artwork updates.");
+    } catch (err) {
+      console.error("Push Error:", err);
+      alert("Failed to enable. Please allow notifications in your browser settings.");
+    }
+  };
+
   const handleCopyPaymentDetails = () => {
     const details = `*Payment Details for Thevenkyart Art Academy*\nName: Venkatesh Tammisetti\nPhonePe: +91 9963613404\nUPI ID: 9963613404@ybl\nBank: State Bank of India\nAccount No: 35360947257\nIFSC: SBIN0001424`;
     navigator.clipboard.writeText(details.trim());
@@ -582,9 +629,28 @@ const ParentDashboard = ({ user, onLogout }) => {
           <button className={activeTab === "attendance" ? "active" : ""} onClick={() => handleNavClick("attendance")}><span>📅</span> Attendance Log</button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => handleNavClick("fees")}><span>💳</span> Fee Status</button>
           <button className={activeTab === "refer" ? "active" : ""} onClick={() => handleNavClick("refer")}><span>📣</span> Refer & Support</button>
-          
-          
+          <button 
+            onClick={subscribeToPush} 
+            style={{
+              marginTop: '15px', 
+              background: '#10b981', 
+              color: 'white', 
+              border: 'none', 
+              padding: '10px', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            🔔 Enable Alerts
+          </button>
 
+          <button onClick={onLogout} className="logout-btn">Logout</button>
+          
           <button onClick={() => setShowTutorial(true)} style={{marginTop:'10px', color:'#2563eb'}}><span>💡</span> App Tutorial</button>
         </div>
         <div className="sidebar-footer"><p>© 2026 Thevenkyart Art Academy</p></div>
