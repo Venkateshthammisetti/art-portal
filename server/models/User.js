@@ -40,6 +40,8 @@ const UserSchema = new mongoose.Schema({
   education: String,
   dob: String,
 
+  pushSubscription: { type: Object }, // Stores the device address
+
   isActive: { type: Boolean, default: true },
   
   // Payment History
@@ -50,5 +52,7 @@ const UserSchema = new mongoose.Schema({
     paidDate: Date
   }]
 }, { timestamps: true });
+
+
 
 module.exports = mongoose.model('User', UserSchema);

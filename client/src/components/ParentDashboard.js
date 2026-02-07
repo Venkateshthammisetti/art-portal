@@ -2,6 +2,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './ParentDashboard.css';
+
+// Helper to convert key for browser compatibility
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 import logoImg from './new-logo.png'; 
@@ -164,6 +177,43 @@ const ParentGalleryTab = ({ studentId }) => {
 
   const years = [2024, 2025, 2026, 2027];
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+
+  // ✨ PUSH NOTIFICATION LOGIC
+  const subscribeToPush = async () => {
+    // 1. Check if browser supports it
+    if (!("serviceWorker" in navigator)) {
+      return alert("Sorry, this browser does not support notifications.");
+    }
+
+    try {
+      // 2. Register the Service Worker (sw.js)
+      // We look for this file in your 'public' folder
+      const register = await navigator.serviceWorker.register("/sw.js");
+
+      // 3. Subscribe using your VAPID Key
+      // ⚠️ REPLACE THIS STRING WITH YOUR TERMINAL OUTPUT (PUBLIC KEY)
+      const publicVapidKey = "BC0ajb0fFmrJohj0JlE5fseL4l4BU2gNRP8cPkQXVlAaXw4W6uGAevDqLgrD9Qzy4-W-FQvR-DNf0ccmo0YYkmM"; 
+      
+      const subscription = await register.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+      });
+
+      // 4. Send subscription to Backend to save in MongoDB
+      // Uses the 'user' prop to get the ID
+      await axios.post("https://art-portal-7n6r.onrender.com/api/notifications/subscribe", {
+        userId: user._id,
+        subscription: subscription
+      });
+
+      alert("✅ Notifications Enabled! You will now receive artwork updates.");
+    } catch (err) {
+      console.error("Push Error:", err);
+      alert("Failed to enable. Please allow notifications in your browser settings.");
+    }
+  };
+
 
   return (
     <div className="form-wrapper" style={{padding: '20px'}}>
@@ -582,6 +632,27 @@ const ParentDashboard = ({ user, onLogout }) => {
           <button className={activeTab === "attendance" ? "active" : ""} onClick={() => handleNavClick("attendance")}><span>📅</span> Attendance Log</button>
           <button className={activeTab === "fees" ? "active" : ""} onClick={() => handleNavClick("fees")}><span>💳</span> Fee Status</button>
           <button className={activeTab === "refer" ? "active" : ""} onClick={() => handleNavClick("refer")}><span>📣</span> Refer & Support</button>
+          <button 
+            onClick={subscribeToPush} 
+            style={{
+              marginTop: '15px', 
+              background: '#10b981', 
+              color: 'white', 
+              border: 'none', 
+              padding: '10px', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            🔔 Enable Alerts
+          </button>
+
+          <button onClick={onLogout} className="logout-btn">Logout</button>
           
           
 

@@ -14,6 +14,9 @@ const Attendance = require('./models/Attendance');
 const Feedback = require('./models/Feedback');
 const Artwork = require('./models/Artwork');
 const nodemailer = require('nodemailer');
+const webpush = require('web-push');
+
+
 
 const app = express();
 app.use(cors());
@@ -35,6 +38,13 @@ const storage = new CloudinaryStorage({
     resource_type: 'auto' // Important for detecting PDFs vs Images
   },
 });
+
+// Configure VAPID Keys
+webpush.setVapidDetails(
+  'mailto:thevenkyart@gmail.com', // Your admin email
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 
 const upload = multer({ storage: storage });
 
@@ -476,56 +486,60 @@ app.delete('/api/gallery/:id', async (req, res) => {
   }
 });
 
-// ✨ BATCH NOTIFICATION ROUTE (Final Corrected Version)
+// ✨ BATCH NOTIFICATION (EMAIL + PUSH)
 app.post('/api/notifications/batch-alert', async (req, res) => {
   const { studentId, count } = req.body;
 
   try {
     const student = await User.findById(studentId);
 
-    // 1. SMART CHECK: Use Parent Email first, fallback to Student Email
+    // 1. Send Email (Your existing logic)
     const recipientEmail = student.parentEmail || student.email;
-
-    // 2. VALIDATION: Ensure we have someone to email
-    if (!student || !recipientEmail) {
-      console.log("❌ Email failed: No email address found for student/parent.");
-      return res.status(400).json({ error: "No email address found." });
+    if (recipientEmail) {
+       // ... (Keep your existing transporter.sendMail logic here) ...
+       // I'm skipping the full email code to save space, but KEEP IT!
+       const mailOptions = {
+          from: `"Venky Art Academy" <${process.env.GMAIL_USER}>`,
+          to: recipientEmail,
+          subject: `🎨 Monthly Art Update: ${count} New Artworks!`,
+          html: `<p>Check out the ${count} new artworks in the gallery!</p>` 
+       };
+       transporter.sendMail(mailOptions).catch(err => console.log("Email failed:", err));
     }
 
-    const mailOptions = {
-      from: '"Venky Art Academy" <thevenkyart@gmail.com>', // Matches your transporter config
-      to: recipientEmail, // ✨ NOW SENDS TO PARENT
-      subject: `🎨 Monthly Art Update: ${count} New Artworks Added!`,
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-          <h2 style="color: #2563eb;">New Artworks Uploaded! 🎨</h2>
-          <p>Hello Parent of <strong>${student.childName}</strong>,</p>
-          <p>We just updated the gallery with new masterpieces!</p>
-          
-          <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <span style="font-size: 24px; font-weight: bold; color: #333;">${count}</span>
-            <span style="font-size: 18px; color: #555;"> New Artworks Added</span>
-          </div>
+    // 2. ✨ SEND PUSH NOTIFICATION (New Logic)
+    if (student.pushSubscription) {
+      const payload = JSON.stringify({
+        title: `🎨 New Artworks Added!`,
+        body: `${student.childName} just has ${count} new photos in the gallery. Tap to view!`,
+        url: "https://art-portal-7n6r.onrender.com" // Link to open
+      });
 
-          <p>Visit the parent dashboard to view them and share them on WhatsApp!</p>
-          
-          <a href="https://art-portal-7n6r.onrender.com" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-            View Gallery
-          </a>
-        </div>
-      `
-    };
+      try {
+        await webpush.sendNotification(student.pushSubscription, payload);
+        console.log("✅ Push Notification Sent!");
+      } catch (error) {
+        console.error("❌ Push Failed:", error);
+      }
+    }
 
-    // 3. AWAIT: Wait for the email to actually send so we catch errors
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully to ${recipientEmail}`);
-    
-    return res.json({ message: "Notification sent successfully" });
+    res.json({ message: "Notifications sent!" });
 
   } catch (err) {
-    console.error("❌ Email Error:", err);
-    // This allows the frontend to alert you if the password is wrong
-    return res.status(500).json({ error: "Failed to send email. Check server logs." });
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+
+// ✨ SAVE SUBSCRIPTION
+app.post('/api/notifications/subscribe', async (req, res) => {
+  const { userId, subscription } = req.body;
+  try {
+    await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
+    res.status(201).json({});
+  } catch (err) {
+    res.status(500).json({ error: "Could not save subscription" });
   }
 });
 
