@@ -67,8 +67,9 @@ function escapeRegex(text) {
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'thevenkyart@gmail.com', // ⚠️ REPLACE THIS
-    pass: 'vqke eepn thma jnek'    // ⚠️ REPLACE WITH APP PASSWORD
+    // 🔒 Use environment variables for security
+    user: process.env.GMAIL_USER, 
+    pass: process.env.GMAIL_PASS  
   }
 });
 
@@ -475,49 +476,56 @@ app.delete('/api/gallery/:id', async (req, res) => {
   }
 });
 
-// ✨ BATCH NOTIFICATION ROUTE
+// ✨ BATCH NOTIFICATION ROUTE (Final Corrected Version)
 app.post('/api/notifications/batch-alert', async (req, res) => {
-  const { studentId, count } = req.body; // e.g., count = 10 images
+  const { studentId, count } = req.body;
 
   try {
     const student = await User.findById(studentId);
 
-    if (student && student.email) {
-      const mailOptions = {
-        from: '"Venky Art Academy" <your-email@gmail.com>',
-        to: student.email,
-        subject: `🎨 Monthly Art Update: ${count} New Artworks Added!`,
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-            <h2 style="color: #2563eb;">New Artworks Uploaded! 🎨</h2>
-            <p>Hello <strong>${student.fullName}</strong>,</p>
-            <p>We just updated <strong>${student.childName}'s</strong> gallery.</p>
-            
-            <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-              <span style="font-size: 24px; font-weight: bold; color: #333;">${count}</span>
-              <span style="font-size: 18px; color: #555;"> New Masterpieces Added</span>
-            </div>
+    // 1. SMART CHECK: Use Parent Email first, fallback to Student Email
+    const recipientEmail = student.parentEmail || student.email;
 
-            <p>Visit the parent dashboard to view them and share them on WhatsApp!</p>
-            
-            <a href="https://art-portal-7n6r.onrender.com" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              View Gallery
-            </a>
-          </div>
-        `
-      };
-
-      transporter.sendMail(mailOptions, (err, info) => {
-        if (err) console.error("Email error:", err);
-        else console.log("Batch Email sent:", info.response);
-      });
+    // 2. VALIDATION: Ensure we have someone to email
+    if (!student || !recipientEmail) {
+      console.log("❌ Email failed: No email address found for student/parent.");
+      return res.status(400).json({ error: "No email address found." });
     }
 
-    res.json({ message: "Notification sent" });
+    const mailOptions = {
+      from: '"Venky Art Academy" <thevenkyart@gmail.com>', // Matches your transporter config
+      to: recipientEmail, // ✨ NOW SENDS TO PARENT
+      subject: `🎨 Monthly Art Update: ${count} New Artworks Added!`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+          <h2 style="color: #2563eb;">New Artworks Uploaded! 🎨</h2>
+          <p>Hello Parent of <strong>${student.childName}</strong>,</p>
+          <p>We just updated the gallery with new masterpieces!</p>
+          
+          <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <span style="font-size: 24px; font-weight: bold; color: #333;">${count}</span>
+            <span style="font-size: 18px; color: #555;"> New Artworks Added</span>
+          </div>
+
+          <p>Visit the parent dashboard to view them and share them on WhatsApp!</p>
+          
+          <a href="https://art-portal-7n6r.onrender.com" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            View Gallery
+          </a>
+        </div>
+      `
+    };
+
+    // 3. AWAIT: Wait for the email to actually send so we catch errors
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent successfully to ${recipientEmail}`);
+    
+    return res.json({ message: "Notification sent successfully" });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to send alert" });
+    console.error("❌ Email Error:", err);
+    // This allows the frontend to alert you if the password is wrong
+    return res.status(500).json({ error: "Failed to send email. Check server logs." });
   }
 });
 

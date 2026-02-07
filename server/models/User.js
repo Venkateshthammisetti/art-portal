@@ -8,6 +8,7 @@ const UserSchema = new mongoose.Schema({
   // Basic Info
   fullName: String,
   email: String,
+  parentEmail: String,
   phone: String,
   location: String,
   city: String, // Added recently
