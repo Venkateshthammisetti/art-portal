@@ -1,7 +1,14 @@
-// src/components/ParentDashboard.js
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './ParentDashboard.css';
+
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+import logoImg from './new-logo.png'; 
+import titleImg from './logo-title-copy.png';
+import bannerImg from './banner4.png';
+import bannerMobile from './banner-001.png';
+import qrCodeImg from './qrcode.jpeg'; 
 
 // Helper to convert key for browser compatibility
 function urlBase64ToUint8Array(base64String) {
@@ -14,14 +21,6 @@ function urlBase64ToUint8Array(base64String) {
   }
   return outputArray;
 }
-
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-
-import logoImg from './new-logo.png'; 
-import titleImg from './logo-title-copy.png';
-import bannerImg from './banner4.png';
-import bannerMobile from './banner-001.png';
-import qrCodeImg from './qrcode.jpeg'; 
 
 // --- TUTORIAL STEPS DATA ---
 const TUTORIAL_STEPS = [
