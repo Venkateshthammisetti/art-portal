@@ -265,7 +265,11 @@ const ParentGalleryTab = ({ studentId }) => {
 const ParentDashboard = ({ user, onLogout }) => {
   const currentUser = user;
 
-  const [activeTab, setActiveTab] = useState('overview');
+// 1. Initialize Tab from URL Hash (e.g., #gallery) or default to 'overview'
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    return hash || 'overview';
+  });  
   const [studentProfile, setStudentProfile] = useState(null);
   const [assignedClass, setAssignedClass] = useState(null);
   const [reports, setReports] = useState([]);
@@ -337,6 +341,26 @@ const ParentDashboard = ({ user, onLogout }) => {
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [activeTab, showProfileMenu]);
+
+  // 3. Listen for Hash Changes (Browser Back/Forward Button Support)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) {
+        setActiveTab(hash);
+      } else {
+        setActiveTab('overview');
+      }
+    };
+
+    // Attach listener
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Cleanup listener when component unmounts
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+
 
   const fetchParentData = async () => {
     setLoading(true);
@@ -586,8 +610,12 @@ const ParentDashboard = ({ user, onLogout }) => {
   };
 
   const handleNavClick = (tab) => {
-    if (activeTab === 'overview' && tab !== 'overview') { window.history.pushState(null, '', window.location.pathname); }
-    setActiveTab(tab); setShowProfileMenu(false); 
+    // Update the URL hash (e.g., adds #gallery to the end of URL)
+    window.location.hash = tab;
+    
+    // Also update state immediately for instant feedback
+    setActiveTab(tab); 
+    setShowProfileMenu(false); 
   };
 
   const onTouchStart = (e) => { touchEnd.current = null; touchStart.current = e.targetTouches[0].clientX; touchEndY.current = e.targetTouches[0].clientY; };

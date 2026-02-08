@@ -512,7 +512,7 @@ app.post('/api/notifications/batch-alert', async (req, res) => {
       const payload = JSON.stringify({
         title: `🎨 New Artworks Added!`,
         body: `${student.childName} just has ${count} new photos in the gallery. Tap to view!`,
-        url: "https://art-portal.netlify.app/" // Link to open
+        url: "https://art-portal.netlify.app/#gallery" // Link to open
       });
 
       try {
