@@ -16,6 +16,8 @@ const Artwork = require('./models/Artwork');
 const nodemailer = require('nodemailer');
 const webpush = require('web-push');
 
+const startScheduler = require('./scheduler');
+
 
 
 const app = express();
@@ -542,6 +544,11 @@ app.post('/api/notifications/subscribe', async (req, res) => {
     res.status(500).json({ error: "Could not save subscription" });
   }
 });
+
+
+// Start the Cron Job
+startScheduler();
+
 
 // Start Server
 const PORT = process.env.PORT || 5000;
