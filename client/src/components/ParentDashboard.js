@@ -541,10 +541,10 @@ const ParentDashboard = ({ user, onLogout }) => {
     try {
       // 2. Register the Service Worker (sw.js)
       // We look for this file in your 'public' folder
+      await navigator.serviceWorker.register("/sw.js");
       const register = await navigator.serviceWorker.register("/sw.js");
 
       // 3. Subscribe using your VAPID Key
-      // ⚠️ REPLACE THIS STRING WITH YOUR TERMINAL OUTPUT (PUBLIC KEY)
       const publicVapidKey = "BC0ajb0fFmrJohj0JlE5fseL4l4BU2gNRP8cPkQXVlAaXw4W6uGAevDqLgrD9Qzy4-W-FQvR-DNf0ccmo0YYkmM"; 
       
       const subscription = await register.pushManager.subscribe({
