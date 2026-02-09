@@ -1,0 +1,86 @@
+/* Full Screen Overlay */
+.splash-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  /* ✨ Tip: Set this to the main BLUE color of your image (#0047AB) 
+     so it blends perfectly if it takes a millisecond to load */
+  background-color: #000000; 
+  z-index: 9999;
+  transition: opacity 0.5s ease-out;
+}
+
+
+/* The Image itself */
+.splash-image {
+  /* 1. Force the image to take up 100% of the container */
+  width: 100%;
+  height: 100%;
+
+  /* 2. THE FIX: 'cover' zooms the image to fill the screen */
+  object-fit: cover;
+  object-position: center;
+  
+  /* 3. Ensure no hidden margins */
+  display: block; 
+  opacity: 80%;
+}
+
+/* ✨ NEW: Container for Top Elements */
+.splash-header {
+  position: absolute;
+  top: 10px; /* Adjust this to move Up/Down */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 50px; /* Space between Logo and Spinner */
+  z-index: 10000;
+}
+
+/* ✨ NEW: Your Logo Styling */
+.splash-logo-top {
+  width: 120px; /* Adjust logo size */
+  height: auto;
+  /* Optional: Drop shadow for visibility against background */
+  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));
+}
+
+
+
+/* The Fade Out Class (Added by JS) */
+/* .fade-out {
+  opacity: 0;
+  pointer-events: none;
+} */
+
+/* ... Your existing splash-container and splash-image CSS ... */
+
+/* 🎨 THE SPINNER (Now inside the header) */
+.art-loader {
+  /* Removed absolute positioning since it's now in the flex container */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  
+  border: 4px solid rgba(255, 255, 255, 0.2); 
+  border-top-color: #e50303; /* Magenta */
+  border-right-color: #0744ed; /* Cyan */
+  border-bottom-color: #FFD500; /* Yellow */
+  
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); 
+  animation: spin 1s linear infinite;
+}
+
+/* .fade-out {
+  opacity: 0;
+  pointer-events: none;
+} */
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

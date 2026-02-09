@@ -8,8 +8,11 @@ import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import ParentDashboard from './components/ParentDashboard';
+import SplashScreen from './components/SplashScreen';
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  
   // 1. Initialize State
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('user');
@@ -55,6 +58,10 @@ function App() {
     console.warn("Detected corrupted user data. Logging out...");
     handleLogout();
     return null;
+  }
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
   return (
