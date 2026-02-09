@@ -894,7 +894,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     <img src={titleImg} alt="Venky Art Academy" className="inst-title-img" />
                     <p className="inst-tagline">"Unleashing Creativity in Every Child"</p>
                     <div className="inst-details"><div className="id-row"><span>🌐</span> <a href="https://thevenkyart.com" target="_blank" rel="noreferrer">thevenkyart.com</a></div><div className="id-row"><span>📧</span> <span>thevenkyart@gmail.com</span></div><div className="id-row"><span>📞</span> <span>+91 9963613404</span></div><div className="id-row"><span>📍</span> <span>Hyderabad, Telangana</span></div></div>
-                    <div className="inst-desc">We provide professional art training in Oil Painting, Sketching, and Watercolors for students of all ages.</div>
+                    <div className="inst-desc">We provide professional art training in Drawing, Sketching, and Painting for students of all ages.</div>
                   </div>
                 </div>
                 <div className="referral-card action-card">

@@ -17,7 +17,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   // -- Upload States --
   const [selectedStudent, setSelectedStudent] = useState(""); 
   const [title, setTitle] = useState("");
-  const [medium, setMedium] = useState("Watercolors");
+  const [medium, setMedium] = useState("Painting");
   
   // Handle Arrays for Multiple Files
   const [imageFiles, setImageFiles] = useState([]); 
@@ -247,7 +247,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
              <form onSubmit={handleUpload} style={{display:'flex', flexDirection:'column', gap:'10px'}}>
                 <input type="text" placeholder="Title (e.g. Sketching)" value={title} onChange={e => setTitle(e.target.value)} required style={{padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}} />
                 <select value={medium} onChange={e => setMedium(e.target.value)} style={{padding:'10px', borderRadius:'6px', border:'1px solid #cbd5e1'}}>
-                    <option>Watercolors</option><option>Oil Pastels</option><option>Acrylics</option><option>Pencil/Charcoal</option><option>Mixed Media</option>
+                    <option>Painting</option><option>Pencil</option><option>Color Pencil</option><option>Charcoal Pencil</option><option>Mixed Media</option>
                 </select>
                 <input type="file" accept="image/*" multiple onChange={handleFileChange} required style={{padding:'10px', background:'#fff', borderRadius:'6px'}} />
                 <button type="submit" disabled={uploading} className="save-btn" style={{opacity: uploading ? 0.7 : 1}}>

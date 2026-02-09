@@ -20,7 +20,7 @@ const ArtworkSchema = new mongoose.Schema({
   },
   medium: { 
     type: String, 
-    default: 'graphite pencil' // e.g., Watercolors, Oil Pastels
+    default: 'Graphite Pencil' // e.g., Watercolors, Oil Pastels
   },
   dateCreated: { 
     type: String, 
