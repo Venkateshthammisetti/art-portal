@@ -541,10 +541,10 @@ const ParentDashboard = ({ user, onLogout }) => {
     try {
       // 2. Register the Service Worker (sw.js)
       // We look for this file in your 'public' folder
+      await navigator.serviceWorker.register("/sw.js");
       const register = await navigator.serviceWorker.register("/sw.js");
 
       // 3. Subscribe using your VAPID Key
-      // ⚠️ REPLACE THIS STRING WITH YOUR TERMINAL OUTPUT (PUBLIC KEY)
       const publicVapidKey = "BC0ajb0fFmrJohj0JlE5fseL4l4BU2gNRP8cPkQXVlAaXw4W6uGAevDqLgrD9Qzy4-W-FQvR-DNf0ccmo0YYkmM"; 
       
       const subscription = await register.pushManager.subscribe({
@@ -894,7 +894,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     <img src={titleImg} alt="Venky Art Academy" className="inst-title-img" />
                     <p className="inst-tagline">"Unleashing Creativity in Every Child"</p>
                     <div className="inst-details"><div className="id-row"><span>🌐</span> <a href="https://thevenkyart.com" target="_blank" rel="noreferrer">thevenkyart.com</a></div><div className="id-row"><span>📧</span> <span>thevenkyart@gmail.com</span></div><div className="id-row"><span>📞</span> <span>+91 9963613404</span></div><div className="id-row"><span>📍</span> <span>Hyderabad, Telangana</span></div></div>
-                    <div className="inst-desc">We provide professional art training in Oil Painting, Sketching, and Watercolors for students of all ages.</div>
+                    <div className="inst-desc">We provide professional art training in Drawing, Sketching, and Painting for students of all ages.</div>
                   </div>
                 </div>
                 <div className="referral-card action-card">
