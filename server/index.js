@@ -18,6 +18,10 @@ const webpush = require('web-push');
 
 const startScheduler = require('./scheduler');
 
+// ⚡️ KEEP ALIVE SCRIPT ⚡️
+// This forces the server to ping itself every 10 minutes to stay awake.
+const https = require('https');
+
 
 
 const app = express();
@@ -84,6 +88,8 @@ const transporter = nodemailer.createTransport({
     pass: process.env.GMAIL_PASS  
   }
 });
+
+
 
 // ===========================
 //        AUTH & USERS
@@ -545,9 +551,33 @@ app.post('/api/notifications/subscribe', async (req, res) => {
   }
 });
 
+app.get('/ping', (req, res) => {
+    res.status(200).send('Pong! Server is awake 🤖');
+})
+
 
 // Start the Cron Job
 startScheduler();
+
+// 2️⃣ SELF-PING (The "Caffeine")
+// Keeps the server busy so Render thinks it's active.
+// We ping the /ping route, NOT the home page, to save resources.
+const PING_URL = "https://art-portal-7n6r.onrender.com/ping"; 
+
+function keepAlive() {
+    const https = require('https');
+    https.get(PING_URL, (res) => {
+        console.log(`⚡️ Keep-Alive Ping: Status ${res.statusCode}`);
+    }).on('error', (e) => {
+        console.error(`⚡️ Keep-Alive Error: ${e.message}`);
+    });
+}
+
+// Ping every 10 minutes
+setInterval(keepAlive, 600000);
+
+// Run once immediately on start
+keepAlive();
 
 
 // Start Server
