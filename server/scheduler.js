@@ -45,7 +45,7 @@ const checkFeeReminders = async () => {
       // 🚀 If NOT paid, send REAL reminder
       if (!hasPaid) {
         const payload = JSON.stringify({
-          title: `📅 Fee Reminder-Thevenkyart: ${currentMonthStr}`,
+          title: `📅 Fee Reminder: ${currentMonthStr}`,
           body: `Gentle reminder: Fees for your child  ${student.childName} are due.Please pay the fees before 5th of every month.`,
           url: "https://art-portal.netlify.app/#fees" // ✨ Deep link to Fee Tab
         });
