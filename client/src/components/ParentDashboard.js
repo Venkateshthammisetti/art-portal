@@ -11,6 +11,8 @@ import bannerImg from './banner4.png';
 import bannerMobile from './banner-001.png';
 import qrCodeImg from './qrcode.jpeg'; 
 
+import { FaShareFromSquare } from "react-icons/fa6";
+
 // --- ZONE 1: HELPER FUNCTIONS (Outside Component) ---
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -93,37 +95,112 @@ const ParentGalleryTab = ({ studentId }) => {
            (filterMonth === "all" || artMonth === parseInt(filterMonth));
   });
 
+  // 🎨 HELPER: Generates the Branded Image
+  const generateBrandedImage = async (artworkUrl, title) => {
+    return new Promise((resolve, reject) => {
+      const artImg = new Image();
+      artImg.crossOrigin = "anonymous"; // CRITICAL: Allows canvas to export external images
+      artImg.src = artworkUrl;
+
+      const logo = new Image();
+      logo.src = logoImg; // Uses your imported logo variable
+
+      // Wait for artwork to load
+      artImg.onload = () => {
+        // Wait for logo to load (if not already cached)
+        const onLogoLoad = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // 1. Set Dimensions (Artwork Height + 160px Footer)
+            const footerHeight = 100; 
+            canvas.width = artImg.width; 
+            canvas.height = artImg.height + footerHeight;
+
+            // 2. Draw Artwork
+            ctx.drawImage(artImg, 0, 0);
+
+            // 3. Draw White Footer Background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, artImg.height, canvas.width, footerHeight);
+
+            // 4. Draw Logo (Left side of footer)
+            // Aspect ratio math to keep logo looking good
+            const logoSize = 60;
+            ctx.drawImage(logo, 20, artImg.height + 20, logoSize, logoSize);
+
+            // 5. Draw Text (Academy Name & Website)
+            ctx.textAlign = "center"; 
+            const centerX = canvas.width / 2 + 20; // Shift center slightly right to account for logo
+
+            
+
+            // Academy Name
+            ctx.fillStyle = "#b42d00"; // Your Brand Blue
+            ctx.font = "bold 10px Arial";
+            ctx.fillText("THEVENKYART ONLINE ART ACADEMY", centerX, artImg.height + 90);
+
+            // Website & Phone
+            ctx.fillStyle = "#333333"; // Dark Grey
+            ctx.font = "15px Arial";
+            ctx.fillText("www.thevenkyart.com", centerX, artImg.height + 55);
+
+            // 6. Convert to Blob
+            canvas.toBlob((blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error("Canvas blob failed"));
+            }, 'image/jpeg', 0.95);
+
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        if (logo.complete) onLogoLoad();
+        else logo.onload = onLogoLoad;
+      };
+
+      artImg.onerror = (err) => reject(err);
+    });
+  };
+
   // SMART SHARE LOGIC
+  // ✨ UPDATED SHARE LOGIC
   const handleWhatsAppStatus = async (e, art) => {
     e.stopPropagation();
     setShareLoading(true);
 
-    const promoText = `🌟 Proud Moment! My child created this amazing ${art.medium} artwork at *Thevenkyart online Art Academy*! 🎨✨`;
+    const promoText = `🌟 Proud Moment! My child created this amazing ${art.medium} artwork at *Thevenkyart Art Academy*! 🎨✨`;
 
     try {
-      const response = await fetch(art.imageUrl, { mode: 'cors' });
-      const blob = await response.blob();
-      const file = new File([blob], "venky-art.jpg", { type: "image/jpeg" });
+      // 1. GENERATE BRANDED IMAGE (Instead of fetching raw URL)
+      const blob = await generateBrandedImage(art.imageUrl, art.title);
+      
+      const file = new File([blob], `VenkyArt_${art.title || 'Artwork'}.jpg`, { type: "image/jpeg" });
 
+      // 2. SHARE API (Mobile)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: 'Venky Art Academy',
+          title: 'Thevenkyart Art Academy',
           text: promoText,
         });
       } else {
-        // Desktop Fallback
+        // 3. DESKTOP FALLBACK (Download)
         const link = document.createElement('a');
         link.href = window.URL.createObjectURL(blob);
-        link.download = `VenkyArt_${art.title || 'Artwork'}.jpg`;
+        link.download = `VenkyArt_Branded_${art.title || 'Artwork'}.jpg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
         await navigator.clipboard.writeText(promoText);
-        alert("💻 On Desktop/Windows:\n\n1. The image has been DOWNLOADED.\n2. The caption is COPIED to your clipboard.\n\n👉 Open WhatsApp Web and drag-drop the image to your status!");
+        alert("💻 Image Downloaded with Watermark!\n\n1. Check your downloads folder.\n2. Caption copied to clipboard.\n3. Upload to WhatsApp Web!");
       }
     } catch (err) {
       console.error("Share failed:", err);
+      // Fail-safe: Just share the text link if image generation fails
       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(promoText + " " + art.imageUrl)}`;
       window.open(whatsappUrl, '_blank');
     } finally {
@@ -215,7 +292,7 @@ const ParentGalleryTab = ({ studentId }) => {
                    boxShadow:'0 2px 5px rgba(0,0,0,0.2)'
                  }}
                >
-                 💬
+                 <FaShareFromSquare size={20} /> 
                </button>
             </div>
          ))
@@ -248,8 +325,14 @@ const ParentGalleryTab = ({ studentId }) => {
             
             {/* WhatsApp Large Button */}
             <div style={{marginTop:'20px'}}>
-                <button onClick={(e) => handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])} disabled={shareLoading} style={{background:'#25D366', color:'white', border:'none', padding:'12px 30px', borderRadius:'30px', cursor:'pointer', fontSize:'1.1rem', fontWeight:'bold', display:'flex', alignItems:'center', gap:'10px', margin:'0 auto'}}>
-                {shareLoading ? "Processing..." : <><span>💬</span> Share to WhatsApp Status</>}
+                <button onClick={(e) => handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])} disabled={shareLoading} style={{background:'#25D366', color:'white', border:'none', padding:'20px', borderRadius:'30px', cursor:'pointer', fontSize:'1.1rem', fontWeight:'bold', display:'flex', alignItems:'center', gap:'10px', margin:'0 auto'}}>
+                {shareLoading ? (
+                    "Processing..." 
+                  ) : (
+                    <>
+                      <FaShareFromSquare size={20} /> 
+                    </>
+                  )}
                 </button>
             </div>
           </div>
