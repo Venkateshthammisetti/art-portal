@@ -99,7 +99,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     }
   };
 
-  // 4. Multi-Image Upload (Updated with Batch Notification)
+  // 4. Multi-Image Upload (Fixed Date Issue)
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!selectedStudent || selectedStudent === "all") return alert("Please select a specific student.");
@@ -108,7 +108,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     setUploading(true);
     let successCount = 0;
 
-    // 1. UPLOAD LOOP (Uploads images one by one)
+    // 1. UPLOAD LOOP
     for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
         setProgressMsg(`Uploading ${i + 1} of ${imageFiles.length}...`);
@@ -119,6 +119,9 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         formData.append("title", imageFiles.length > 1 ? `${title} (${i+1})` : title);
         formData.append("medium", medium);
         formData.append("image", file);
+        
+        // ✨ FIX: Force the current date and time from the frontend
+        formData.append("dateCreated", new Date().toISOString()); 
 
         try {
             const res = await axios.post("https://art-portal-7n6r.onrender.com/api/gallery/upload", formData, {
@@ -134,17 +137,14 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     setUploading(false);
     setProgressMsg(successCount === imageFiles.length ? "✅ All Uploaded!" : `⚠️ Uploaded ${successCount}/${imageFiles.length}`);
     
-    // 2. SEND BATCH NOTIFICATION (Runs only once after all uploads finish)
+    // 2. SEND BATCH NOTIFICATION
     if (successCount === imageFiles.length) {
         try {
-           // Calls the new route we just created
            await axios.post("https://art-portal-7n6r.onrender.com/api/notifications/batch-alert", {
              studentId: selectedStudent,
              count: successCount
            });
-           // Optional: You can remove this alert if you find it annoying, 
-           // but it's good confirmation for the teacher.
-           alert(`Success! Uploaded ${successCount} images and notified the parent.`);
+           alert(`Success! Uploaded ${successCount} images.`);
         } catch (err) {
            console.error("Failed to send notification", err);
         }
