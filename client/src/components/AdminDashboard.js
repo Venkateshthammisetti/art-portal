@@ -1353,7 +1353,6 @@ const SlotManagementTab = () => {
   );
 };
 
-// --- TAB 5: FEE TRACKER ---
 const FeeTrackerTab = () => {
   const [students, setStudents] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
@@ -1373,7 +1372,20 @@ const FeeTrackerTab = () => {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
+  // ✨ HELPER: Get valid start month (YYYY-MM)
+  const getStudentStartMonth = (student) => {
+      // Prioritize registeredDate, fallback to joiningDate or createdAt
+      let dateStr = student.registeredDate || student.joiningDate || student.createdAt;
+      if (!dateStr) return new Date().toISOString().slice(0, 7); // Default to today
+      
+      // Handle if it's a full ISO string (2024-02-15...) -> "2024-02"
+      if (typeof dateStr === 'string') return dateStr.slice(0, 7);
+      return new Date(dateStr).toISOString().slice(0, 7);
+  };
+
   const handleTogglePayment = async (studentId, currentStatus, feeAmount) => {
+    if (currentStatus === 'Not Joined') return; // 🔒 Prevent action if not joined
+
     const newStatus = currentStatus === 'Paid' ? 'Pending' : 'Paid';
     const updatedStudents = students.map(s => {
       if (s._id === studentId) {
@@ -1389,45 +1401,42 @@ const FeeTrackerTab = () => {
     catch (err) { alert("Error updating payment"); fetchStudents(); }
   };
 
-  const getPaymentStatus = (student) => (student.payments || []).find(p => p.month === selectedMonth) ? 'Paid' : 'Pending';
+  // ✨ FIX: Check if selected month is BEFORE student joined
+  const getPaymentStatus = (student) => {
+      const startMonth = getStudentStartMonth(student);
+      
+      // If the selected month is older than the start month (e.g., Select "2026-01" but joined "2026-02")
+      if (selectedMonth < startMonth) {
+          return 'Not Joined';
+      }
+
+      return (student.payments || []).find(p => p.month === selectedMonth) ? 'Paid' : 'Pending';
+  };
   
   const changeMonth = (offset) => {
     const d = new Date(selectedMonth + "-01"); d.setMonth(d.getMonth()+offset);
     setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   };
 
-  // ✨ CRITICAL FIX: FEE CALCULATION
   const calculateTotalPending = (student) => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0 (Jan) - 11 (Dec)
+    const currentMonth = today.getMonth(); 
     
-    // 1. Prioritize 'registeredDate' (Manual Fee Start Date)
-    // Fallback to 'joiningDate', then 'createdAt'
-    let rawDateString = student.registeredDate || student.joiningDate || student.createdAt;
-    
-    // Default to today if nothing is found
-    if (!rawDateString) {
-        rawDateString = today.toISOString().split('T')[0];
-    } else if (typeof rawDateString !== 'string') {
-        // Handle if it's a Date object
-        rawDateString = new Date(rawDateString).toISOString().split('T')[0];
-    }
+    // ✨ Use the robust helper
+    const startMonthStr = getStudentStartMonth(student); // "YYYY-MM"
+    const parts = startMonthStr.split('-');
+    const startYear = parseInt(parts[0], 10);
+    const startMonthIdx = parseInt(parts[1], 10) - 1;
 
-    // 2. Parse Date String manually to YYYY and MM
-    const parts = rawDateString.split('-'); // e.g. ["2026", "02", "01"]
-    let startYear = parseInt(parts[0], 10);
-    let startMonth = parseInt(parts[1], 10) - 1; // Convert 1-based (Feb=02) to 0-based index
-
-    // 3. Convert to Month Indices
-    const startTotalIndex = (startYear * 12) + startMonth;
+    const startTotalIndex = (startYear * 12) + startMonthIdx;
     const currentTotalIndex = (currentYear * 12) + currentMonth;
 
     let pendingCount = 0;
     let pendingAmount = 0;
 
-    // 4. Iterate from Registered Month -> Current Month
     let iterIndex = startTotalIndex;
+    // Loop from Start Month -> Current Month
     while (iterIndex <= currentTotalIndex) {
         const y = Math.floor(iterIndex / 12);
         const m = iterIndex % 12;
@@ -1445,7 +1454,11 @@ const FeeTrackerTab = () => {
     return { count: pendingCount, amount: pendingAmount };
   };
 
-  const totalEstRevenue = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
+  const totalEstRevenue = students.reduce((acc, s) => {
+      // Only count revenue if student has joined by this month
+      return getPaymentStatus(s) !== 'Not Joined' ? acc + (s.monthlyFee || 0) : acc;
+  }, 0);
+
   const currentCollected = students.reduce((acc, s) => getPaymentStatus(s) === 'Paid' ? acc + (s.monthlyFee || 0) : acc, 0);
   const currentPending = totalEstRevenue - currentCollected;
   const totalOutstandingAllTime = students.reduce((acc, s) => acc + calculateTotalPending(s).amount, 0);
@@ -1456,7 +1469,6 @@ const FeeTrackerTab = () => {
       if (sortOrder === 'name-asc') return (a.childName || "").localeCompare(b.childName || "");
       if (sortOrder === 'fee-high') return (b.monthlyFee || 0) - (a.monthlyFee || 0);
       if (sortOrder === 'total-pending-high') return calculateTotalPending(b).amount - calculateTotalPending(a).amount;
-      if (sortOrder === 'status-paid') return getPaymentStatus(b) === 'Paid' ? 1 : -1;
       return 0;
     });
 
@@ -1510,14 +1522,9 @@ const FeeTrackerTab = () => {
           <div style={{padding:'30px', background:'#f8fafc'}}>
               <h3 style={{marginBottom:'20px', color:'#334155'}}>Analytics for {new Date(selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
               <div style={{display:'flex', gap:'20px', flexWrap:'wrap', marginBottom:'30px'}}>
-                <DonutChart value={currentCollected} total={totalEstRevenue} color="#10b981" label="Collection Rate (Month)" />
-                <DonutChart value={currentPending} total={totalEstRevenue} color="#f59e0b" label="Pending Dues (Month)" />
-                <DonutChart value={totalOutstandingAllTime} total={totalOutstandingAllTime + currentCollected} color="#ef4444" label="Total Outstanding Risk" />
-              </div>
-              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'15px'}}>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #3b82f6'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Total Students</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#334155'}}>{students.length}</div></div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #10b981'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Fully Paid (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#16a34a'}}>{students.filter(s => getPaymentStatus(s) === 'Paid').length}</div></div>
-                <div style={{background:'#fff', padding:'15px', borderRadius:'8px', borderLeft:'4px solid #ef4444'}}><div style={{color:'#64748b', fontSize:'0.85rem'}}>Pending (This Month)</div><div style={{fontSize:'1.5rem', fontWeight:'bold', color:'#dc2626'}}>{students.filter(s => getPaymentStatus(s) === 'Pending').length}</div></div>
+                <DonutChart value={currentCollected} total={totalEstRevenue} color="#10b981" label="Collection Rate" />
+                <DonutChart value={currentPending} total={totalEstRevenue} color="#f59e0b" label="Pending Dues" />
+                <DonutChart value={totalOutstandingAllTime} total={totalOutstandingAllTime + currentCollected} color="#ef4444" label="Total Outstanding" />
               </div>
           </div>
         ) : (
@@ -1537,14 +1544,41 @@ const FeeTrackerTab = () => {
                    processedStudents.map(student => {
                       const status = getPaymentStatus(student);
                       const isPaid = status === 'Paid';
+                      const isNotJoined = status === 'Not Joined'; // Check this
                       const pendingStats = calculateTotalPending(student);
                       return (
                         <tr key={student._id}>
                           <td style={{fontWeight:'600', color:'#334155'}}>{student.childName}<div style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'normal'}}>{student.fullName}</div></td>
                           <td style={{fontWeight:'bold'}}>₹{student.monthlyFee}</td>
-                          <td><span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>{isPaid ? 'Paid' : 'Pending'}</span></td>
+                          <td>
+                            {/* ✨ NEW BADGE FOR 'NOT JOINED' */}
+                            {isNotJoined ? (
+                                <span className="role-badge" style={{background:'#e2e8f0', color:'#64748b', border:'1px solid #cbd5e1'}}>N/A</span>
+                            ) : (
+                                <span className={`role-badge ${isPaid ? 'teacher' : 'admin'}`} style={{background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b'}}>
+                                    {isPaid ? 'Paid' : 'Pending'}
+                                </span>
+                            )}
+                          </td>
                           <td>{pendingStats.amount > 0 ? (<div style={{display:'flex', alignItems:'center', gap:'8px'}}><span style={{background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', padding:'4px 8px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>₹{pendingStats.amount.toLocaleString()}</span><span style={{fontSize:'0.75rem', color:'#dc2626'}}>({pendingStats.count} Mo)</span></div>) : (<span style={{color:'#16a34a', fontSize:'0.85rem', fontWeight:'bold'}}>All Clear </span>)}</td>
-                          <td><button className="save-btn" style={{width:'auto', padding:'6px 12px', fontSize:'0.85rem', backgroundColor: isPaid ? '#ef4444' : '#10b981'}} onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}>{isPaid ? 'Mark Unpaid' : 'Pay This Month'}</button></td>
+                          <td>
+                            {/* Disable button if Not Joined */}
+                            <button 
+                                className="save-btn" 
+                                disabled={isNotJoined}
+                                style={{
+                                    width:'auto', 
+                                    padding:'6px 12px', 
+                                    fontSize:'0.85rem', 
+                                    backgroundColor: isNotJoined ? '#94a3b8' : (isPaid ? '#ef4444' : '#10b981'),
+                                    cursor: isNotJoined ? 'not-allowed' : 'pointer',
+                                    opacity: isNotJoined ? 0.6 : 1
+                                }} 
+                                onClick={() => handleTogglePayment(student._id, status, student.monthlyFee)}
+                            >
+                                {isNotJoined ? 'Not Joined' : (isPaid ? 'Mark Unpaid' : 'Pay This Month')}
+                            </button>
+                          </td>
                         </tr>
                       );
                    })}
