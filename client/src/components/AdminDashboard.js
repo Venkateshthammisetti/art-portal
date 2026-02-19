@@ -5,6 +5,8 @@ import {
 } from 'recharts';
 import axios from "axios";
 import "./AdminDashboard.css";
+import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
+import { FaFilter } from "react-icons/fa6";
 
 // IMAGES
 import logoImg from './new-logo.png'; 
@@ -148,58 +150,152 @@ const ClassModal = ({ teachers, existingClasses, initialData, onClose, onSuccess
 // --- ASSIGN STUDENTS MODAL ---
 const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
   const [students, setStudents] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]); 
   const [loading, setLoading] = useState(true);
+  
+  // ✨ Filter State: 'available', 'this_class', 'other_class'
+  const [filter, setFilter] = useState('available'); 
 
   useEffect(() => {
     const loadStudents = async () => {
-      const res = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
-      const studentList = res.data.filter(u => u.role === 'parent');
-      setStudents(studentList);
-      const alreadyInClass = studentList.filter(s => s.assignedClass === classId).map(s => s._id);
-      setSelectedIds(alreadyInClass);
-      setLoading(false);
+      try {
+        const res = await axios.get('https://art-portal-7n6r.onrender.com/api/users');
+        const studentList = res.data.filter(u => u.role === 'parent');
+        setStudents(studentList);
+        
+        // Pre-select students who are ALREADY in this class
+        const alreadyInClass = studentList
+          .filter(s => s.assignedClass === classId)
+          .map(s => s._id);
+          
+        setSelectedIds(alreadyInClass);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error loading students", err);
+        setLoading(false);
+      }
     };
     loadStudents();
   }, [classId]);
 
+  // Handle Checkbox Toggle
   const toggleStudent = (id, isDisabled) => {
     if (isDisabled) return;
-    if (selectedIds.includes(id)) { setSelectedIds(selectedIds.filter(sid => sid !== id)); } 
-    else { setSelectedIds([...selectedIds, id]); }
+    if (selectedIds.includes(id)) { 
+        setSelectedIds(selectedIds.filter(sid => sid !== id)); 
+    } else { 
+        setSelectedIds([...selectedIds, id]); 
+    }
   };
 
   const handleSave = async () => {
-    try { await axios.post(`https://art-portal-7n6r.onrender.com/api/classes/${classId}/assign`, { studentIds: selectedIds }); onSuccess(); } 
-    catch (err) { alert("Failed to assign students"); }
+    try { 
+        await axios.post(`https://art-portal-7n6r.onrender.com/api/classes/${classId}/assign`, { studentIds: selectedIds }); 
+        onSuccess(); 
+    } catch (err) { 
+        alert("Failed to assign students"); 
+    }
   };
+
+  // ✨ DROPDOWN FILTER LOGIC
+  const getFilteredStudents = () => {
+    switch(filter) {
+        case 'available':
+            // Students who have NO class assigned
+            return students.filter(s => !s.assignedClass);
+        case 'this_class':
+            // Students assigned to THIS specific class
+            return students.filter(s => s.assignedClass === classId);
+        case 'other_class':
+            // Students assigned to ANY OTHER class
+            return students.filter(s => s.assignedClass && s.assignedClass !== classId);
+        default:
+            return students;
+    }
+  };
+
+  const displayedStudents = getFilteredStudents();
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{maxWidth:'600px'}}>
-        <div className="modal-header"><h3>Assign to: {className}</h3><button className="close-modal" onClick={onClose}>×</button></div>
+      <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
+        
+        {/* Header */}
+        <div className="modal-header">
+          <h3>Assign to: {className}</h3>
+          <button className="close-modal" onClick={onClose}>×</button>
+        </div>
+
+        {/* ✨ FILTER DROPDOWN SECTION */}
+        <div className="filter-section">
+            <div className="select-wrapper">
+                <FaFilter className="filter-icon" />
+                <select 
+                    value={filter} 
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="custom-filter-dropdown"
+                >
+                    <option value="available">Available to Assign ({students.filter(s => !s.assignedClass).length})</option>
+                    <option value="this_class">Assigned in This Class ({students.filter(s => s.assignedClass === classId).length})</option>
+                    <option value="other_class">Already in Another Class ({students.filter(s => s.assignedClass && s.assignedClass !== classId).length})</option>
+                </select>
+            </div>
+        </div>
+
+        {/* Body */}
         <div className="modal-body">
           <div className="student-selection-list">
-            {loading ? <p>Loading...</p> : students.map(student => {
-              const isAssignedElsewhere = student.assignedClass && student.assignedClass !== classId;
-              const isSelected = selectedIds.includes(student._id);
-              return (
-                <label key={student._id} className={`student-checkbox-item ${isAssignedElsewhere ? 'disabled' : ''}`}>
-                  <div className="student-info">
-                    <span className="student-name">{student.childName}</span>
-                    <span className="parent-name">Parent: {student.fullName}</span>
-                    {isAssignedElsewhere && <span className="current-class-badge">In Other Class</span>}
-                  </div>
-                  {!isAssignedElsewhere && <input type="checkbox" checked={isSelected} onChange={() => toggleStudent(student._id, false)} />}
-                </label>
-              );
-            })}
+            {loading ? (
+              <p style={{textAlign: 'center', color: '#64748b', padding: '20px'}}>Loading students...</p>
+            ) : displayedStudents.length === 0 ? (
+              <div style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>
+                 <p>No students found in this category.</p>
+              </div>
+            ) : (
+              displayedStudents.map(student => {
+                const isAssignedElsewhere = student.assignedClass && student.assignedClass !== classId;
+                const isSelected = selectedIds.includes(student._id);
+
+                return (
+                  <label 
+                    key={student._id} 
+                    className={`student-item ${isAssignedElsewhere ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`}
+                  >
+                    {/* Left Side: Info */}
+                    <div className="student-info">
+                      <span className="student-name">{student.childName}</span>
+                      <span className="parent-name">Parent: {student.fullName}</span>
+                      
+                      {isAssignedElsewhere && (
+                        <span className="badge-conflict">In Other Class</span>
+                      )}
+                    </div>
+
+                    {/* Right Side: Checkbox */}
+                    {!isAssignedElsewhere && (
+                      <div className="checkbox-wrapper">
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected} 
+                          onChange={() => toggleStudent(student._id, false)} 
+                        />
+                      </div>
+                    )}
+                  </label>
+                );
+              })
+            )}
           </div>
-          <div className="modal-actions" style={{marginTop:'20px'}}>
+
+          {/* Footer Actions */}
+          <div className="modal-actions">
             <button className="cancel-btn" onClick={onClose}>Cancel</button>
-            <button className="save-btn" style={{width:'auto'}} onClick={handleSave}>Save Students</button>
+            <button className="save-btn" onClick={handleSave}>
+              Save Changes ({selectedIds.length})
+            </button>
           </div>
         </div>
+
       </div>
     </div>
   );
