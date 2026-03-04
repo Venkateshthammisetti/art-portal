@@ -1494,7 +1494,15 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <span className="lbl">Date of Birth:</span>
                   <span className="val">
                     {studentProfile?.childDob
-                      ? new Date(studentProfile.childDob).toLocaleDateString()
+                      ? new Date(
+                          studentProfile.childDob.includes("T")
+                            ? studentProfile.childDob
+                            : studentProfile.childDob + "T00:00:00",
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })
                       : "N/A"}
                   </span>
                 </div>
