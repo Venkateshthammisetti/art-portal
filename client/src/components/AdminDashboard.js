@@ -4660,6 +4660,25 @@ const GalleryRepositoryTab = () => {
     }
   };
 
+  const handleDownload = async (e, imageUrl, title) => {
+  e.stopPropagation();
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const extension = blob.type.split("/")[1] || "jpg";
+    link.download = `${title || "artwork"}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert("Failed to download image. It may be blocked by CORS.");
+  }
+};
+
   // Lightbox Navigation
   const handleNext = (e) => {
     if (e) e.stopPropagation();
@@ -4799,97 +4818,130 @@ const GalleryRepositoryTab = () => {
       </div>
 
       {/* GALLERY GRID */}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+    gap: "20px",
+  }}
+>
+  {loading ? (
+    <p>Loading Gallery...</p>
+  ) : filteredArtwork.length === 0 ? (
+    <div
+      style={{
+        gridColumn: "1/-1",
+        textAlign: "center",
+        padding: "40px",
+        background: "#f1f5f9",
+        borderRadius: "12px",
+        color: "#94a3b8",
+      }}
+    >
+      No artwork found for this filter.
+    </div>
+  ) : (
+    filteredArtwork.map((art, index) => (
       <div
+        key={art._id}
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "20px",
+          border: "1px solid #e2e8f0",
+          borderRadius: "12px",
+          overflow: "hidden",
+          background: "#fff",
+          position: "relative",
+          cursor: "pointer",
+          boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
         }}
+        onClick={() => setLightboxIndex(index)}
       >
-        {loading ? (
-          <p>Loading Gallery...</p>
-        ) : filteredArtwork.length === 0 ? (
-          <div
-            style={{
-              gridColumn: "1/-1",
-              textAlign: "center",
-              padding: "40px",
-              background: "#f1f5f9",
-              borderRadius: "12px",
-              color: "#94a3b8",
-            }}
-          >
-            No artwork found for this filter.
-          </div>
-        ) : (
-          filteredArtwork.map((art, index) => (
+        <img
+          src={art.imageUrl}
+          alt={art.title}
+          style={{ width: "100%", height: "200px", objectFit: "cover" }}
+        />
+        <div style={{ padding: "12px" }}>
+          {selectedStudent === "all" && (
             <div
-              key={art._id}
               style={{
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                overflow: "hidden",
-                background: "#fff",
-                position: "relative",
-                cursor: "pointer",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                fontSize: "0.75rem",
+                fontWeight: "bold",
+                color: "#2563eb",
+                marginBottom: "4px",
+                textTransform: "uppercase",
               }}
-              onClick={() => setLightboxIndex(index)}
             >
-              <img
-                src={art.imageUrl}
-                alt={art.title}
-                style={{ width: "100%", height: "200px", objectFit: "cover" }}
-              />
-              <div style={{ padding: "12px" }}>
-                {selectedStudent === "all" && (
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: "bold",
-                      color: "#2563eb",
-                      marginBottom: "4px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {art.studentId?.childName || "Unknown"}
-                  </div>
-                )}
-                <div style={{ fontWeight: "bold", color: "#334155" }}>
-                  {art.title || "Untitled"}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                  {art.medium} •{" "}
-                  {new Date(art.dateCreated).toLocaleDateString()}
-                </div>
-              </div>
-              <button
-                onClick={(e) => handleDelete(e, art._id)}
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "10px",
-                  background: "rgba(255,255,255,0.9)",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "30px",
-                  height: "30px",
-                  cursor: "pointer",
-                  color: "#ef4444",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                }}
-                title="Delete Artwork"
-              >
-                🗑️
-              </button>
+              {art.studentId?.childName || "Unknown"}
             </div>
-          ))
-        )}
+          )}
+          <div style={{ fontWeight: "bold", color: "#334155" }}>
+            {art.title || "Untitled"}
+          </div>
+          <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+            {art.medium} •{" "}
+            {new Date(art.dateCreated).toLocaleDateString()}
+          </div>
+        </div>
+
+        {/* ACTION BUTTONS — top-right corner */}
+        <div
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+          }}
+        >
+          {/* DELETE */}
+          <button
+            onClick={(e) => handleDelete(e, art._id)}
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              border: "none",
+              borderRadius: "50%",
+              width: "30px",
+              height: "30px",
+              cursor: "pointer",
+              color: "#ef4444",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+            }}
+            title="Delete Artwork"
+          >
+            🗑️
+          </button>
+
+          {/* DOWNLOAD */}
+          <button
+            onClick={(e) => handleDownload(e, art.imageUrl, art.title)}
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              border: "none",
+              borderRadius: "50%",
+              width: "30px",
+              height: "30px",
+              cursor: "pointer",
+              color: "#2563eb",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+            }}
+            title="Download Artwork"
+          >
+            ⬇️
+          </button>
+        </div>
       </div>
+    ))
+  )}
+</div>
 
       {/* LIGHTBOX OVERLAY */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
