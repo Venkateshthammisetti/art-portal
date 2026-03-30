@@ -195,6 +195,26 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     }
   };
 
+  // 6. Download Handler
+  const handleDownload = async (e, imageUrl, title) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const extension = blob.type.split("/")[1] || "jpg";
+      link.download = `${title || "artwork"}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to download image. It may be blocked by CORS.");
+    }
+  };
+
   // ✨ NAVIGATION HELPERS
   const handleNext = (e) => {
     if (e) e.stopPropagation();
@@ -565,27 +585,61 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   {new Date(art.dateCreated).toLocaleDateString()}
                 </div>
               </div>
-              <button
-                onClick={(e) => handleDelete(e, art._id)}
+              {/* ACTION BUTTONS — top-right corner */}
+              <div
                 style={{
                   position: "absolute",
                   top: "10px",
                   right: "10px",
-                  background: "rgba(255,255,255,0.9)",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "30px",
-                  height: "30px",
-                  cursor: "pointer",
-                  color: "#ef4444",
-                  fontWeight: "bold",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  flexDirection: "column",
+                  gap: "6px",
                 }}
               >
-                🗑️
-              </button>
+                {/* DELETE */}
+                <button
+                  onClick={(e) => handleDelete(e, art._id)}
+                  style={{
+                    background: "rgba(255,255,255,0.9)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    cursor: "pointer",
+                    color: "#ef4444",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                  }}
+                  title="Delete Artwork"
+                >
+                  🗑️
+                </button>
+
+                {/* DOWNLOAD */}
+                <button
+                  onClick={(e) => handleDownload(e, art.imageUrl, art.title)}
+                  style={{
+                    background: "rgba(255,255,255,0.9)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    cursor: "pointer",
+                    color: "#2563eb",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                  }}
+                  title="Download Artwork"
+                >
+                  ⬇️
+                </button>
+              </div>
             </div>
           ))
         )}
