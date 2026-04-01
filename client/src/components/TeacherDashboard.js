@@ -3,6 +3,10 @@ import axios from "axios";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 
+// IMAGES (same as Admin Dashboard)
+import logoImg from "./new-logo.png";
+import titleImg from "./logo-title-copy.png";
+
 // --- CONFIGURATION ---
 const GRID_START_HOUR = 6;
 const GRID_END_HOUR = 23;
@@ -37,9 +41,16 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   );
   const [filterMonth, setFilterMonth] = useState("all");
 
-  // ✨ Swipe Refs
+  // ✨ Enhanced Lightbox: Swipe + Pinch-to-Zoom + Scroll Lock
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const initialPinchDist = useRef(null);
+  const initialScale = useRef(1);
+  const lastTap = useRef(0);
+  const panStart = useRef(null);
+  const initialOffset = useRef({ x: 0, y: 0 });
 
   // 1. Fetch Artwork
   useEffect(() => {
@@ -228,7 +239,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     );
   };
 
-  // ✨ KEYBOARD NAVIGATION (Fixed)
+  // ✨ KEYBOARD NAVIGATION + BODY SCROLL LOCK
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (lightboxIndex === null) return;
@@ -237,27 +248,106 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       if (e.key === "Escape") setLightboxIndex(null);
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    // Lock body scroll when lightbox is open
+    if (lightboxIndex !== null) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
   }, [lightboxIndex, filteredArtwork]);
 
-  // ✨ SWIPE HANDLERS
+  // Reset zoom/pan when image changes
+  useEffect(() => {
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  }, [lightboxIndex]);
+
+  // ✨ Helper: distance between two touches
+  const getTouchDistance = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // ✨ TOUCH HANDLERS (swipe + pinch-to-zoom + double-tap + pan)
   const onTouchStart = (e) => {
-    touchEndX.current = null;
-    touchStartX.current = e.targetTouches[0].clientX;
+    if (e.touches.length === 2) {
+      // Pinch start
+      e.preventDefault();
+      initialPinchDist.current = getTouchDistance(e.touches);
+      initialScale.current = zoomScale;
+    } else if (e.touches.length === 1) {
+      touchEndX.current = null;
+      touchStartX.current = e.touches[0].clientX;
+
+      // Double-tap detection
+      const now = Date.now();
+      if (now - lastTap.current < 300) {
+        // Double tap: toggle zoom
+        if (zoomScale > 1) {
+          setZoomScale(1);
+          setPanOffset({ x: 0, y: 0 });
+        } else {
+          setZoomScale(2.5);
+        }
+        lastTap.current = 0;
+        return;
+      }
+      lastTap.current = now;
+
+      // Pan start (when zoomed)
+      if (zoomScale > 1) {
+        panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        initialOffset.current = { ...panOffset };
+      }
+    }
   };
 
   const onTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
+    if (e.touches.length === 2 && initialPinchDist.current) {
+      // Pinch zoom
+      e.preventDefault();
+      const currentDist = getTouchDistance(e.touches);
+      const scaleFactor = currentDist / initialPinchDist.current;
+      const newScale = Math.min(Math.max(initialScale.current * scaleFactor, 1), 5);
+      setZoomScale(newScale);
+      if (newScale <= 1) setPanOffset({ x: 0, y: 0 });
+    } else if (e.touches.length === 1) {
+      touchEndX.current = e.touches[0].clientX;
+
+      // Pan when zoomed
+      if (zoomScale > 1 && panStart.current) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - panStart.current.x;
+        const dy = e.touches[0].clientY - panStart.current.y;
+        setPanOffset({
+          x: initialOffset.current.x + dx,
+          y: initialOffset.current.y + dy,
+        });
+      }
+    }
   };
 
-  const onTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
+  const onTouchEnd = (e) => {
+    initialPinchDist.current = null;
+    panStart.current = null;
 
-    if (isLeftSwipe) handleNext();
-    if (isRightSwipe) handlePrev();
+    // Only swipe navigate when NOT zoomed
+    if (zoomScale <= 1) {
+      if (!touchStartX.current || !touchEndX.current) return;
+      const distance = touchStartX.current - touchEndX.current;
+      if (distance > 50) handleNext();
+      if (distance < -50) handlePrev();
+    }
   };
 
   const years = [2024, 2025, 2026, 2027];
@@ -280,6 +370,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     <div className="form-wrapper">
       {/* HEADER */}
       <div
+        className="gallery-header"
         style={{
           background: "#f8fafc",
           padding: "15px",
@@ -359,6 +450,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       {/* UPLOAD SECTION */}
       {selectedStudent && selectedStudent !== "all" && (
         <div
+          className="gallery-upload"
           style={{
             background: "#eff6ff",
             padding: "20px",
@@ -442,6 +534,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
             </form>
             {/* PREVIEW */}
             <div
+              className="gallery-preview"
               style={{
                 background: "#fff",
                 borderRadius: "8px",
@@ -523,6 +616,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
           <p>Loading...</p>
         ) : filteredArtwork.length === 0 ? (
           <div
+            className="gallery-empty"
             style={{
               gridColumn: "1/-1",
               textAlign: "center",
@@ -538,6 +632,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
           filteredArtwork.map((art, index) => (
             <div
               key={art._id}
+              className="gallery-card"
               style={{
                 border: "1px solid #e2e8f0",
                 borderRadius: "12px",
@@ -645,19 +740,19 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         )}
       </div>
 
-      {/* LIGHTBOX */}
+      {/* LIGHTBOX (Enhanced with Pinch-to-Zoom) */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
         <div
           className="lightbox-overlay"
-          onClick={() => setLightboxIndex(null)}
-          // ✨ SWIPE EVENT LISTENERS
+          onClick={() => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          style={{ touchAction: "none" }}
         >
           <button
             className="lightbox-close"
-            onClick={() => setLightboxIndex(null)}
+            onClick={() => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }}
           >
             ×
           </button>
@@ -667,17 +762,30 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
           <div
             className="lightbox-content"
             onClick={(e) => e.stopPropagation()}
+            style={{
+              transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
+              transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
+            }}
           >
             <img
               src={filteredArtwork[lightboxIndex].imageUrl}
               alt={filteredArtwork[lightboxIndex].title}
               className="lightbox-img"
+              draggable="false"
             />
           </div>
           <button className="lightbox-nav-btn next" onClick={handleNext}>
             ›
           </button>
           <div className="lightbox-caption">
+            {zoomScale > 1 && (
+              <button
+                className="zoom-reset-btn"
+                onClick={(e) => { e.stopPropagation(); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }}
+              >
+                Reset Zoom ({Math.round(zoomScale * 100)}%)
+              </button>
+            )}
             {selectedStudent === "all" && (
               <h2 style={{ margin: "0 0 5px 0", fontSize: "1.4rem" }}>
                 {filteredArtwork[lightboxIndex].studentId?.childName}
@@ -692,6 +800,9 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                 filteredArtwork[lightboxIndex].dateCreated,
               ).toLocaleDateString()}
             </span>
+            <div className="lightbox-counter">
+              {lightboxIndex + 1} / {filteredArtwork.length}
+            </div>
           </div>
         </div>
       )}
@@ -711,6 +822,109 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [scheduleViewMode, setScheduleViewMode] = useState("grid");
   const [studentViewMode, setStudentViewMode] = useState("list");
   const [showMobileLogout, setShowMobileLogout] = useState(false);
+  const [darkMode, setDarkMode] = useState(
+    () => localStorage.getItem("teacher_theme") === "dark",
+  );
+
+  // ICONS (matching Admin Dashboard)
+  const IconHome = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    </svg>
+  );
+  const IconStudents = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+  );
+  const IconSchedule = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+  );
+  const IconAttendance = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+  );
+  const IconFeedback = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+  );
+  const IconGallery = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+      <polyline points="21 15 16 10 5 21"></polyline>
+    </svg>
+  );
+  const IconLogout = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+      <polyline points="16 17 21 12 16 7"></polyline>
+      <line x1="21" y1="12" x2="9" y2="12"></line>
+    </svg>
+  );
   const [searchText, setSearchText] = useState("");
   const [sortConfig, setSortConfig] = useState({
     key: "childName",
@@ -1220,56 +1434,55 @@ const TeacherDashboard = ({ user, onLogout }) => {
   }
 
   return (
-    <div className="teacher-container">
+    <div className="teacher-container" data-theme={darkMode ? "dark" : "light"}>
       {/* SIDEBAR */}
       <aside className="teacher-sidebar">
-        <div className="sidebar-header">
-          <div className="logo-icon">VA</div>
-          <h3>Venky Art</h3>
+        <div className="sidebar-brand">
+          <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
+          <img src={titleImg} alt="Venky Art" className="sidebar-title-img" />
         </div>
         <div className="t-nav">
           <button
             className={activeTab === "overview" ? "active" : ""}
             onClick={() => setActiveTab("overview")}
           >
-            <span>📊</span> Dashboard
+            <IconHome /> <span>Dashboard</span>
           </button>
           <button
             className={activeTab === "students" ? "active" : ""}
             onClick={() => setActiveTab("students")}
           >
-            <span>🎓</span> Students
+            <IconStudents /> <span>Students</span>
           </button>
           <button
             className={activeTab === "schedule" ? "active" : ""}
             onClick={() => setActiveTab("schedule")}
           >
-            <span>🗓️</span> My Schedule
+            <IconSchedule /> <span>My Schedule</span>
           </button>
           <button
             className={activeTab === "attendance" ? "active" : ""}
             onClick={() => setActiveTab("attendance")}
           >
-            <span>📝</span> Attendance
+            <IconAttendance /> <span>Attendance</span>
           </button>
           <button
             className={activeTab === "feedback" ? "active" : ""}
             onClick={() => setActiveTab("feedback")}
           >
-            <span>💬</span> Feedback
+            <IconFeedback /> <span>Feedback</span>
           </button>
           {/* ✨ GALLERY LINK */}
           <button
             className={activeTab === "gallery" ? "active" : ""}
             onClick={() => setActiveTab("gallery")}
           >
-            <span>🎨</span> Gallery
+            <IconGallery /> <span>Gallery</span>
           </button>
         </div>
-        <button className="t-logout" onClick={onLogout}>
-          {" "}
-          Logout
-        </button>
+        <div className="sidebar-footer">
+          <p>Teacher Portal v1.0</p>
+        </div>
       </aside>
 
       <main className="teacher-main">
@@ -1289,6 +1502,23 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <p>Welcome back, {currentUser.fullName}</p>
           </div>
           <div className="t-header-right">
+            <label
+              className="theme-toggle-label"
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              <span>{darkMode ? "☀️" : "🌙"}</span>
+              <button
+                className="theme-toggle-btn"
+                onClick={() => {
+                  const next = !darkMode;
+                  setDarkMode(next);
+                  localStorage.setItem(
+                    "teacher_theme",
+                    next ? "dark" : "light",
+                  );
+                }}
+              />
+            </label>
             <div
               className="header-profile"
               onClick={() => setShowMobileLogout(!showMobileLogout)}
@@ -1297,6 +1527,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 {currentUser.fullName?.charAt(0) || "T"}
               </div>
             </div>
+            <button
+              onClick={onLogout}
+              className="header-logout-btn desktop-only"
+              title="Logout"
+            >
+              <IconLogout />
+            </button>
             {showMobileLogout && (
               <div className="mobile-logout-dropdown">
                 <button onClick={onLogout}>🚪 Logout</button>
@@ -1487,7 +1724,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           />{" "}
                           Gender
                         </label>
-                        <label>
+                        {/* <label>
                           <input
                             type="checkbox"
                             checked={visibleColumns.phone}
@@ -1499,7 +1736,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                             }
                           />{" "}
                           Phone
-                        </label>
+                        </label> */}
                       </div>
                     )}
                   </div>
@@ -1538,7 +1775,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         {visibleColumns.gender && (
                           <th onClick={() => handleSort("gender")}>Gender</th>
                         )}
-                        {visibleColumns.phone && <th>Phone</th>}
+                        {/* {visibleColumns.phone && <th>Phone</th>} */}
                       </tr>
                     </thead>
                     <tbody>
@@ -1561,7 +1798,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                             </td>
                           )}
                           {visibleColumns.gender && <td>{s.gender}</td>}
-                          {visibleColumns.phone && <td>+91 98765 43210</td>}
+                          {/* {visibleColumns.phone && <td>+91 98765 43210</td>} */}
                         </tr>
                       ))}
                     </tbody>
@@ -2150,25 +2387,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
           className={activeTab === "overview" ? "nav-item active" : "nav-item"}
           onClick={() => handleNavClick("overview")}
         >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
+          <IconHome />
         </button>
         <button
           className={activeTab === "students" ? "nav-item active" : "nav-item"}
           onClick={() => handleNavClick("students")}
         >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
+          <IconStudents />
         </button>
         <button
           className={activeTab === "schedule" ? "nav-item active" : "nav-item"}
           onClick={() => handleNavClick("schedule")}
         >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" />
-          </svg>
+          <IconSchedule />
         </button>
         <button
           className={
@@ -2176,24 +2407,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
           }
           onClick={() => handleNavClick("attendance")}
         >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
-          </svg>
+          <IconAttendance />
         </button>
         <button
           className={activeTab === "feedback" ? "nav-item active" : "nav-item"}
           onClick={() => handleNavClick("feedback")}
         >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z" />
-          </svg>
+          <IconFeedback />
         </button>
-        {/* ✨ MOBILE GALLERY ICON */}
         <button
           className={activeTab === "gallery" ? "nav-item active" : "nav-item"}
           onClick={() => handleNavClick("gallery")}
         >
-          <span style={{ fontSize: "1.5rem" }}>🎨</span>
+          <IconGallery />
         </button>
       </nav>
 
