@@ -1373,6 +1373,13 @@ const OverviewTab = ({ stats }) => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ===== ATTENDANCE WIDGET STATE =====
+  const [attSelectedClass, setAttSelectedClass] = useState("");
+  const [attMonth, setAttMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [attRecords, setAttRecords] = useState([]);
+  const [attLoading, setAttLoading] = useState(false);
+  const [attShowAnalytics, setAttShowAnalytics] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -1390,6 +1397,69 @@ const OverviewTab = ({ stats }) => {
     };
     fetchData();
   }, []);
+
+  // ===== ATTENDANCE WIDGET: Fetch monthly records =====
+  useEffect(() => {
+    if (!attSelectedClass) { setAttRecords([]); return; }
+    const fetchAttendance = async () => {
+      setAttLoading(true);
+      try {
+        const res = await axios.get(
+          `https://art-portal-7n6r.onrender.com/api/attendance/monthly?classes=${attSelectedClass}&month=${attMonth}`
+        );
+        setAttRecords(res.data);
+      } catch (err) {
+        console.error("Attendance fetch error:", err);
+      } finally {
+        setAttLoading(false);
+      }
+    };
+    fetchAttendance();
+  }, [attSelectedClass, attMonth]);
+
+  // ===== ATTENDANCE WIDGET: Compute monthly sheet data =====
+  const attClass = classes.find(c => c._id === attSelectedClass);
+  const attStudents = attClass ? attClass.students || [] : [];
+
+  const getMonthDays = (monthStr) => {
+    if (!monthStr) return [];
+    const [y, m] = monthStr.split("-").map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const today = new Date();
+    const days = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(y, m - 1, d);
+      const dayOfWeek = dateObj.getDay();
+      days.push({
+        date: d,
+        fullDate: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+        isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+        isToday: dateObj.toDateString() === today.toDateString(),
+      });
+    }
+    return days;
+  };
+
+  const attMonthDays = getMonthDays(attMonth);
+
+  const attSheetData = attStudents.map(student => {
+    const history = attMonthDays.map(day => {
+      const rec = attRecords.find(
+        r => r.studentId === student._id && r.date === day.fullDate
+      );
+      if (!rec) return "";
+      if (rec.status === "Present") return "P";
+      if (rec.status === "Absent") return "A";
+      if (rec.status === "Missed") return "M";
+      return "";
+    });
+    return { ...student, history };
+  });
+
+  const attTotalPresent = attRecords.filter(r => r.status === "Present").length;
+  const attTotalAbsent = attRecords.filter(r => r.status === "Absent").length;
+  const attTotalRecords = attTotalPresent + attTotalAbsent;
+  const attPercentage = attTotalRecords > 0 ? Math.round((attTotalPresent / attTotalRecords) * 100) : 0;
 
   const students = users.filter((u) => u.role === "parent");
   const teachers = users.filter((u) => u.role === "teacher");
@@ -1946,6 +2016,208 @@ const OverviewTab = ({ stats }) => {
             ))
           )}
         </div>
+      </div>
+
+      {/* ===== ATTENDANCE OVERVIEW WIDGET ===== */}
+      <div className="admin-att-widget overview-chart-card" style={{
+        borderRadius: "16px", padding: "25px",
+        border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+        marginTop: "20px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
+          <h3 className="overview-chart-title" style={{ margin: 0, fontSize: "1rem" }}>📋 Attendance Overview</h3>
+          <div className="admin-att-controls">
+            <select
+              value={attSelectedClass}
+              onChange={(e) => setAttSelectedClass(e.target.value)}
+              className="admin-att-select"
+            >
+              <option value="">Select Class</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>{cls.className}</option>
+              ))}
+            </select>
+            <input
+              type="month"
+              value={attMonth}
+              onChange={(e) => setAttMonth(e.target.value)}
+              className="admin-att-select"
+            />
+            {attSelectedClass && (
+              <button
+                className={`att-analytics-btn ${attShowAnalytics ? "active" : ""}`}
+                onClick={() => setAttShowAnalytics(!attShowAnalytics)}
+              >
+                {attShowAnalytics ? "📋 Sheet View" : "📊 Analytics"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!attSelectedClass ? (
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "10px" }}>📊</div>
+            <p style={{ margin: 0, fontWeight: 500 }}>Select a class to view attendance details</p>
+          </div>
+        ) : attLoading ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>Loading attendance data...</div>
+        ) : (
+          <>
+            {/* Summary Stats */}
+            <div className="admin-att-stats">
+              <div className="att-stat-badge">
+                <div className="att-stat-icon" style={{ background: "#eff6ff", color: "#3b82f6" }}>👥</div>
+                <div className="att-stat-value">{attStudents.length}</div>
+                <div className="att-stat-label">Total Students</div>
+              </div>
+              <div className="att-stat-badge">
+                <div className="att-stat-icon" style={{ background: "#f0fdf4", color: "#16a34a" }}>✅</div>
+                <div className="att-stat-value" style={{ color: "#16a34a" }}>{attTotalPresent}</div>
+                <div className="att-stat-label">Present</div>
+              </div>
+              <div className="att-stat-badge">
+                <div className="att-stat-icon" style={{ background: "#fef2f2", color: "#dc2626" }}>❌</div>
+                <div className="att-stat-value" style={{ color: "#dc2626" }}>{attTotalAbsent}</div>
+                <div className="att-stat-label">Absent</div>
+              </div>
+              <div className="att-stat-badge">
+                <div className="att-stat-icon" style={{ background: "#fefce8", color: "#ca8a04" }}>📈</div>
+                <div className="att-stat-value" style={{ color: attPercentage >= 75 ? "#16a34a" : "#dc2626" }}>{attPercentage}%</div>
+                <div className="att-stat-label">Attendance Rate</div>
+              </div>
+            </div>
+
+            {attShowAnalytics ? (
+              /* ===== ANALYTICS VIEW ===== */
+              <div className="att-analytics-grid">
+                {/* Donut Chart — Overall Attendance */}
+                <div className="att-chart-card">
+                  <h4 className="att-chart-title">Overall Attendance</h4>
+                  {attTotalRecords === 0 ? (
+                    <p style={{ color: "#94a3b8", textAlign: "center", padding: "30px" }}>No attendance data for this month</p>
+                  ) : (
+                    <div style={{ width: "100%", height: 220, position: "relative" }}>
+                      <ResponsiveContainer>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Present", value: attTotalPresent, color: "#22c55e" },
+                              { name: "Absent", value: attTotalAbsent, color: "#ef4444" },
+                              { name: "Missed", value: attRecords.filter(r => r.status === "Missed").length, color: "#f59e0b" },
+                            ].filter(d => d.value > 0)}
+                            cx="50%" cy="50%"
+                            innerRadius={55} outerRadius={85}
+                            paddingAngle={4} dataKey="value" stroke="none"
+                          >
+                            {[
+                              { color: "#22c55e" },
+                              { color: "#ef4444" },
+                              { color: "#f59e0b" },
+                            ].filter((_, i) => [
+                              attTotalPresent,
+                              attTotalAbsent,
+                              attRecords.filter(r => r.status === "Missed").length,
+                            ][i] > 0).map((entry, idx) => (
+                              <Cell key={idx} fill={entry.color} style={{ outline: "none" }} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+                            formatter={(value, name) => [value, name]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div style={{
+                        position: "absolute", top: "50%", left: "50%",
+                        transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none",
+                      }}>
+                        <div className="att-donut-center-value">{attPercentage}%</div>
+                        <div className="att-donut-center-label">Attendance</div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="att-chart-legend">
+                    <span className="att-legend-item"><span className="att-legend-dot" style={{ background: "#22c55e" }}></span> Present ({attTotalPresent})</span>
+                    <span className="att-legend-item"><span className="att-legend-dot" style={{ background: "#ef4444" }}></span> Absent ({attTotalAbsent})</span>
+                  </div>
+                </div>
+
+                {/* Bar Chart — Per-Student Breakdown */}
+                <div className="att-chart-card">
+                  <h4 className="att-chart-title">Student-wise Breakdown</h4>
+                  {attSheetData.length === 0 ? (
+                    <p style={{ color: "#94a3b8", textAlign: "center", padding: "30px" }}>No student data</p>
+                  ) : (
+                    <div style={{ width: "100%", height: Math.max(220, attSheetData.length * 40), fontSize: "0.75rem" }}>
+                      <ResponsiveContainer>
+                        <BarChart
+                          data={attSheetData.map(s => ({
+                            name: s.childName?.length > 10 ? s.childName.slice(0, 10) + "…" : s.childName,
+                            Present: s.history.filter(h => h === "P").length,
+                            Absent: s.history.filter(h => h === "A").length,
+                          }))}
+                          layout="vertical"
+                          margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                          <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8" }} />
+                          <YAxis type="category" dataKey="name" width={80} axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: "0.75rem" }} />
+                          <Tooltip
+                            contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+                          />
+                          <Bar dataKey="Present" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={14} />
+                          <Bar dataKey="Absent" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={14} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* ===== SHEET VIEW ===== */
+              <div className="admin-att-sheet-wrapper">
+                <table className="admin-att-sheet">
+                  <thead>
+                    <tr>
+                      <th className="att-sticky-col att-name-col">Student Name</th>
+                      {attMonthDays.map((d) => (
+                        <th key={d.date} className={`att-date-col ${d.isWeekend ? "att-weekend" : ""} ${d.isToday ? "att-today" : ""}`}>
+                          {d.date}
+                        </th>
+                      ))}
+                      <th className="att-summary-hdr att-present-hdr">P</th>
+                      <th className="att-summary-hdr att-absent-hdr">A</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attSheetData.length === 0 ? (
+                      <tr><td colSpan={attMonthDays.length + 3} style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>No students in this class</td></tr>
+                    ) : (
+                      attSheetData.map((s) => {
+                        const pCount = s.history.filter(h => h === "P").length;
+                        const aCount = s.history.filter(h => h === "A").length;
+                        return (
+                          <tr key={s._id}>
+                            <td className="att-sticky-col att-name-col">
+                              <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{s.childName}</div>
+                            </td>
+                            {s.history.map((status, idx) => (
+                              <td key={idx} className={`att-cell ${status} ${attMonthDays[idx].isWeekend ? "att-weekend" : ""}`}>
+                                {status}
+                              </td>
+                            ))}
+                            <td className="att-summary-val att-present-val">{pCount}</td>
+                            <td className="att-summary-val att-absent-val">{aCount}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
