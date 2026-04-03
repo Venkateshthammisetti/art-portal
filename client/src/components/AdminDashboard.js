@@ -1368,35 +1368,13 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
 // 3. TAB COMPONENTS (Dependent on Modals/Helpers)
 // ==========================================
 
-const OverviewTab = ({ stats }) => {
-  const [users, setUsers] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+const OverviewTab = ({ stats, users, classes, loading }) => {
   // ===== ATTENDANCE WIDGET STATE =====
   const [attSelectedClass, setAttSelectedClass] = useState("");
   const [attMonth, setAttMonth] = useState(new Date().toISOString().slice(0, 7));
   const [attRecords, setAttRecords] = useState([]);
   const [attLoading, setAttLoading] = useState(false);
   const [attShowAnalytics, setAttShowAnalytics] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [usersRes, classesRes] = await Promise.all([
-          axios.get("https://art-portal-7n6r.onrender.com/api/users"),
-          axios.get("https://art-portal-7n6r.onrender.com/api/classes"),
-        ]);
-        setUsers(usersRes.data);
-        setClasses(classesRes.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   // ===== ATTENDANCE WIDGET: Fetch monthly records =====
   useEffect(() => {
@@ -5270,6 +5248,9 @@ const GalleryRepositoryTab = () => {
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
+  const [overviewUsers, setOverviewUsers] = useState([]);
+  const [overviewClasses, setOverviewClasses] = useState([]);
+  const [overviewLoading, setOverviewLoading] = useState(true);
   const [showMobileLogout, setShowMobileLogout] = useState(false);
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("admin_theme") === "dark",
@@ -5392,9 +5373,25 @@ const AdminDashboard = ({ onLogout }) => {
       .catch((err) => console.error(err));
   };
 
+  const fetchOverviewData = async () => {
+    try {
+      const [usersRes, classesRes] = await Promise.all([
+        axios.get("https://art-portal-7n6r.onrender.com/api/users"),
+        axios.get("https://art-portal-7n6r.onrender.com/api/classes"),
+      ]);
+      setOverviewUsers(usersRes.data);
+      setOverviewClasses(classesRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
-  }, [activeTab]);
+    fetchOverviewData();
+  }, []);
 
   const handleNavClick = (tab) => {
     setActiveTab(tab);
@@ -5515,7 +5512,7 @@ const AdminDashboard = ({ onLogout }) => {
         </header>
 
         <div className="content-scrollable">
-          {activeTab === "overview" && <OverviewTab stats={stats} />}
+          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} />}
           {activeTab === "users" && <UserManagementTab />}
           {activeTab === "classes" && <ClassManagementTab />}
           {activeTab === "add-user" && <AddUserTab />}
