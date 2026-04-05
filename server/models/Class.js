@@ -6,9 +6,10 @@ const ClassSchema = new mongoose.Schema({
   subLevel: { type: String, required: true }, // Can be empty string
   
   // ✨ NEW: SLOT & LINK MANAGEMENT
-  schedule: [{ 
-    day: { type: String, required: true }, 
-    time: { type: String, required: true } 
+  schedule: [{
+    day: { type: String, required: true },
+    time: { type: String, required: true },
+    link: { type: String, default: "" }
   }],
   meetingLink: { type: String },
   maxCapacity: { type: Number, default: 10 }, // Default 10 students
