@@ -1,5 +1,5 @@
 // src/components/Login.js
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './Login.css';
 
 // ✨ Import your assets for the Mobile View
@@ -11,10 +11,16 @@ import bgImg from './va-black.jpg';
 const Login = ({ onLogin, error }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(username, password);
+    setLoading(true);
+    try {
+      await onLogin(username, password);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Icons
@@ -66,13 +72,13 @@ const Login = ({ onLogin, error }) => {
               <img src={logoImg} alt="Venky Art Logo" className="mobile-logo" />
             </div>
             <img src={titleImg} alt="Venky Art Academy" className="mobile-title" />
-            <p className="mobile-tagline">Log in to track your child's artistic journey</p>
+            <p className="mobile-tagline">Sign in to your academy portal</p>
           </div>
 
           {/* ✨ 2. DESKTOP WELCOME HEADER (Hidden on Mobile) */}
           <div className="welcome-header desktop-only">
-            <h2>Welcome, Parent! 👋</h2>
-            <p>Log in to track your child's artistic journey.</p>
+            <h2>Welcome Back!</h2>
+            <p>Sign in to your Thevenkyart Academy portal.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form">
@@ -100,8 +106,8 @@ const Login = ({ onLogin, error }) => {
               <span className="link-text">Forgot password?</span>
             </div> */}
 
-            <button type="submit" className="login-btn">
-              Log in
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? <span className="login-spinner"></span> : 'Sign In'}
             </button>
           </form>
 

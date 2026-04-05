@@ -2150,3 +2150,16 @@
     max-width: 95vw;
   }
 }
+
+/* Gallery header title — adapts to dark mode */
+.gallery-header-title {
+  color: var(--text-main, #334155);
+}
+
+/* Dark mode scrollbar */
+.teacher-container[data-theme="dark"] .t-content::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.teacher-container[data-theme="dark"] .t-content::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
