@@ -130,11 +130,32 @@
 
 /* Button */
 .login-btn {
-  width: 100%; padding: 14px; background-color: #052283; color: white;
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
   border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
-  margin-top: 10px; transition: 0.3s;
+  margin-top: 10px; transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px;
 }
-.login-btn:hover { background-color: #e46008; }
+.login-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  transform: translateY(-1px);
+}
+.login-btn:active { transform: translateY(0); }
+.login-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+/* Login spinner */
+.login-spinner {
+  width: 20px; height: 20px;
+  border: 2.5px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: loginSpin 0.6s linear infinite;
+}
+@keyframes loginSpin { to { transform: rotate(360deg); } }
 
 .forgot-link { text-align: right; margin-bottom: 20px; font-size: 13px; color: rgba(255, 255, 255, 0.8); cursor: pointer; }
 .error-msg { color: #ff6b6b; font-size: 0.9rem; margin-top: 10px; } /* Lighter red for visibility on dark bg */
@@ -204,8 +225,11 @@
 
   /* 6. Button Glow */
   .login-btn {
-    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  }
+  .login-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   }
 
   /* 7. Show Floating Shapes & Footer */

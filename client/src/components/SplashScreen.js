@@ -1,43 +1,56 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './SplashScreen.css';
 
 const SplashScreen = ({ onComplete }) => {
-  const [fadeOut, setFadeOut] = useState(false);
+  const [phase, setPhase] = useState('enter'); // enter -> hold -> zoom
 
   useEffect(() => {
-    // 1. Wait 2.5 seconds, then start fading out
-    const timer = setTimeout(() => {
-      setFadeOut(true);
-    }, 2500);
+    // Phase 1: Logo appears with glow (already via CSS animation on mount)
+    // Phase 2: After 1.2s, start the zoom-out transition
+    const holdTimer = setTimeout(() => {
+      setPhase('zoom');
+    }, 1200);
 
-    // 2. Wait 3.0 seconds, then remove the screen
-    const cleanup = setTimeout(() => {
-      onComplete(); 
-    }, 3000);
+    // Phase 3: After zoom animation completes, remove splash
+    const completeTimer = setTimeout(() => {
+      onComplete();
+    }, 1900);
 
     return () => {
-      clearTimeout(timer);
-      clearTimeout(cleanup);
+      clearTimeout(holdTimer);
+      clearTimeout(completeTimer);
     };
   }, [onComplete]);
 
   return (
-    <div className={`splash-container ${fadeOut ? 'fade-out' : ''}`}>
-      {/* 1. The Background Art (Full Screen) */}
-      <img 
-        src="/splash.png" 
-        alt="Background Art" 
-        className="splash-image" 
-      />
+    <div className={`splash-container splash-${phase}`}>
+      {/* Animated background particles */}
+      <div className="splash-particles">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className={`splash-particle p-${i + 1}`} />
+        ))}
+      </div>
 
-      {/* 2. TOP SECTION: Logo + Spinner */}
-      <div className="splash-header">
-        <img 
-          src="/new-logo1.png" 
-          alt="Logo" 
-          className="splash-logo-top" 
-        />
-        <div className="art-loader"></div>
+      {/* Center logo group */}
+      <div className="splash-center">
+        {/* Animated ring behind logo */}
+        <div className="splash-ring" />
+        <div className="splash-ring ring-2" />
+
+        {/* Academy logo */}
+        <div className="splash-logo-wrapper">
+          <img
+            src="/new-logo1.png"
+            alt="Academy Logo"
+            className="splash-logo"
+          />
+        </div>
+
+        {/* Academy name text */}
+        <div className="splash-brand">
+          <span className="splash-brand-text">Thevenkyart</span>
+          <span className="splash-brand-sub">Art Academy</span>
+        </div>
       </div>
     </div>
   );

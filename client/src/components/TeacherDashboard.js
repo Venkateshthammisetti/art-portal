@@ -388,7 +388,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
             gap: "15px",
           }}
         >
-          <h3 style={{ margin: 0, color: "#334155" }}>🎨 Gallery Manager</h3>
+          <h3 style={{ margin: 0 }} className="gallery-header-title">Gallery Manager</h3>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <select
               value={selectedStudent}

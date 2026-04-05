@@ -1,86 +1,179 @@
-/* Full Screen Overlay */
+/* ========================================= */
+/* MODERN ANIMATED SPLASH SCREEN             */
+/* ========================================= */
+
 .splash-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  /* ✨ Tip: Set this to the main BLUE color of your image (#0047AB) 
-     so it blends perfectly if it takes a millisecond to load */
-  background-color: #000000; 
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: #0a0e1a;
   z-index: 9999;
-  transition: opacity 0.5s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-
-/* The Image itself */
-.splash-image {
-  /* 1. Force the image to take up 100% of the container */
-  width: 100%;
-  height: 100%;
-
-  /* 2. THE FIX: 'cover' zooms the image to fill the screen */
-  object-fit: cover;
-  object-position: center;
-  
-  /* 3. Ensure no hidden margins */
-  display: block; 
-  opacity: 80%;
-}
-
-/* ✨ NEW: Container for Top Elements */
-.splash-header {
+/* --- BACKGROUND PARTICLES --- */
+.splash-particles {
   position: absolute;
-  top: 10px; /* Adjust this to move Up/Down */
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  pointer-events: none;
+}
+
+.splash-particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFadeIn 0.8s ease-out forwards;
+}
+
+.p-1 { width: 200px; height: 200px; background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%); top: 10%; left: 15%; animation-delay: 0.1s; }
+.p-2 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(147,51,234,0.12) 0%, transparent 70%); bottom: 10%; right: 10%; animation-delay: 0.2s; }
+.p-3 { width: 150px; height: 150px; background: radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%); top: 60%; left: 5%; animation-delay: 0.3s; }
+.p-4 { width: 180px; height: 180px; background: radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 70%); top: 20%; right: 20%; animation-delay: 0.15s; }
+.p-5 { width: 120px; height: 120px; background: radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 70%); bottom: 25%; left: 40%; animation-delay: 0.25s; }
+.p-6 { width: 250px; height: 250px; background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); top: 40%; right: 5%; animation-delay: 0.35s; }
+
+@keyframes particleFadeIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- CENTER GROUP --- */
+.splash-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 50px; /* Space between Logo and Spinner */
-  z-index: 10000;
+  position: relative;
+  z-index: 2;
 }
 
-/* ✨ NEW: Your Logo Styling */
-.splash-logo-top {
-  width: 120px; /* Adjust logo size */
-  height: auto;
-  /* Optional: Drop shadow for visibility against background */
-  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));
-}
-
-
-
-/* The Fade Out Class (Added by JS) */
-/* .fade-out {
-  opacity: 0;
-  pointer-events: none;
-} */
-
-/* ... Your existing splash-container and splash-image CSS ... */
-
-/* 🎨 THE SPINNER (Now inside the header) */
-.art-loader {
-  /* Removed absolute positioning since it's now in the flex container */
-  width: 40px;
-  height: 40px;
+/* --- ANIMATED RINGS --- */
+.splash-ring {
+  position: absolute;
+  width: 160px; height: 160px;
+  border: 2px solid rgba(37, 99, 235, 0.2);
   border-radius: 50%;
-  
-  border: 4px solid rgba(255, 255, 255, 0.2); 
-  border-top-color: #e50303; /* Magenta */
-  border-right-color: #0744ed; /* Cyan */
-  border-bottom-color: #FFD500; /* Yellow */
-  
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); 
-  animation: spin 1s linear infinite;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: ringExpand 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* .fade-out {
-  opacity: 0;
-  pointer-events: none;
-} */
+.splash-ring.ring-2 {
+  width: 200px; height: 200px;
+  border-color: rgba(147, 51, 234, 0.1);
+  animation-delay: 0.15s;
+}
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes ringExpand {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+}
+
+/* --- LOGO --- */
+.splash-logo-wrapper {
+  width: 110px; height: 110px;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 0 40px rgba(37, 99, 235, 0.15),
+    0 0 80px rgba(37, 99, 235, 0.05);
+  animation: logoReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: scale(0);
+  position: relative;
+  z-index: 3;
+}
+
+.splash-logo {
+  width: 80px; height: auto;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes logoReveal {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* --- BRAND TEXT --- */
+.splash-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  opacity: 0;
+  animation: brandSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+}
+
+.splash-brand-text {
+  font-family: 'Plus Jakarta Sans', 'Poppins', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 1px;
+}
+
+.splash-brand-sub {
+  font-family: 'Plus Jakarta Sans', 'Poppins', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+@keyframes brandSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================= */
+/* ZOOM PHASE — logo scales up, bg fades     */
+/* ========================================= */
+.splash-zoom {
+  animation: splashZoomOut 0.7s cubic-bezier(0.4, 0, 0, 1) forwards;
+}
+
+.splash-zoom .splash-center {
+  animation: centerZoomScale 0.7s cubic-bezier(0.4, 0, 0, 1) forwards;
+}
+
+.splash-zoom .splash-particles {
+  animation: particlesFade 0.4s ease-out forwards;
+}
+
+@keyframes splashZoomOut {
+  0% { opacity: 1; }
+  60% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes centerZoomScale {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes particlesFade {
+  to { opacity: 0; }
+}
+
+/* ========================================= */
+/* MOBILE ADJUSTMENTS                        */
+/* ========================================= */
+@media (max-width: 768px) {
+  .splash-logo-wrapper {
+    width: 90px; height: 90px;
+    border-radius: 22px;
+  }
+  .splash-logo { width: 65px; }
+  .splash-ring { width: 130px; height: 130px; }
+  .splash-ring.ring-2 { width: 165px; height: 165px; }
+  .splash-brand-text { font-size: 1.3rem; }
+  .splash-brand-sub { font-size: 0.75rem; letter-spacing: 2.5px; }
 }
