@@ -1447,20 +1447,24 @@ const ParentDashboard = ({ user, onLogout }) => {
                         {nextClass?.day} @ {nextClass?.time}
                       </span>
                     </div>
-                    {assignedClass.meetingLink ? (
-                      <a
-                        href={assignedClass.meetingLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="join-btn"
-                      >
-                        Join Zoom Class
-                      </a>
-                    ) : (
-                      <button className="join-btn disabled" disabled>
-                        No Link Yet
-                      </button>
-                    )}
+                    {(() => {
+                      const nextLink = nextClass?.link ||
+                        (nextClass === assignedClass?.schedule?.[0] ? assignedClass?.meetingLink : null);
+                      return nextLink ? (
+                        <a
+                          href={nextLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="join-btn"
+                        >
+                          Join {nextClass?.day} Class
+                        </a>
+                      ) : (
+                        <button className="join-btn disabled" disabled>
+                          No Link Yet
+                        </button>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="empty-mini">
@@ -1545,12 +1549,35 @@ const ParentDashboard = ({ user, onLogout }) => {
                     <span className="level-tag">{assignedClass.level}</span>
                   </div>
                   <div className="cdc-grid">
-                    {localSchedule.map((slot, idx) => (
-                      <div key={idx} className="slot-item">
-                        <span className="slot-day">{slot.day}</span>
-                        <span className="slot-time">{slot.time}</span>
-                      </div>
-                    ))}
+                    {localSchedule.map((slot, idx) => {
+                      const slotLink = slot.link ||
+                        (idx === 0 ? assignedClass?.meetingLink : null);
+                      return (
+                        <div key={idx} className="slot-item">
+                          <span className="slot-day">{slot.day}</span>
+                          <span className="slot-time">{slot.time}</span>
+                          {slotLink ? (
+                            <a
+                              href={slotLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="join-btn"
+                              style={{ fontSize: "0.8rem", padding: "4px 12px" }}
+                            >
+                              Join
+                            </a>
+                          ) : (
+                            <button
+                              className="join-btn disabled"
+                              disabled
+                              style={{ fontSize: "0.8rem", padding: "4px 12px" }}
+                            >
+                              No Link
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (

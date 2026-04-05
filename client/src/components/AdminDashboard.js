@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   PieChart,
   Pie,
@@ -70,14 +70,14 @@ const ClassModal = ({
     level: initialData ? initialData.level : "",
     subLevel: initialData ? initialData.subLevel : "",
     teacher: initialData && initialData.teacher ? initialData.teacher._id : "",
-    meetingLink: initialData ? initialData.meetingLink : "",
+    meetingLink: initialData ? initialData.meetingLink || "" : "",
     maxCapacity: initialData ? initialData.maxCapacity : 10,
     schedule:
       initialData && initialData.schedule && initialData.schedule.length > 0
-        ? initialData.schedule
+        ? initialData.schedule.map((s) => ({ day: s.day, time: s.time, link: s.link || "" }))
         : [
-            { day: "Saturday", time: "10:00" },
-            { day: "Wednesday", time: "17:00" },
+            { day: "Saturday", time: "10:00", link: "" },
+            { day: "Wednesday", time: "17:00", link: "" },
           ],
   });
 
@@ -118,7 +118,7 @@ const ClassModal = ({
   const addScheduleSlot = () => {
     setFormData({
       ...formData,
-      schedule: [...formData.schedule, { day: "Monday", time: "17:00" }],
+      schedule: [...formData.schedule, { day: "Monday", time: "17:00", link: "" }],
     });
   };
   const removeScheduleSlot = (index) => {
@@ -249,52 +249,67 @@ const ClassModal = ({
                 key={index}
                 style={{
                   display: "flex",
-                  gap: "10px",
-                  marginTop: "10px",
-                  alignItems: "center",
+                  flexDirection: "column",
+                  gap: "6px",
+                  marginTop: "12px",
+                  background: "#fff",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
                 }}
               >
-                <select
-                  value={slot.day}
-                  onChange={(e) =>
-                    handleScheduleChange(index, "day", e.target.value)
-                  }
-                  style={{ flex: 1 }}
-                >
-                  {[
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                    "Sunday",
-                  ].map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <select
+                    value={slot.day}
+                    onChange={(e) =>
+                      handleScheduleChange(index, "day", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  >
+                    {[
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                      "Sunday",
+                    ].map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    value={slot.time}
+                    onChange={(e) =>
+                      handleScheduleChange(index, "time", e.target.value)
+                    }
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeScheduleSlot(index)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#ef4444",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
                 <input
-                  type="time"
-                  value={slot.time}
+                  type="url"
+                  placeholder={`Meeting link for ${slot.day || "this slot"} (optional)`}
+                  value={slot.link || ""}
                   onChange={(e) =>
-                    handleScheduleChange(index, "time", e.target.value)
+                    handleScheduleChange(index, "link", e.target.value)
                   }
-                  style={{ flex: 1 }}
+                  style={{ fontSize: "0.85rem", color: "#334155" }}
                 />
-                <button
-                  type="button"
-                  onClick={() => removeScheduleSlot(index)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#ef4444",
-                    cursor: "pointer",
-                  }}
-                >
-                  ✕
-                </button>
               </div>
             ))}
             <button
@@ -312,16 +327,7 @@ const ClassModal = ({
               + Add Another Day
             </button>
           </div>
-          <div className="form-group" style={{ marginTop: "15px" }}>
-            <label>Meeting Link</label>
-            <input
-              placeholder="https://zoom.us/..."
-              value={formData.meetingLink}
-              onChange={(e) =>
-                setFormData({ ...formData, meetingLink: e.target.value })
-              }
-            />
-          </div>
+          {/* Per-slot meeting links are now inside each schedule slot above */}
           <div className="form-group">
             <label>Assign Teacher</label>
             <select
@@ -354,41 +360,44 @@ const ClassModal = ({
 };
 
 // --- ASSIGN STUDENTS MODAL ---
-const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
+const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
   const [students, setStudents] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // ✨ Filter State: 'available', 'this_class', 'other_class'
   const [filter, setFilter] = useState("available");
 
-  useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        const res = await axios.get(
-          "https://art-portal-7n6r.onrender.com/api/users",
-        );
-        const studentList = res.data.filter((u) => u.role === "parent");
-        setStudents(studentList);
+  const loadStudents = useCallback(async () => {
+    try {
+      setLoading(true);
+      // cache-busting param ensures we never get a stale browser-cached response
+      const res = await axios.get(
+        `https://art-portal-7n6r.onrender.com/api/users?_t=${Date.now()}`,
+      );
+      const studentList = res.data.filter((u) => u.role === "parent");
+      setStudents(studentList);
 
-        // Pre-select students who are ALREADY in this class
-        const alreadyInClass = studentList
-          .filter((s) => s.assignedClass === classId)
-          .map((s) => s._id);
+      // Pre-select students who are ALREADY in this class
+      const alreadyInClass = studentList
+        .filter((s) => s.assignedClass && s.assignedClass.toString() === classId.toString())
+        .map((s) => s._id);
 
-        setSelectedIds(alreadyInClass);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error loading students", err);
-        setLoading(false);
-      }
-    };
-    loadStudents();
+      setSelectedIds(alreadyInClass);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error loading students", err);
+      setLoading(false);
+    }
   }, [classId]);
 
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
+
   // Handle Checkbox Toggle
-  const toggleStudent = (id, isDisabled) => {
-    if (isDisabled) return;
+  const toggleStudent = (id) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter((sid) => sid !== id));
     } else {
@@ -402,13 +411,41 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
         `https://art-portal-7n6r.onrender.com/api/classes/${classId}/assign`,
         { studentIds: selectedIds },
       );
-      onSuccess();
+
+      // Optimistically update local state immediately — don't wait for re-fetch.
+      // Students removed from this class (were assigned here, now not selected) → null.
+      // Students added to this class (now selected) → classId.
+      setStudents((prev) =>
+        prev.map((s) => {
+          const wasInThisClass =
+            s.assignedClass &&
+            s.assignedClass.toString() === classId.toString();
+          const isNowSelected = selectedIds.includes(s._id);
+
+          if (wasInThisClass && !isNowSelected) {
+            return { ...s, assignedClass: null };
+          }
+          if (isNowSelected) {
+            return { ...s, assignedClass: classId };
+          }
+          return s;
+        }),
+      );
+
+      setFilter("available");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      // Refresh dashboard data in background without closing modal
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert("Failed to assign students");
     }
   };
 
   // ✨ DROPDOWN FILTER LOGIC
+  const isSameClass = (assignedClass) =>
+    assignedClass && assignedClass.toString() === classId.toString();
+
   const getFilteredStudents = () => {
     switch (filter) {
       case "available":
@@ -416,11 +453,11 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
         return students.filter((s) => !s.assignedClass);
       case "this_class":
         // Students assigned to THIS specific class
-        return students.filter((s) => s.assignedClass === classId);
+        return students.filter((s) => isSameClass(s.assignedClass));
       case "other_class":
         // Students assigned to ANY OTHER class
         return students.filter(
-          (s) => s.assignedClass && s.assignedClass !== classId,
+          (s) => s.assignedClass && !isSameClass(s.assignedClass),
         );
       default:
         return students;
@@ -458,13 +495,13 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
               </option>
               <option value="this_class">
                 Assigned in This Class (
-                {students.filter((s) => s.assignedClass === classId).length})
+                {students.filter((s) => isSameClass(s.assignedClass)).length})
               </option>
               <option value="other_class">
                 Already in Another Class (
                 {
                   students.filter(
-                    (s) => s.assignedClass && s.assignedClass !== classId,
+                    (s) => s.assignedClass && !isSameClass(s.assignedClass),
                   ).length
                 }
                 )
@@ -499,13 +536,14 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
             ) : (
               displayedStudents.map((student) => {
                 const isAssignedElsewhere =
-                  student.assignedClass && student.assignedClass !== classId;
+                  student.assignedClass && !isSameClass(student.assignedClass);
                 const isSelected = selectedIds.includes(student._id);
 
                 return (
                   <label
                     key={student._id}
-                    className={`student-item ${isAssignedElsewhere ? "disabled" : ""} ${isSelected ? "selected" : ""}`}
+                    className={`student-item ${isSelected ? "selected" : ""}`}
+                    style={{ cursor: "pointer" }}
                   >
                     {/* Left Side: Info */}
                     <div className="student-info">
@@ -519,26 +557,41 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
                       )}
                     </div>
 
-                    {/* Right Side: Checkbox */}
-                    {!isAssignedElsewhere && (
-                      <div className="checkbox-wrapper">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleStudent(student._id, false)}
-                        />
-                      </div>
-                    )}
+                    {/* Right Side: Checkbox — always shown so students can be reassigned */}
+                    <div className="checkbox-wrapper">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleStudent(student._id)}
+                      />
+                    </div>
                   </label>
                 );
               })
             )}
           </div>
 
+          {/* Success Banner */}
+          {saveSuccess && (
+            <div
+              style={{
+                background: "#dcfce7",
+                color: "#166534",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                fontSize: "0.85rem",
+                marginBottom: "8px",
+                textAlign: "center",
+              }}
+            >
+              Saved! Unassigned students are now shown in "Available to Assign".
+            </div>
+          )}
+
           {/* Footer Actions */}
           <div className="modal-actions">
             <button className="cancel-btn" onClick={onClose}>
-              Cancel
+              Close
             </button>
             <button className="save-btn" onClick={handleSave}>
               Save Changes ({selectedIds.length})
@@ -552,13 +605,13 @@ const AssignStudentsModal = ({ classId, className, onClose, onSuccess }) => {
 
 // --- CLASS DETAILS VIEW ---
 const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
-  const [copyStatus, setCopyStatus] = useState("Copy Meeting Link 📋");
+  const [copiedIdx, setCopiedIdx] = useState(null);
 
-  const handleCopyLink = () => {
-    if (cls.meetingLink) {
-      navigator.clipboard.writeText(cls.meetingLink);
-      setCopyStatus("Link Copied! ✅");
-      setTimeout(() => setCopyStatus("Copy Meeting Link 📋"), 2000);
+  const handleCopyLink = (link, idx) => {
+    if (link) {
+      navigator.clipboard.writeText(link);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
     }
   };
 
@@ -626,29 +679,67 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
         <div className="top-row-grid">
           <div className="detail-card">
             <h3>Schedule & Link</h3>
-            <div style={{ marginBottom: "15px" }}>
+            <div style={{ marginBottom: "10px" }}>
               {cls.schedule && cls.schedule.length > 0 ? (
-                cls.schedule.map((slot, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "8px 0",
-                      borderBottom: "1px solid #f1f5f9",
-                    }}
-                  >
-                    <span style={{ fontWeight: "600", color: "#334155" }}>
-                      {slot.day}
-                    </span>
-                    <span style={{ color: "#64748b" }}>{slot.time}</span>
-                  </div>
-                ))
+                cls.schedule.map((slot, i) => {
+                  const slotLink = slot.link || (i === 0 ? cls.meetingLink : "");
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "10px 0",
+                        borderBottom: "1px solid #f1f5f9",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: slotLink ? "6px" : "0" }}>
+                        <span style={{ fontWeight: "600", color: "#334155" }}>
+                          {slot.day}
+                        </span>
+                        <span style={{ color: "#64748b" }}>{slot.time}</span>
+                      </div>
+                      {slotLink && (
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          <div
+                            style={{
+                              flex: 1,
+                              background: "#f1f5f9",
+                              padding: "5px 8px",
+                              borderRadius: "4px",
+                              fontSize: "0.78rem",
+                              color: "#64748b",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {slotLink}
+                          </div>
+                          <button
+                            onClick={() => handleCopyLink(slotLink, i)}
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "4px 10px",
+                              background: copiedIdx === i ? "#10b981" : "#0284c7",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {copiedIdx === i ? "Copied ✅" : "Copy"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 <span style={{ color: "#94a3b8" }}>No schedule set</span>
               )}
             </div>
-            {cls.meetingLink ? (
+            {/* legacy fallback — only shown if no per-slot links exist and meetingLink is set */}
+            {cls.meetingLink && !cls.schedule?.some((s) => s.link) ? (
               <div
                 style={{
                   display: "flex",
@@ -671,26 +762,22 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                   {cls.meetingLink}
                 </div>
                 <button
-                  onClick={handleCopyLink}
+                  onClick={() => handleCopyLink(cls.meetingLink, -1)}
                   className="save-btn"
                   style={{
                     display: "block",
                     width: "100%",
                     textAlign: "center",
-                    backgroundColor: copyStatus.includes("✅")
+                    backgroundColor: copiedIdx === -1
                       ? "#10b981"
                       : "#0284c7",
                     transition: "background-color 0.2s",
                   }}
                 >
-                  {copyStatus}
+                  {copiedIdx === -1 ? "Copied ✅" : "Copy Meeting Link 📋"}
                 </button>
               </div>
-            ) : (
-              <div style={{ color: "#94a3b8", fontStyle: "italic" }}>
-                No meeting link provided
-              </div>
-            )}
+            ) : null}
           </div>
 
           <div className="detail-card">
@@ -3446,12 +3533,13 @@ const ClassManagementTab = () => {
 
   const fetchData = async () => {
     try {
+      const ts = Date.now();
       const classRes = await axios.get(
-        "https://art-portal-7n6r.onrender.com/api/classes",
+        `https://art-portal-7n6r.onrender.com/api/classes?_t=${ts}`,
       );
       setClasses(classRes.data);
       const userRes = await axios.get(
-        "https://art-portal-7n6r.onrender.com/api/users",
+        `https://art-portal-7n6r.onrender.com/api/users?_t=${ts}`,
       );
       setTeachers(userRes.data.filter((u) => u.role === "teacher"));
       return classRes.data;
@@ -3688,8 +3776,7 @@ const ClassManagementTab = () => {
           classId={assignModal.classId}
           className={assignModal.className}
           onClose={() => setAssignModal({ show: false, classId: null })}
-          onSuccess={async () => {
-            setAssignModal({ show: false, classId: null });
+          onRefresh={async () => {
             const updatedClasses = await fetchData();
             if (selectedClass) {
               const refreshed = updatedClasses.find(

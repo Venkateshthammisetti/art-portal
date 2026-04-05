@@ -241,15 +241,47 @@ app.put("/api/classes/:id", async (req, res) => {
 app.post("/api/classes/:id/assign", async (req, res) => {
   try {
     const { studentIds } = req.body;
-    const classDoc = await Class.findById(req.params.id);
+    const classId = req.params.id;
+
+    // Use User collection as source of truth — find every student currently
+    // pointing at this class, regardless of whether Class.students is in sync.
+    const currentlyAssigned = await User.find({ assignedClass: classId }).select("_id");
+    const currentIds = currentlyAssigned.map((s) => s._id.toString());
+
+    // Students being removed = currently assigned but not in the new selection
+    const removedStudentIds = currentIds.filter((id) => !studentIds.includes(id));
+    if (removedStudentIds.length > 0) {
+      await User.updateMany(
+        { _id: { $in: removedStudentIds } },
+        { $set: { assignedClass: null } },
+      );
+    }
+
+    // For students being moved FROM another class, pull them out of that class's students array
+    const studentsBeingMoved = await User.find({
+      _id: { $in: studentIds },
+      assignedClass: { $nin: [null, classId] },
+    });
+    for (const student of studentsBeingMoved) {
+      await Class.findByIdAndUpdate(student.assignedClass, {
+        $pull: { students: student._id },
+      });
+    }
+
+    // Point all selected students at this class
     await User.updateMany(
       { _id: { $in: studentIds } },
-      { $set: { assignedClass: req.params.id } },
+      { $set: { assignedClass: classId } },
     );
+
+    // Keep Class.students in sync
+    const classDoc = await Class.findById(classId);
     classDoc.students = studentIds;
     await classDoc.save();
+
     res.json({ message: "Students assigned" });
   } catch (err) {
+    console.error("Error assigning students:", err);
     res.status(500).json({ message: "Error assigning students" });
   }
 });
