@@ -1077,9 +1077,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
     const fetchAttendanceData = async () => {
       try {
         const classQuery = selectedClassIds.join(",");
+        const studentQuery = combinedStudents.map((s) => s._id).join(",");
 
         if (attendanceView === "daily") {
-          const url = `https://art-portal-7n6r.onrender.com/api/attendance/daily?classes=${classQuery}&date=${attendanceDate}`;
+          const url = `https://art-portal-7n6r.onrender.com/api/attendance/daily?classes=${classQuery}&date=${attendanceDate}&students=${studentQuery}`;
           const res = await axios.get(url);
           setAttendanceStatus(res.data.statusMap || {});
           setIsClassScheduled(
@@ -1099,8 +1100,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
             });
           }
           setMonthDays(daysArr);
+          setMonthlyData([]);
 
-          const url = `https://art-portal-7n6r.onrender.com/api/attendance/monthly?classes=${classQuery}&month=${selectedMonth}`;
+          const url = `https://art-portal-7n6r.onrender.com/api/attendance/monthly?classes=${classQuery}&month=${selectedMonth}&students=${studentQuery}`;
           const res = await axios.get(url);
           const records = res.data;
           const lookup = {};
@@ -2198,14 +2200,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                     </div>
                                     <div className="row-sub">{s.className}</div>
                                   </td>
-                                  {s.history.map((status, idx) => (
-                                    <td
-                                      key={idx}
-                                      className={`cell-status ${status || ""} ${monthDays[idx].isWeekend ? "weekend-cell" : ""}`}
-                                    >
-                                      {status}
-                                    </td>
-                                  ))}
+                                  {s.history.map((status, idx) => {
+                                    const dayInfo = monthDays[idx];
+                                    if (!dayInfo) return null;
+                                    return (
+                                      <td
+                                        key={idx}
+                                        className={`cell-status ${status || ""} ${dayInfo.isWeekend ? "weekend-cell" : ""}`}
+                                      >
+                                        {status}
+                                      </td>
+                                    );
+                                  })}
                                   <td className="summary-col present-val">
                                     {presentCount}
                                   </td>

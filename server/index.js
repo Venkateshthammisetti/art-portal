@@ -417,14 +417,18 @@ app.get("/api/teacher/:id/classes", async (req, res) => {
 
 app.get("/api/attendance/daily", async (req, res) => {
   try {
-    const { classes, date } = req.query;
+    const { classes, date, students } = req.query;
     if (!classes || !date)
       return res.json({ statusMap: {}, isScheduled: false });
     const classIds = classes.split(",");
-    const records = await Attendance.find({
-      date: date,
-      classId: { $in: classIds },
-    });
+    let attendanceQuery;
+    if (students) {
+      const studentIds = students.split(",");
+      attendanceQuery = { date, $or: [{ classId: { $in: classIds } }, { studentId: { $in: studentIds } }] };
+    } else {
+      attendanceQuery = { date, classId: { $in: classIds } };
+    }
+    const records = await Attendance.find(attendanceQuery);
     const statusMap = {};
     records.forEach((r) => {
       if (r.studentId) statusMap[r.studentId.toString()] = r.status;
@@ -444,13 +448,18 @@ app.get("/api/attendance/daily", async (req, res) => {
 
 app.get("/api/attendance/monthly", async (req, res) => {
   try {
-    const { classes, month } = req.query;
+    const { classes, month, students } = req.query;
     if (!classes || !month) return res.json([]);
     const classIds = classes.split(",");
-    const records = await Attendance.find({
-      date: { $regex: `^${month}` },
-      classId: { $in: classIds },
-    });
+    const dateFilter = { date: { $regex: `^${month}` } };
+    let query;
+    if (students) {
+      const studentIds = students.split(",");
+      query = { ...dateFilter, $or: [{ classId: { $in: classIds } }, { studentId: { $in: studentIds } }] };
+    } else {
+      query = { ...dateFilter, classId: { $in: classIds } };
+    }
+    const records = await Attendance.find(query);
     res.json(records);
   } catch (err) {
     res.status(500).json({ error: err.message });
