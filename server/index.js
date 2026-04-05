@@ -641,6 +641,20 @@ app.delete("/api/gallery/:id", async (req, res) => {
   }
 });
 
+// 4. BULK DELETE ARTWORKS (Admin/Teacher)
+app.post("/api/gallery/bulk-delete", async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "No artwork IDs provided" });
+    }
+    const result = await Artwork.deleteMany({ _id: { $in: ids } });
+    res.json({ success: true, message: `${result.deletedCount} artworks deleted` });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting artworks" });
+  }
+});
+
 // ✨ BATCH NOTIFICATION (EMAIL + PUSH)
 app.post("/api/notifications/batch-alert", async (req, res) => {
   const { studentId, count } = req.body;

@@ -7,6 +7,18 @@ import "./TeacherDashboard.css";
 import logoImg from "./new-logo.png";
 import titleImg from "./logo-title-copy.png";
 
+// --- HELPER: Convert VAPID key for push subscription ---
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 // --- CONFIGURATION ---
 const GRID_START_HOUR = 6;
 const GRID_END_HOUR = 23;
@@ -22,6 +34,9 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   const [selectedStudent, setSelectedStudent] = useState("");
   const [title, setTitle] = useState("");
   const [medium, setMedium] = useState("Painting");
+  const [artworkDate, setArtworkDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   // Handle Arrays for Multiple Files
   const [imageFiles, setImageFiles] = useState([]);
@@ -29,6 +44,11 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
 
   const [uploading, setUploading] = useState(false);
   const [progressMsg, setProgressMsg] = useState("");
+
+  // -- Multi-Select States --
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // -- Gallery View States --
   const [artwork, setArtwork] = useState([]);
@@ -142,8 +162,8 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       formData.append("medium", medium);
       formData.append("image", file);
 
-      // ✨ FIX: Force the current date and time from the frontend
-      formData.append("dateCreated", new Date().toISOString());
+      // Use the date selected by the teacher (defaults to today)
+      formData.append("dateCreated", new Date(artworkDate).toISOString());
 
       try {
         const res = await axios.post(
@@ -184,6 +204,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
 
       // 3. CLEAN UP
       setTitle("");
+      setArtworkDate(new Date().toISOString().split("T")[0]);
       setImageFiles([]);
       setPreviewUrls([]);
       setTimeout(() => setProgressMsg(""), 3000);
@@ -203,6 +224,52 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       } catch (err) {
         alert("Error deleting.");
       }
+    }
+  };
+
+  // 5b. Multi-Select Toggle
+  const toggleSelectId = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredArtwork.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredArtwork.map((a) => a._id));
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds([]);
+  };
+
+  // 5c. Bulk Delete Handler
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedIds.length} artwork${selectedIds.length > 1 ? "s" : ""}? This cannot be undone.`
+      )
+    )
+      return;
+
+    setBulkDeleting(true);
+    try {
+      await axios.post(
+        "https://art-portal-7n6r.onrender.com/api/gallery/bulk-delete",
+        { ids: selectedIds }
+      );
+      setArtwork((prev) => prev.filter((a) => !selectedIds.includes(a._id)));
+      setSelectedIds([]);
+      setSelectMode(false);
+    } catch (err) {
+      alert("Error deleting artworks.");
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -499,6 +566,16 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                 <option>Mixed Media</option>
               </select>
               <input
+                type="date"
+                value={artworkDate}
+                onChange={(e) => setArtworkDate(e.target.value)}
+                style={{
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                }}
+              />
+              <input
                 type="file"
                 accept="image/*"
                 multiple
@@ -584,25 +661,109 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         </div>
       )}
 
-      {/* GALLERY GRID */}
-      <h4
+      {/* GALLERY GRID HEADER */}
+      <div
         style={{
-          color: "#64748b",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           borderBottom: "1px solid #e2e8f0",
           paddingBottom: "10px",
+          flexWrap: "wrap",
+          gap: "10px",
         }}
       >
-        {selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
-        <span
-          style={{
-            fontWeight: "normal",
-            fontSize: "0.9rem",
-            marginLeft: "10px",
-          }}
-        >
-          ({filteredArtwork.length} found)
-        </span>
-      </h4>
+        <h4 style={{ color: "#64748b", margin: 0 }}>
+          {selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
+          <span
+            style={{
+              fontWeight: "normal",
+              fontSize: "0.9rem",
+              marginLeft: "10px",
+            }}
+          >
+            ({filteredArtwork.length} found)
+          </span>
+        </h4>
+
+        {/* Select / Cancel toggle */}
+        {filteredArtwork.length > 0 && (
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            {selectMode ? (
+              <>
+                <button
+                  onClick={handleSelectAll}
+                  style={{
+                    background: "none",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#2563eb",
+                  }}
+                >
+                  {selectedIds.length === filteredArtwork.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selectedIds.length === 0 || bulkDeleting}
+                  style={{
+                    background: selectedIds.length > 0 ? "#ef4444" : "#fca5a5",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 14px",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    cursor:
+                      selectedIds.length > 0 ? "pointer" : "not-allowed",
+                    opacity: bulkDeleting ? 0.6 : 1,
+                  }}
+                >
+                  {bulkDeleting
+                    ? "Deleting..."
+                    : `Delete${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+                </button>
+                <button
+                  onClick={exitSelectMode}
+                  style={{
+                    background: "none",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#64748b",
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setSelectMode(true)}
+                style={{
+                  background: "none",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "6px",
+                  padding: "6px 12px",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  color: "#64748b",
+                }}
+              >
+                Select
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div
         style={{
@@ -634,21 +795,64 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               key={art._id}
               className="gallery-card"
               style={{
-                border: "1px solid #e2e8f0",
+                border: selectMode && selectedIds.includes(art._id)
+                  ? "2px solid #2563eb"
+                  : "1px solid #e2e8f0",
                 borderRadius: "12px",
                 overflow: "hidden",
-                background: "#fff",
+                background: selectMode && selectedIds.includes(art._id)
+                  ? "#eff6ff"
+                  : "#fff",
                 position: "relative",
                 cursor: "pointer",
                 boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                transition: "transform 0.2s",
+                transition: "all 0.2s",
               }}
-              onClick={() => setLightboxIndex(index)}
+              onClick={() =>
+                selectMode
+                  ? toggleSelectId(art._id)
+                  : setLightboxIndex(index)
+              }
             >
+              {/* Select mode checkbox */}
+              {selectMode && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    left: "10px",
+                    zIndex: 5,
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "50%",
+                    background: selectedIds.includes(art._id)
+                      ? "#2563eb"
+                      : "rgba(255,255,255,0.9)",
+                    border: selectedIds.includes(art._id)
+                      ? "2px solid #2563eb"
+                      : "2px solid #cbd5e1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                    color: "white",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {selectedIds.includes(art._id) && "✓"}
+                </div>
+              )}
               <img
                 src={art.imageUrl}
                 alt={art.title}
-                style={{ width: "100%", height: "200px", objectFit: "cover" }}
+                style={{
+                  width: "100%",
+                  height: "200px",
+                  objectFit: "cover",
+                  opacity: selectMode && selectedIds.includes(art._id) ? 0.8 : 1,
+                  transition: "opacity 0.2s",
+                }}
               />
               <div style={{ padding: "10px" }}>
                 {selectedStudent === "all" && art.studentId && (
@@ -680,7 +884,8 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   {new Date(art.dateCreated).toLocaleDateString()}
                 </div>
               </div>
-              {/* ACTION BUTTONS — top-right corner */}
+              {/* ACTION BUTTONS — top-right corner (hidden in select mode) */}
+              {!selectMode && (
               <div
                 style={{
                   position: "absolute",
@@ -735,6 +940,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   ⬇️
                 </button>
               </div>
+              )}
             </div>
           ))
         )}
@@ -1018,6 +1224,42 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setLoading(false);
     }
   };
+
+  // --- AUTO-SUBSCRIBE TO PUSH NOTIFICATIONS ---
+  useEffect(() => {
+    const autoSubscribePush = async () => {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      try {
+        const register = await navigator.serviceWorker.register("/sw.js");
+        const existingSub = await register.pushManager.getSubscription();
+        if (existingSub) {
+          // Already subscribed — save to backend in case it's new
+          await axios.post(
+            "https://art-portal-7n6r.onrender.com/api/notifications/subscribe",
+            { userId: currentUser._id, subscription: existingSub }
+          );
+          return;
+        }
+        // Ask permission and subscribe
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") return;
+
+        const publicVapidKey =
+          "BC0ajb0fFmrJohj0JlE5fseL4l4BU2gNRP8cPkQXVlAaXw4W6uGAevDqLgrD9Qzy4-W-FQvR-DNf0ccmo0YYkmM";
+        const subscription = await register.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+        });
+        await axios.post(
+          "https://art-portal-7n6r.onrender.com/api/notifications/subscribe",
+          { userId: currentUser._id, subscription }
+        );
+      } catch (err) {
+        console.log("Push subscription skipped:", err.message);
+      }
+    };
+    if (currentUser?._id) autoSubscribePush();
+  }, [currentUser._id]);
 
   // --- FETCH FEEDBACK HISTORY ---
   useEffect(() => {
