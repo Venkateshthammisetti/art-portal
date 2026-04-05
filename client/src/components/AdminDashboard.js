@@ -1469,9 +1469,10 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
     const fetchAttendance = async () => {
       setAttLoading(true);
       try {
-        const res = await axios.get(
-          `https://art-portal-7n6r.onrender.com/api/attendance/monthly?classes=${attSelectedClass}&month=${attMonth}`
-        );
+        const cls = classes.find(c => c._id === attSelectedClass);
+        const studentIds = cls && cls.students ? cls.students.map(s => s._id).join(",") : "";
+        const url = `https://art-portal-7n6r.onrender.com/api/attendance/monthly?classes=${attSelectedClass}&month=${attMonth}${studentIds ? `&students=${studentIds}` : ""}`;
+        const res = await axios.get(url);
         setAttRecords(res.data);
       } catch (err) {
         console.error("Attendance fetch error:", err);
@@ -1480,7 +1481,7 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
       }
     };
     fetchAttendance();
-  }, [attSelectedClass, attMonth]);
+  }, [attSelectedClass, attMonth, classes]);
 
   // ===== ATTENDANCE WIDGET: Compute monthly sheet data =====
   const attClass = classes.find(c => c._id === attSelectedClass);

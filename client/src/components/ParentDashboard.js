@@ -781,8 +781,8 @@ const ParentDashboard = ({ user, onLogout }) => {
   };
 
   // Timezone Helper
-  const convertScheduleToLocal = (dayName, timeStr) => {
-    if (!dayName || !timeStr) return { day: dayName, time: timeStr };
+  const convertScheduleToLocal = (dayName, timeStr, link) => {
+    if (!dayName || !timeStr) return { day: dayName, time: timeStr, link };
     const daysMap = {
       Sunday: 0,
       Monday: 1,
@@ -813,13 +813,13 @@ const ParentDashboard = ({ user, onLogout }) => {
       minute: "2-digit",
       hour12: true,
     });
-    return { day: localDay, time: localTime };
+    return { day: localDay, time: localTime, link };
   };
 
   const getLocalSchedule = () => {
     if (!assignedClass || !assignedClass.schedule) return [];
     return assignedClass.schedule.map((slot) =>
-      convertScheduleToLocal(slot.day, slot.time),
+      convertScheduleToLocal(slot.day, slot.time, slot.link),
     );
   };
 
@@ -1448,8 +1448,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                       </span>
                     </div>
                     {(() => {
-                      const nextLink = nextClass?.link ||
-                        (nextClass === assignedClass?.schedule?.[0] ? assignedClass?.meetingLink : null);
+                      const nextLink = nextClass?.link || assignedClass?.meetingLink || null;
                       return nextLink ? (
                         <a
                           href={nextLink}
@@ -1550,8 +1549,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   </div>
                   <div className="cdc-grid">
                     {localSchedule.map((slot, idx) => {
-                      const slotLink = slot.link ||
-                        (idx === 0 ? assignedClass?.meetingLink : null);
+                      const slotLink = slot.link || assignedClass?.meetingLink || null;
                       return (
                         <div key={idx} className="slot-item">
                           <span className="slot-day">{slot.day}</span>
