@@ -39,6 +39,12 @@ const checkFeeReminders = async () => {
     for (const student of students) {
       if (!student.pushSubscription) continue;
 
+      // Skip students who have a pass for this month
+      const hasPass = student.passes && student.passes.some(
+        p => p.month === currentMonthStr
+      );
+      if (hasPass) continue;
+
       const hasPaid = student.payments && student.payments.some(
         p => p.month === currentMonthStr && p.status === 'Paid'
       );
