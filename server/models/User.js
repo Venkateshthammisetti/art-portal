@@ -50,6 +50,14 @@ const UserSchema = new mongoose.Schema({
     status: { type: String, enum: ['Paid', 'Pending'], default: 'Pending' },
     amount: Number,
     paidDate: Date
+  }],
+
+  // Student Pass History (months where fee is waived)
+  passes: [{
+    month: String, // Format: "YYYY-MM"
+    reason: { type: String, default: '' },
+    markedAt: { type: Date, default: Date.now },
+    markedBy: String // admin username or ID
   }]
 }, { timestamps: true });
 

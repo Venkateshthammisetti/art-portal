@@ -404,6 +404,62 @@ app.post("/api/fees/update", async (req, res) => {
   }
 });
 
+// ===========================
+//      STUDENT PASS
+// ===========================
+
+// Mark a student as Pass for a specific month
+app.post("/api/student-pass/mark", async (req, res) => {
+  try {
+    const { userId, month, reason, markedBy } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Student not found" });
+
+    // Check if already passed for this month
+    const existing = (user.passes || []).find((p) => p.month === month);
+    if (existing) {
+      return res.status(400).json({ message: "Student already has a pass for this month" });
+    }
+
+    user.passes = user.passes || [];
+    user.passes.push({ month, reason: reason || "", markedAt: new Date(), markedBy: markedBy || "" });
+
+    // Remove any payment record for this month (set fee to ₹0 effectively)
+    user.payments = (user.payments || []).filter((p) => p.month !== month);
+
+    await user.save();
+    res.json({ success: true, passes: user.passes, payments: user.payments });
+  } catch (err) {
+    res.status(500).json({ message: "Error marking student pass" });
+  }
+});
+
+// Remove a pass for a specific month
+app.post("/api/student-pass/remove", async (req, res) => {
+  try {
+    const { userId, month } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Student not found" });
+
+    user.passes = (user.passes || []).filter((p) => p.month !== month);
+    await user.save();
+    res.json({ success: true, passes: user.passes });
+  } catch (err) {
+    res.status(500).json({ message: "Error removing student pass" });
+  }
+});
+
+// Get pass history for a student
+app.get("/api/student-pass/:userId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: "Student not found" });
+    res.json(user.passes || []);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching pass history" });
+  }
+});
+
 app.get("/api/teacher/:id/classes", async (req, res) => {
   try {
     const classes = await Class.find({ teacher: req.params.id }).populate(

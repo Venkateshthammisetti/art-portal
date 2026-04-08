@@ -4226,6 +4226,12 @@ const FeeTrackerTab = () => {
   const [sortOrder, setSortOrder] = useState("name-asc");
   const [showAnalytics, setShowAnalytics] = useState(false);
 
+  // Student Pass states
+  const [passModal, setPassModal] = useState({ show: false, student: null });
+  const [passReason, setPassReason] = useState("");
+  const [passHistoryModal, setPassHistoryModal] = useState({ show: false, student: null, passes: [] });
+  const [passLoading, setPassLoading] = useState(false);
+
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -4290,13 +4296,75 @@ const FeeTrackerTab = () => {
     }
   };
 
+  // --- Student Pass Handlers ---
+  const handleMarkPass = async () => {
+    if (!passModal.student) return;
+    setPassLoading(true);
+    try {
+      const res = await axios.post("https://art-portal-7n6r.onrender.com/api/student-pass/mark", {
+        userId: passModal.student._id,
+        month: selectedMonth,
+        reason: passReason,
+        markedBy: "admin",
+      });
+      setStudents((prev) =>
+        prev.map((s) =>
+          s._id === passModal.student._id
+            ? { ...s, passes: res.data.passes, payments: res.data.payments }
+            : s,
+        ),
+      );
+      setPassModal({ show: false, student: null });
+      setPassReason("");
+    } catch (err) {
+      alert(err.response?.data?.message || "Error marking pass");
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
+  const handleRemovePass = async (studentId) => {
+    try {
+      const res = await axios.post("https://art-portal-7n6r.onrender.com/api/student-pass/remove", {
+        userId: studentId,
+        month: selectedMonth,
+      });
+      setStudents((prev) =>
+        prev.map((s) =>
+          s._id === studentId ? { ...s, passes: res.data.passes } : s,
+        ),
+      );
+    } catch (err) {
+      alert("Error removing pass");
+    }
+  };
+
+  const handleViewPassHistory = async (student) => {
+    try {
+      const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/student-pass/${student._id}`);
+      setPassHistoryModal({ show: true, student, passes: res.data });
+    } catch (err) {
+      alert("Error fetching pass history");
+    }
+  };
+
+  // Check if student has a pass for the selected month
+  const hasPassForMonth = (student, month) => {
+    return (student.passes || []).some((p) => p.month === (month || selectedMonth));
+  };
+
   // ✨ FIX: Check if selected month is BEFORE student joined
   const getPaymentStatus = (student) => {
     const startMonth = getStudentStartMonth(student);
 
-    // If the selected month is older than the start month (e.g., Select "2026-01" but joined "2026-02")
+    // If the selected month is older than the start month
     if (selectedMonth < startMonth) {
       return "Not Joined";
+    }
+
+    // If student has a pass for this month
+    if (hasPassForMonth(student)) {
+      return "Pass";
     }
 
     return (student.payments || []).find((p) => p.month === selectedMonth)
@@ -4340,7 +4408,10 @@ const FeeTrackerTab = () => {
         (p) => p.month === monthStr && p.status === "Paid",
       );
 
-      if (!isPaid) {
+      // Skip months where student has a pass
+      const isPass = hasPassForMonth(student, monthStr);
+
+      if (!isPaid && !isPass) {
         pendingCount++;
         pendingAmount += Number(student.monthlyFee) || 0;
       }
@@ -4351,8 +4422,9 @@ const FeeTrackerTab = () => {
   };
 
   const totalEstRevenue = students.reduce((acc, s) => {
-    // Only count revenue if student has joined by this month
-    return getPaymentStatus(s) !== "Not Joined"
+    const status = getPaymentStatus(s);
+    // Exclude students not joined or on pass from estimated revenue
+    return status !== "Not Joined" && status !== "Pass"
       ? acc + (s.monthlyFee || 0)
       : acc;
   }, 0);
@@ -4563,6 +4635,7 @@ const FeeTrackerTab = () => {
                   <option value="all">All Status</option>
                   <option value="Paid">Paid</option>
                   <option value="Pending">Pending</option>
+                  <option value="Pass">Pass</option>
                 </select>
               </div>
               <div className="filter-dropdown">
@@ -4796,8 +4869,10 @@ const FeeTrackerTab = () => {
                     processedStudents.map((student) => {
                       const status = getPaymentStatus(student);
                       const isPaid = status === "Paid";
-                      const isNotJoined = status === "Not Joined"; // Check this
+                      const isNotJoined = status === "Not Joined";
+                      const isPass = status === "Pass";
                       const pendingStats = calculateTotalPending(student);
+                      const passRecord = (student.passes || []).find((p) => p.month === selectedMonth);
                       return (
                         <tr key={student._id}>
                           <td style={{ fontWeight: "600", color: "#334155" }}>
@@ -4811,12 +4886,31 @@ const FeeTrackerTab = () => {
                             >
                               {student.fullName}
                             </div>
+                            {(student.passes || []).length > 0 && (
+                              <button
+                                onClick={() => handleViewPassHistory(student)}
+                                style={{
+                                  fontSize: "0.7rem",
+                                  color: "#7c3aed",
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  textDecoration: "underline",
+                                }}
+                              >
+                                View Pass History
+                              </button>
+                            )}
                           </td>
                           <td style={{ fontWeight: "bold" }}>
-                            ₹{student.monthlyFee}
+                            {isPass ? (
+                              <span style={{ color: "#7c3aed" }}>₹0 (Pass)</span>
+                            ) : (
+                              <>₹{student.monthlyFee}</>
+                            )}
                           </td>
                           <td>
-                            {/* ✨ NEW BADGE FOR 'NOT JOINED' */}
                             {isNotJoined ? (
                               <span
                                 className="role-badge"
@@ -4828,6 +4922,24 @@ const FeeTrackerTab = () => {
                               >
                                 N/A
                               </span>
+                            ) : isPass ? (
+                              <div>
+                                <span
+                                  className="role-badge"
+                                  style={{
+                                    background: "#ede9fe",
+                                    color: "#7c3aed",
+                                    border: "1px solid #c4b5fd",
+                                  }}
+                                >
+                                  Pass
+                                </span>
+                                {passRecord?.reason && (
+                                  <div style={{ fontSize: "0.7rem", color: "#7c3aed", marginTop: "2px" }}>
+                                    {passRecord.reason}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span
                                 className={`role-badge ${isPaid ? "teacher" : "admin"}`}
@@ -4884,36 +4996,72 @@ const FeeTrackerTab = () => {
                             )}
                           </td>
                           <td>
-                            {/* Disable button if Not Joined */}
-                            <button
-                              className="save-btn"
-                              disabled={isNotJoined}
-                              style={{
-                                width: "auto",
-                                padding: "6px 12px",
-                                fontSize: "0.85rem",
-                                backgroundColor: isNotJoined
-                                  ? "#94a3b8"
-                                  : isPaid
-                                    ? "#ef4444"
-                                    : "#10b981",
-                                cursor: isNotJoined ? "not-allowed" : "pointer",
-                                opacity: isNotJoined ? 0.6 : 1,
-                              }}
-                              onClick={() =>
-                                handleTogglePayment(
-                                  student._id,
-                                  status,
-                                  student.monthlyFee,
-                                )
-                              }
-                            >
-                              {isNotJoined
-                                ? "Not Joined"
-                                : isPaid
-                                  ? "Mark Unpaid"
-                                  : "Pay This Month"}
-                            </button>
+                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                              {isNotJoined ? (
+                                <button
+                                  className="save-btn"
+                                  disabled
+                                  style={{
+                                    width: "auto",
+                                    padding: "6px 12px",
+                                    fontSize: "0.85rem",
+                                    backgroundColor: "#94a3b8",
+                                    cursor: "not-allowed",
+                                    opacity: 0.6,
+                                  }}
+                                >
+                                  Not Joined
+                                </button>
+                              ) : isPass ? (
+                                <button
+                                  className="save-btn"
+                                  style={{
+                                    width: "auto",
+                                    padding: "6px 12px",
+                                    fontSize: "0.85rem",
+                                    backgroundColor: "#dc2626",
+                                  }}
+                                  onClick={() => handleRemovePass(student._id)}
+                                >
+                                  Remove Pass
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    className="save-btn"
+                                    style={{
+                                      width: "auto",
+                                      padding: "6px 12px",
+                                      fontSize: "0.85rem",
+                                      backgroundColor: isPaid ? "#ef4444" : "#10b981",
+                                    }}
+                                    onClick={() =>
+                                      handleTogglePayment(
+                                        student._id,
+                                        status,
+                                        student.monthlyFee,
+                                      )
+                                    }
+                                  >
+                                    {isPaid ? "Mark Unpaid" : "Pay This Month"}
+                                  </button>
+                                  {!isPaid && (
+                                    <button
+                                      className="save-btn"
+                                      style={{
+                                        width: "auto",
+                                        padding: "6px 12px",
+                                        fontSize: "0.85rem",
+                                        backgroundColor: "#7c3aed",
+                                      }}
+                                      onClick={() => setPassModal({ show: true, student })}
+                                    >
+                                      Mark Pass
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -4925,6 +5073,159 @@ const FeeTrackerTab = () => {
           </>
         )}
       </div>
+
+      {/* ===== PASS CONFIRMATION MODAL ===== */}
+      {passModal.show && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+          onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); }}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: "16px", padding: "30px",
+              width: "90%", maxWidth: "420px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 6px 0", color: "#334155" }}>Mark Student Pass</h3>
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 20px 0" }}>
+              <strong>{passModal.student?.childName}</strong> will have ₹0 fee for{" "}
+              <strong>
+                {new Date(selectedMonth + "-01").toLocaleString("default", {
+                  month: "long", year: "numeric",
+                })}
+              </strong>.
+              This will not affect other months.
+            </p>
+            <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#334155", display: "block", marginBottom: "6px" }}>
+              Reason (optional)
+            </label>
+            <select
+              value={passReason}
+              onChange={(e) => setPassReason(e.target.value)}
+              style={{
+                width: "100%", padding: "10px", borderRadius: "8px",
+                border: "1px solid #cbd5e1", fontSize: "0.9rem", marginBottom: "8px",
+              }}
+            >
+              <option value="">Select a reason...</option>
+              <option value="Exams">Exams</option>
+              <option value="Vacation">Vacation</option>
+              <option value="Medical">Medical</option>
+              <option value="Travel">Travel</option>
+              <option value="Personal">Personal</option>
+              <option value="Other">Other</option>
+            </select>
+            {passReason === "Other" && (
+              <input
+                type="text"
+                placeholder="Enter custom reason..."
+                onChange={(e) => setPassReason(e.target.value)}
+                style={{
+                  width: "100%", padding: "10px", borderRadius: "8px",
+                  border: "1px solid #cbd5e1", fontSize: "0.9rem", marginBottom: "8px",
+                  boxSizing: "border-box",
+                }}
+              />
+            )}
+            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+              <button
+                className="save-btn"
+                disabled={passLoading}
+                style={{
+                  flex: 1, padding: "10px", fontSize: "0.95rem",
+                  backgroundColor: "#7c3aed", opacity: passLoading ? 0.7 : 1,
+                }}
+                onClick={handleMarkPass}
+              >
+                {passLoading ? "Marking..." : "Confirm Pass"}
+              </button>
+              <button
+                className="save-btn"
+                style={{
+                  flex: 1, padding: "10px", fontSize: "0.95rem",
+                  backgroundColor: "#64748b",
+                }}
+                onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== PASS HISTORY MODAL ===== */}
+      {passHistoryModal.show && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+          onClick={() => setPassHistoryModal({ show: false, student: null, passes: [] })}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: "16px", padding: "30px",
+              width: "90%", maxWidth: "500px", maxHeight: "70vh", overflowY: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 6px 0", color: "#334155" }}>
+              Pass History — {passHistoryModal.student?.childName}
+            </h3>
+            <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "0 0 20px 0" }}>
+              Total passes: {passHistoryModal.passes.length}
+            </p>
+            {passHistoryModal.passes.length === 0 ? (
+              <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px" }}>No passes recorded.</p>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                    <th style={{ textAlign: "left", padding: "8px", color: "#64748b", fontSize: "0.8rem" }}>Month</th>
+                    <th style={{ textAlign: "left", padding: "8px", color: "#64748b", fontSize: "0.8rem" }}>Reason</th>
+                    <th style={{ textAlign: "left", padding: "8px", color: "#64748b", fontSize: "0.8rem" }}>Marked On</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {passHistoryModal.passes
+                    .sort((a, b) => (b.month || "").localeCompare(a.month || ""))
+                    .map((pass, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px 8px", fontWeight: "600", color: "#334155" }}>
+                          {new Date(pass.month + "-01").toLocaleString("default", { month: "long", year: "numeric" })}
+                        </td>
+                        <td style={{ padding: "10px 8px", color: "#7c3aed" }}>
+                          {pass.reason || "—"}
+                        </td>
+                        <td style={{ padding: "10px 8px", color: "#64748b", fontSize: "0.85rem" }}>
+                          {pass.markedAt ? new Date(pass.markedAt).toLocaleDateString() : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+            <button
+              className="save-btn"
+              style={{
+                width: "100%", marginTop: "20px", padding: "10px",
+                fontSize: "0.95rem", backgroundColor: "#64748b",
+              }}
+              onClick={() => setPassHistoryModal({ show: false, student: null, passes: [] })}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
