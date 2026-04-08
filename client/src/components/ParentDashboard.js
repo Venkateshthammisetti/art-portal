@@ -902,6 +902,15 @@ const ParentDashboard = ({ user, onLogout }) => {
   const getPaymentStatus = () => {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+    // Check if student has a pass for current month
+    const hasPass = studentProfile?.passes?.some(
+      (p) => p.month === currentMonthStr,
+    );
+    if (hasPass) {
+      return { status: "Pass", color: "purple" };
+    }
+
     const hasPaidCurrentMonth = studentProfile?.payments?.some(
       (p) => p.month === currentMonthStr && p.status === "Paid",
     );
@@ -915,6 +924,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   const getFeeList = () => {
     const today = new Date();
     const currentUserPayments = studentProfile?.payments || [];
+    const studentPasses = studentProfile?.passes || [];
 
     const rawDate = studentProfile?.registeredDate || studentProfile?.createdAt;
     if (!rawDate) return currentUserPayments;
@@ -934,7 +944,17 @@ const ParentDashboard = ({ user, onLogout }) => {
         (p) => p.month === monthStr,
       );
 
-      if (existingRecord) {
+      // Check if student has a pass for this month
+      const passRecord = studentPasses.find((p) => p.month === monthStr);
+
+      if (passRecord) {
+        fullHistory.push({
+          month: monthStr,
+          amount: 0,
+          status: "Pass",
+          reason: passRecord.reason || "",
+        });
+      } else if (existingRecord) {
         fullHistory.push(existingRecord);
       } else {
         fullHistory.push({
@@ -950,7 +970,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   const calculateTotalPending = (list) => {
     return list
-      .filter((item) => item.status === "Pending")
+      .filter((item) => item.status === "Pending") // Pass months are excluded (status is "Pass", not "Pending")
       .reduce((sum, item) => {
         const val = parseFloat(item.amount);
         return sum + (isNaN(val) ? 0 : val);
@@ -1484,13 +1504,22 @@ const ParentDashboard = ({ user, onLogout }) => {
                 >
                   💳 Fee Status
                 </h3>
-                <div className={`fee-status-badge ${getPaymentStatus().color}`}>
+                <div
+                  className={`fee-status-badge ${getPaymentStatus().color}`}
+                  style={getPaymentStatus().status === "Pass" ? {
+                    background: "#ede9fe",
+                    color: "#7c3aed",
+                    border: "1px solid #c4b5fd",
+                  } : {}}
+                >
                   {getPaymentStatus().status}
                 </div>
                 <p className="fee-note">
                   {getPaymentStatus().status === "Paid"
                     ? "All caught up!"
-                    : "Please clear dues."}
+                    : getPaymentStatus().status === "Pass"
+                      ? "No fee this month (Pass)."
+                      : "Please clear dues."}
                 </p>
               </div>
               <div className="info-card profile-card">
@@ -1792,14 +1821,26 @@ const ParentDashboard = ({ user, onLogout }) => {
                       <tr key={idx}>
                         <td>{formatFullMonthDate(pay.month)}</td>
                         <td>
-                          {pay.amount === "---" ? "---" : `₹${pay.amount}`}
+                          {pay.status === "Pass" ? (
+                            <span style={{ color: "#7c3aed", fontWeight: "600" }}>₹0</span>
+                          ) : pay.amount === "---" ? "---" : `₹${pay.amount}`}
                         </td>
                         <td>
                           <span
                             className={`fee-pill ${pay.status.toLowerCase()}`}
+                            style={pay.status === "Pass" ? {
+                              background: "#ede9fe",
+                              color: "#7c3aed",
+                              border: "1px solid #c4b5fd",
+                            } : {}}
                           >
                             {pay.status}
                           </span>
+                          {pay.status === "Pass" && pay.reason && (
+                            <div style={{ fontSize: "0.7rem", color: "#7c3aed", marginTop: "2px" }}>
+                              {pay.reason}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
