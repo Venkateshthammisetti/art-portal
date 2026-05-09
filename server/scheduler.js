@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const webpush = require('web-push');
-const User = require('./models/User'); // ✅ Correct path
+const User = require('./models/User');
+const Class = require('./models/Class');
+const Attendance = require('./models/Attendance');
 
 const setupVapid = () => {
   try {
@@ -140,6 +142,109 @@ const checkTeacherReminders = async () => {
 };
 
 // ==========================================
+// 3. ATTENDANCE REMINDERS (Teachers — every minute)
+// ==========================================
+
+// In-memory dedup: prevents re-sending the same notification within the same
+// trigger window even if the cron fires twice (key includes date so it auto-
+// expires across days without needing an explicit clear).
+const sentAttendanceNotifs = new Set();
+
+// Wipe the set at midnight so it never grows beyond one day's worth of keys
+const clearSentSet = () => sentAttendanceNotifs.clear();
+
+const checkAttendanceReminders = async () => {
+  if (!setupVapid()) return;
+
+  const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const CLASS_DURATION_MIN = 60; // assumed 1-hour class
+  // Send at: class end, +30 min — giving up after that
+  const TRIGGER_OFFSETS_MIN = [0, 30];
+
+  const now = new Date();
+  const todayDay = DAYS_OF_WEEK[now.getDay()];
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  try {
+    const classes = await Class.find({ 'schedule.day': todayDay })
+      .populate('teacher', 'pushSubscription fullName username');
+
+    for (const cls of classes) {
+      if (!cls.teacher || !cls.teacher.pushSubscription) continue;
+
+      const todaySlots = cls.schedule.filter(s => s.day === todayDay);
+
+      for (const slot of todaySlots) {
+        const [sh, sm] = slot.time.split(':').map(Number);
+        const totalEndMin = sh * 60 + (sm || 0) + CLASS_DURATION_MIN;
+        const endH = Math.floor(totalEndMin / 60);
+        const endM = totalEndMin % 60;
+        if (endH >= 24) continue;
+
+        const classEndMs = new Date(now);
+        classEndMs.setHours(endH, endM, 0, 0);
+
+        for (const offsetMin of TRIGGER_OFFSETS_MIN) {
+          const triggerMs  = classEndMs.getTime() + offsetMin * 60 * 1000;
+          const diffMs     = Math.abs(now.getTime() - triggerMs);
+
+          // Fire only within a 60-second window around the trigger point
+          if (diffMs > 60 * 1000) continue;
+
+          const notifKey = `${cls._id}_${slot.time}_${todayStr}_${offsetMin}`;
+          if (sentAttendanceNotifs.has(notifKey)) continue;
+          sentAttendanceNotifs.add(notifKey); // claim this slot immediately (prevents race)
+
+          // Check if attendance was already submitted for this class today
+          const hasAttendance = await Attendance.exists({ classId: cls._id, date: todayStr });
+          if (hasAttendance) continue;
+
+          // Build human-readable times for the notification body
+          const fmtTime = (h, m) => {
+            const ap   = h >= 12 ? 'PM' : 'AM';
+            const hour = h % 12 || 12;
+            return `${hour}:${String(m).padStart(2,'0')} ${ap}`;
+          };
+          const startTime = fmtTime(sh, sm || 0);
+          const endTime   = fmtTime(endH, endM);
+
+          const title = offsetMin === 0
+            ? '📝 Mark Attendance Now'
+            : '⏰ Attendance Still Pending';
+          const body = offsetMin === 0
+            ? `${cls.className} (${startTime}–${endTime}) just ended. Please mark today's attendance.`
+            : `${cls.className} ended ${offsetMin} min ago and attendance hasn't been marked yet.`;
+
+          const payload = JSON.stringify({
+            title,
+            body,
+            tag: `attendance-${cls._id}-${todayStr}`, // replaces previous notif for same class
+            requireInteraction: true,
+            url: 'https://art-portal.netlify.app'
+          });
+
+          try {
+            await webpush.sendNotification(cls.teacher.pushSubscription, payload);
+            console.log(`   -> 🔔 [Attendance] ${cls.teacher.fullName || cls.teacher.username} | ${cls.className} | +${offsetMin}min`);
+          } catch (err) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              await User.findByIdAndUpdate(cls.teacher._id, { pushSubscription: null });
+            } else {
+              console.error(`   ❌ Push Error (${cls.teacher.username}):`, err.message);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('❌ Attendance Reminder Error:', err);
+  }
+};
+
+// ==========================================
 // START SCHEDULERS
 // ==========================================
 const startScheduler = () => {
@@ -149,8 +254,15 @@ const startScheduler = () => {
   // Teacher month-end reminders: daily at 9:00 AM (only fires on reminder days)
   cron.schedule('0 9 * * *', checkTeacherReminders);
 
+  // Attendance reminders: every minute — sends push when class ends without attendance
+  cron.schedule('* * * * *', checkAttendanceReminders);
+
+  // Clear in-memory dedup set at midnight
+  cron.schedule('0 0 * * *', clearSentSet);
+
   console.log('⏰ Fee Scheduler started (Checks daily at 10:00 AM)');
   console.log('⏰ Teacher Reminder Scheduler started (Checks daily at 9:00 AM)');
+  console.log('⏰ Attendance Reminder Scheduler started (Checks every minute)');
 };
 
 module.exports = startScheduler;
