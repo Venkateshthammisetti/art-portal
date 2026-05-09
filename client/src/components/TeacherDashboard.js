@@ -1176,6 +1176,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [historyMonth, setHistoryMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
+  const [attendanceReminders, setAttendanceReminders] = useState([]);
+  const checkedAttendanceRef = useRef({});
+  const [mobileNotifSwipeY, setMobileNotifSwipeY] = useState(0);
+  const [mobileNotifTracking, setMobileNotifTracking] = useState(false);
+  const mobileNotifTouchStartY = useRef(null);
 
   const dropdownRef = useRef(null);
 
@@ -1290,6 +1295,52 @@ const TeacherDashboard = ({ user, onLogout }) => {
     return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   };
 
+  const formatTime12 = (timeStr) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    return `${h % 12 || 12}:${String(m || 0).padStart(2, "0")} ${ampm}`;
+  };
+
+  const formatEndTime = (endH, endM) => {
+    const ampm = endH >= 12 ? "PM" : "AM";
+    return `${endH % 12 || 12}:${String(endM).padStart(2, "0")} ${ampm}`;
+  };
+
+  const dismissMobileNotif = (classId) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    checkedAttendanceRef.current[`${classId}_${todayStr}`] = true;
+    setAttendanceReminders((prev) => prev.filter((x) => x.classId !== classId));
+    setMobileNotifSwipeY(0);
+    setMobileNotifTracking(false);
+    mobileNotifTouchStartY.current = null;
+  };
+
+  const onNotifTouchStart = (e) => {
+    mobileNotifTouchStartY.current = e.touches[0].clientY;
+    setMobileNotifTracking(true);
+  };
+
+  const onNotifTouchMove = (e) => {
+    if (mobileNotifTouchStartY.current === null) return;
+    const dy = e.touches[0].clientY - mobileNotifTouchStartY.current;
+    if (dy < 0) setMobileNotifSwipeY(dy);
+  };
+
+  const onNotifTouchEnd = () => {
+    setMobileNotifTracking(false);
+    if (mobileNotifSwipeY < -60) {
+      setMobileNotifSwipeY(-400);
+      setTimeout(() => {
+        if (attendanceReminders.length > 0)
+          dismissMobileNotif(attendanceReminders[0].classId);
+        setMobileNotifSwipeY(0);
+      }, 220);
+    } else {
+      setMobileNotifSwipeY(0);
+    }
+    mobileNotifTouchStartY.current = null;
+  };
+
   const getSentiment = (rating) => {
     if (rating >= 5) return { label: "Excellent", color: "green" };
     if (rating >= 4) return { label: "Good", color: "blue" };
@@ -1377,6 +1428,72 @@ const TeacherDashboard = ({ user, onLogout }) => {
     classes,
   ]);
 
+  // --- ATTENDANCE REMINDERS ---
+  useEffect(() => {
+    if (!classes.length) return;
+
+    const DAYS_OF_WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const REMINDER_BEFORE_MIN = 10;  // show banner 10 min before class ends
+    const REMINDER_EXPIRE_HRS = 3;   // stop showing 3 hours after class ends
+    const CLASS_DURATION_MIN = 60;   // assumed class length
+
+    const evaluate = async () => {
+      const now = new Date();
+      const todayDay = DAYS_OF_WEEK[now.getDay()];
+      const todayStr = now.toISOString().slice(0, 10);
+      const reminders = [];
+
+      for (const cls of classes) {
+        const todaySlots = cls.schedule.filter((s) => s.day === todayDay);
+        for (const slot of todaySlots) {
+          const [sh, sm] = slot.time.split(":").map(Number);
+          const totalEndMin = sh * 60 + (sm || 0) + CLASS_DURATION_MIN;
+          const endH = Math.floor(totalEndMin / 60);
+          const endM = totalEndMin % 60;
+
+          if (endH >= 24) continue;
+
+          const endMs = new Date(now).setHours(endH, endM, 0, 0);
+          const windowStart = endMs - REMINDER_BEFORE_MIN * 60 * 1000;
+          const windowEnd = endMs + REMINDER_EXPIRE_HRS * 60 * 60 * 1000;
+
+          if (now.getTime() < windowStart || now.getTime() > windowEnd) continue;
+
+          const cacheKey = `${cls._id}_${todayStr}`;
+          if (checkedAttendanceRef.current[cacheKey] === true) continue;
+
+          if (checkedAttendanceRef.current[cacheKey] === undefined) {
+            try {
+              const studentIds = cls.students.map((s) => s._id).join(",");
+              const res = await axios.get(
+                `https://art-portal-7n6r.onrender.com/api/attendance/daily?classes=${cls._id}&date=${todayStr}&students=${studentIds}`
+              );
+              const done = Object.keys(res.data.statusMap || {}).length > 0;
+              checkedAttendanceRef.current[cacheKey] = done;
+              if (done) continue;
+            } catch {
+              checkedAttendanceRef.current[cacheKey] = false;
+            }
+          }
+
+          reminders.push({
+            classId: cls._id,
+            className: cls.className,
+            startTime: slot.time,
+            endH,
+            endM,
+          });
+        }
+      }
+
+      setAttendanceReminders(reminders);
+    };
+
+    evaluate();
+    const id = setInterval(evaluate, 60_000);
+    return () => clearInterval(id);
+  }, [classes]);
+
   // --- ACTIONS ---
   const toggleClassSelection = (classId) => {
     setSelectedClassIds((prev) =>
@@ -1428,6 +1545,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
       );
       setMsg("✅ Saved!");
       setTimeout(() => setMsg(""), 3000);
+      // Clear reminders for the classes whose attendance was just saved
+      const todayStr = new Date().toISOString().slice(0, 10);
+      selectedClassIds.forEach((id) => {
+        checkedAttendanceRef.current[`${id}_${todayStr}`] = true;
+      });
+      setAttendanceReminders((prev) =>
+        prev.filter((r) => !selectedClassIds.includes(r.classId))
+      );
     } catch (error) {
       setMsg("❌ Error Saving");
       setTimeout(() => setMsg(""), 3000);
@@ -1788,6 +1913,49 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
         <div className="t-content">
           {msg && <div className="success-toast">{msg}</div>}
+
+          {/* ATTENDANCE REMINDERS */}
+          {attendanceReminders.length > 0 && (
+            <div className="att-reminder-bar">
+              {attendanceReminders.map((r) => (
+                <div key={r.classId} className="att-reminder-card">
+                  <span className="att-reminder-bell">🔔</span>
+                  <div className="att-reminder-text">
+                    <strong>Don't forget attendance!</strong>
+                    <span>
+                      {r.className} &bull; {formatTime12(r.startTime)} &ndash;{" "}
+                      {formatEndTime(r.endH, r.endM)}
+                    </span>
+                  </div>
+                  <button
+                    className="att-reminder-action"
+                    onClick={() => {
+                      setActiveTab("attendance");
+                      setAttendanceView("daily");
+                      setSelectedClassIds([r.classId]);
+                      setAttendanceDate(new Date().toISOString().slice(0, 10));
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Mark Now
+                  </button>
+                  <button
+                    className="att-reminder-dismiss"
+                    title="Dismiss"
+                    onClick={() => {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      checkedAttendanceRef.current[`${r.classId}_${todayStr}`] = true;
+                      setAttendanceReminders((prev) =>
+                        prev.filter((x) => x.classId !== r.classId)
+                      );
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* OVERVIEW */}
           {activeTab === "overview" && (
@@ -2654,8 +2822,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
             activeTab === "attendance" ? "nav-item active" : "nav-item"
           }
           onClick={() => handleNavClick("attendance")}
+          style={{ position: "relative" }}
         >
           <IconAttendance />
+          {attendanceReminders.length > 0 && (
+            <span className="nav-reminder-dot" />
+          )}
         </button>
         <button
           className={activeTab === "feedback" ? "nav-item active" : "nav-item"}
@@ -2870,6 +3042,82 @@ const TeacherDashboard = ({ user, onLogout }) => {
               </form>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MOBILE NOTIFICATION BANNER — fixed top, payment-reminder style */}
+      {attendanceReminders.length > 0 && (
+        <div
+          className="mobile-att-notification"
+          onTouchStart={onNotifTouchStart}
+          onTouchMove={onNotifTouchMove}
+          onTouchEnd={onNotifTouchEnd}
+          style={{
+            transform: `translateY(${mobileNotifSwipeY}px)`,
+            opacity: mobileNotifSwipeY < 0
+              ? Math.max(0, 1 + mobileNotifSwipeY / 160)
+              : 1,
+            transition: mobileNotifTracking
+              ? "none"
+              : "transform 0.25s ease, opacity 0.25s ease",
+          }}
+        >
+          <div className="man-accent-bar" />
+          <div className="man-header">
+            <div className="man-app-identity">
+              <span className="man-app-icon">🎨</span>
+              <span className="man-app-name">Art Portal</span>
+              <span className="man-dot">•</span>
+              <span className="man-timestamp">now</span>
+            </div>
+            <button
+              className="man-header-close"
+              onClick={() => dismissMobileNotif(attendanceReminders[0].classId)}
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="man-body">
+            <div className="man-title">Don't forget attendance!</div>
+            <div className="man-desc">
+              <strong>{attendanceReminders[0].className}</strong>
+              {" "}&bull;{" "}
+              {formatTime12(attendanceReminders[0].startTime)}{" "}–{" "}
+              {formatEndTime(attendanceReminders[0].endH, attendanceReminders[0].endM)}
+            </div>
+          </div>
+
+          {attendanceReminders.length > 1 && (
+            <div className="man-more-badge">
+              +{attendanceReminders.length - 1} more class
+              {attendanceReminders.length > 2 ? "es" : ""} pending
+            </div>
+          )}
+
+          <div className="man-actions">
+            <button
+              className="man-dismiss-btn"
+              onClick={() => dismissMobileNotif(attendanceReminders[0].classId)}
+            >
+              Dismiss
+            </button>
+            <button
+              className="man-action-btn"
+              onClick={() => {
+                const r = attendanceReminders[0];
+                setActiveTab("attendance");
+                setAttendanceView("daily");
+                setSelectedClassIds([r.classId]);
+                setAttendanceDate(new Date().toISOString().slice(0, 10));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              Mark Now
+            </button>
+          </div>
+
+          <div className="man-swipe-hint">swipe up to dismiss</div>
         </div>
       )}
     </div>
