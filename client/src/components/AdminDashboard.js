@@ -3943,26 +3943,97 @@ const SlotManagementTab = () => {
     alert("Schedule updated successfully!");
   };
 
-  const getClassForSlot = (timeStart) => {
-    return classes.find((cls) =>
+  const getClassesForSlot = (timeStart) => {
+    return classes.filter((cls) =>
       cls.schedule.some((s) => s.day === selectedDay && s.time === timeStart),
     );
   };
 
-  // const isEveningBlocked = [
-  //   "Monday",
-  //   "Tuesday",
-  //   "Wednesday",
-  //   "Thursday",
-  //   "Friday",
-  // ].includes(selectedDay);
-
   const isEveningBlocked = false;
 
-  const renderSlotCard = (slot, isBlocked) => {
-    const assignedClass = getClassForSlot(slot.start);
+  const renderClassCard = (assignedClass, totalInSlot = 1) => {
+    const enrolled = assignedClass.students.length;
+    const capacity = assignedClass.maxCapacity || 10;
+    const isFull = enrolled >= capacity;
 
-    if (isBlocked && !assignedClass) {
+    return (
+      <div
+        key={assignedClass._id}
+        className="detail-card slot-class-card"
+        style={{
+          margin: 0,
+          borderLeft: isFull ? "4px solid #ef4444" : "4px solid #3b82f6",
+          minHeight: "100px",
+          flex: totalInSlot === 1 ? "1 1 100%" : "1 1 220px",
+          minWidth: totalInSlot === 1 ? "100%" : "200px",
+          maxWidth: totalInSlot === 1 ? "none" : "320px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "5px",
+          }}
+        >
+          <span style={{ fontWeight: "bold", color: "#334155", fontSize: "0.9rem" }}>
+            {assignedClass.className}
+          </span>
+          <span
+            style={{
+              fontSize: "0.7rem",
+              padding: "2px 6px",
+              borderRadius: "4px",
+              background: isFull ? "#fee2e2" : "#eff6ff",
+              color: isFull ? "#991b1b" : "#1d4ed8",
+              fontWeight: "bold",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isFull ? "FULL" : `${capacity - enrolled} Open`}
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: "0.78rem",
+            color: "#64748b",
+            marginBottom: "8px",
+          }}
+        >
+          {assignedClass.level} ({assignedClass.subLevel})
+        </div>
+        <div
+          style={{
+            height: "6px",
+            width: "100%",
+            background: "#e2e8f0",
+            borderRadius: "3px",
+            marginBottom: "8px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${Math.min((enrolled / capacity) * 100, 100)}%`,
+              background: isFull ? "#ef4444" : "#3b82f6",
+            }}
+          ></div>
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "#334155" }}>
+          Teacher:{" "}
+          <strong>
+            {assignedClass.teacher ? assignedClass.teacher.fullName : "N/A"}
+          </strong>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSlotCard = (slot, isBlocked) => {
+    const assignedClasses = getClassesForSlot(slot.start);
+
+    if (isBlocked && assignedClasses.length === 0) {
       return (
         <div
           key={slot.id}
@@ -3978,94 +4049,25 @@ const SlotManagementTab = () => {
             minHeight: "100px",
           }}
         >
-          <span
-            style={{
-              color: "#94a3b8",
-              fontSize: "0.9rem",
-              fontStyle: "italic",
-            }}
-          >
+          <span style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
             available
           </span>
         </div>
       );
     }
 
-    if (assignedClass) {
-      const enrolled = assignedClass.students.length;
-      const capacity = assignedClass.maxCapacity || 10;
-      const isFull = enrolled >= capacity;
-
+    if (assignedClasses.length > 0) {
       return (
         <div
           key={slot.id}
-          className="detail-card"
-          onClick={() => handleEditClick(assignedClass)}
           style={{
-            margin: 0,
-            borderLeft: isFull ? "4px solid #ef4444" : "4px solid #3b82f6",
-            minHeight: "100px",
-            cursor: "pointer",
-            transition: "transform 0.1s",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "12px",
+            alignItems: "stretch",
           }}
-          title="Click to Edit Class"
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "5px",
-            }}
-          >
-            <span style={{ fontWeight: "bold", color: "#334155" }}>
-              {assignedClass.className}
-            </span>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                padding: "2px 6px",
-                borderRadius: "4px",
-                background: isFull ? "#fee2e2" : "#eff6ff",
-                color: isFull ? "#991b1b" : "#1d4ed8",
-                fontWeight: "bold",
-              }}
-            >
-              {isFull ? "FULL" : `${capacity - enrolled} Open`}
-            </span>
-          </div>
-          <div
-            style={{
-              fontSize: "0.8rem",
-              color: "#64748b",
-              marginBottom: "8px",
-            }}
-          >
-            {assignedClass.level} ({assignedClass.subLevel})
-          </div>
-          <div
-            style={{
-              height: "6px",
-              width: "100%",
-              background: "#e2e8f0",
-              borderRadius: "3px",
-              marginBottom: "8px",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${(enrolled / capacity) * 100}%`,
-                background: isFull ? "#ef4444" : "#3b82f6",
-              }}
-            ></div>
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "#334155" }}>
-            Teacher:{" "}
-            <strong>
-              {assignedClass.teacher ? assignedClass.teacher.fullName : "N/A"}
-            </strong>
-          </div>
+          {assignedClasses.map((cls) => renderClassCard(cls, assignedClasses.length))}
         </div>
       );
     }
@@ -4073,30 +4075,19 @@ const SlotManagementTab = () => {
     return (
       <div
         key={slot.id}
-        onClick={() => handleSlotClick(slot.start)}
         style={{
-          background: "#f0fdf4",
-          border: "1px dashed #16a34a",
+          background: "#f8fafc",
+          border: "1px dashed #cbd5e1",
           borderRadius: "8px",
           padding: "15px",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100px",
-          cursor: "pointer",
-          transition: "background 0.2s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#dcfce7")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "#f0fdf4")}
       >
-        <div
-          style={{ color: "#16a34a", fontWeight: "bold", marginBottom: "5px" }}
-        >
-          Available
-        </div>
-        <div style={{ color: "#15803d", fontSize: "0.8rem" }}>
-          + Schedule Class
+        <div style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
+          No class scheduled
         </div>
       </div>
     );
