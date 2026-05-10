@@ -1455,7 +1455,7 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
 // 3. TAB COMPONENTS (Dependent on Modals/Helpers)
 // ==========================================
 
-const OverviewTab = ({ stats, users, classes, loading }) => {
+const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
   // ===== ATTENDANCE WIDGET STATE =====
   const [attSelectedClass, setAttSelectedClass] = useState("");
   const [attMonth, setAttMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -1754,7 +1754,11 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
       </div>
 
       <div className="overview-stats-grid">
-        <div className="overview-stat-card">
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("users", { roleFilter: "parent" })}
+          title="View all students"
+        >
           <div
             style={{
               display: "flex",
@@ -1801,8 +1805,13 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
           >
             Total Students
           </div>
+          <div className="stat-card-nav-hint">View Students →</div>
         </div>
-        <div className="overview-stat-card">
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("users", { roleFilter: "teacher" })}
+          title="View all teachers"
+        >
           <div
             style={{
               display: "flex",
@@ -1836,8 +1845,13 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
           >
             Expert Teachers
           </div>
+          <div className="stat-card-nav-hint">View Teachers →</div>
         </div>
-        <div className="overview-stat-card">
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("fees")}
+          title="View fee tracker"
+        >
           <div
             style={{
               display: "flex",
@@ -1871,8 +1885,13 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
           >
             Monthly Revenue (Est.)
           </div>
+          <div className="stat-card-nav-hint">View Fee Tracker →</div>
         </div>
-        <div className="overview-stat-card">
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("fees", { filter: "Pending" })}
+          title="View pending payments"
+        >
           <div
             style={{
               display: "flex",
@@ -1906,6 +1925,7 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
           >
             Pending Payments
           </div>
+          <div className="stat-card-nav-hint" style={{ color: "#ea580c" }}>View Pending →</div>
         </div>
       </div>
 
@@ -2290,10 +2310,10 @@ const OverviewTab = ({ stats, users, classes, loading }) => {
 };
 
 // --- TAB 2: USER MANAGEMENT ---
-const UserManagementTab = () => {
+const UserManagementTab = ({ initialRoleFilter = "all" }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
   const [sortOrder, setSortOrder] = useState("newest");
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
@@ -4215,14 +4235,14 @@ const SlotManagementTab = () => {
   );
 };
 
-const FeeTrackerTab = () => {
+const FeeTrackerTab = ({ initialFilter = "all" }) => {
   const [students, setStudents] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState(initialFilter);
   const [sortOrder, setSortOrder] = useState("name-asc");
   const [showAnalytics, setShowAnalytics] = useState(false);
 
@@ -5644,6 +5664,8 @@ const AdminDashboard = ({ onLogout }) => {
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("admin_theme") === "dark",
   );
+  const [feeInitialFilter, setFeeInitialFilter] = useState("all");
+  const [userInitialRoleFilter, setUserInitialRoleFilter] = useState("all");
 
   // ICONS
   const IconHome = () => (
@@ -5783,6 +5805,17 @@ const AdminDashboard = ({ onLogout }) => {
   }, []);
 
   const handleNavClick = (tab) => {
+    setFeeInitialFilter("all");
+    setUserInitialRoleFilter("all");
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleNavigate = (tab, params = {}) => {
+    if (params.filter) setFeeInitialFilter(params.filter);
+    else setFeeInitialFilter("all");
+    if (params.roleFilter) setUserInitialRoleFilter(params.roleFilter);
+    else setUserInitialRoleFilter("all");
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -5797,44 +5830,43 @@ const AdminDashboard = ({ onLogout }) => {
         <nav className="sidebar-nav">
           <button
             className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => handleNavClick("overview")}
           >
             <IconHome /> <span>Dashboard</span>
           </button>
           <button
             className={activeTab === "users" ? "active" : ""}
-            onClick={() => setActiveTab("users")}
+            onClick={() => handleNavClick("users")}
           >
             <IconUsers /> <span>User Management</span>
           </button>
           <button
             className={activeTab === "classes" ? "active" : ""}
-            onClick={() => setActiveTab("classes")}
+            onClick={() => handleNavClick("classes")}
           >
             <IconClasses /> <span>Class Management</span>
           </button>
           <button
             className={activeTab === "fees" ? "active" : ""}
-            onClick={() => setActiveTab("fees")}
+            onClick={() => handleNavClick("fees")}
           >
             <IconFee /> <span>Fee Tracker</span>
           </button>
           <button
             className={activeTab === "add-user" ? "active" : ""}
-            onClick={() => setActiveTab("add-user")}
+            onClick={() => handleNavClick("add-user")}
           >
             <IconAdd /> <span>Register User</span>
           </button>
           <button
             className={activeTab === "slots" ? "active" : ""}
-            onClick={() => setActiveTab("slots")}
+            onClick={() => handleNavClick("slots")}
           >
             <IconClock /> <span>Slot Manager</span>
           </button>
-          {/* ✨ ADDED GALLERY BUTTON */}
           <button
             className={activeTab === "gallery" ? "active" : ""}
-            onClick={() => setActiveTab("gallery")}
+            onClick={() => handleNavClick("gallery")}
           >
             <IconGallery /> <span>Gallery</span>
           </button>
@@ -5901,11 +5933,11 @@ const AdminDashboard = ({ onLogout }) => {
         </header>
 
         <div className="content-scrollable">
-          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} />}
-          {activeTab === "users" && <UserManagementTab />}
+          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onNavigate={handleNavigate} />}
+          {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} />}
           {activeTab === "classes" && <ClassManagementTab />}
           {activeTab === "add-user" && <AddUserTab />}
-          {activeTab === "fees" && <FeeTrackerTab />}
+          {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
           {activeTab === "slots" && <SlotManagementTab />}
           {/* ✨ ADDED GALLERY TAB */}
           {activeTab === "gallery" && <GalleryRepositoryTab />}

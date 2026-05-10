@@ -784,6 +784,50 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
+.overview-stat-card.stat-card-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.overview-stat-card.stat-card-clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.15);
+  border-color: #93c5fd;
+}
+.overview-stat-card.stat-card-clickable:active {
+  transform: translateY(-1px);
+}
+
+.stat-card-nav-hint {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #2563eb;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.overview-stat-card.stat-card-clickable:hover .stat-card-nav-hint {
+  opacity: 1;
+}
+
+/* Dark mode */
+.admin-container[data-theme="dark"] .overview-stat-card.stat-card-clickable:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.25);
+}
+.admin-container[data-theme="dark"] .stat-card-nav-hint {
+  color: #60a5fa;
+}
+
+/* Mobile — always show hint, no transform needed */
+@media (max-width: 768px) {
+  .stat-card-nav-hint {
+    display: none;
+  }
+  .overview-stat-card.stat-card-clickable:hover {
+    transform: none;
+  }
+}
+
 /* --- MOBILE BOTTOM NAVIGATION (Hidden by Default) --- */
 .mobile-bottom-nav {
   display: none;
