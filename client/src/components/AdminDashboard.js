@@ -5282,6 +5282,7 @@ const GalleryRepositoryTab = () => {
   const lastTap = useRef(0);
   const panStart = useRef(null);
   const initialOffset = useRef({ x: 0, y: 0 });
+  const wasPinch = useRef(false);
 
   useEffect(() => {
     // 1. Fetch all students
@@ -5419,6 +5420,7 @@ const GalleryRepositoryTab = () => {
   const onTouchStart = (e) => {
     if (e.touches.length === 2) {
       e.preventDefault();
+      wasPinch.current = true;
       initialPinchDist.current = getTouchDistance(e.touches);
       initialScale.current = zoomScale;
     } else if (e.touches.length === 1) {
@@ -5450,6 +5452,7 @@ const GalleryRepositoryTab = () => {
   };
   const onTouchEnd = () => {
     initialPinchDist.current = null; panStart.current = null;
+    if (wasPinch.current) { wasPinch.current = false; return; }
     if (zoomScale <= 1 && touchStartX.current && touchEndX.current) {
       const d = touchStartX.current - touchEndX.current;
       if (d > 50) handleNext();
