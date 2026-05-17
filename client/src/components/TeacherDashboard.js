@@ -71,6 +71,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   const lastTap = useRef(0);
   const panStart = useRef(null);
   const initialOffset = useRef({ x: 0, y: 0 });
+  const wasPinch = useRef(false);
 
   // 1. Fetch Artwork
   useEffect(() => {
@@ -350,6 +351,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     if (e.touches.length === 2) {
       // Pinch start
       e.preventDefault();
+      wasPinch.current = true;
       initialPinchDist.current = getTouchDistance(e.touches);
       initialScale.current = zoomScale;
     } else if (e.touches.length === 1) {
@@ -407,6 +409,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   const onTouchEnd = (e) => {
     initialPinchDist.current = null;
     panStart.current = null;
+    if (wasPinch.current) { wasPinch.current = false; return; }
 
     // Only swipe navigate when NOT zoomed
     if (zoomScale <= 1) {
