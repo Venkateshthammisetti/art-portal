@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   PieChart,
   Pie,
@@ -5272,6 +5272,17 @@ const GalleryRepositoryTab = () => {
   const [filterYear, setFilterYear] = useState("all"); // Default to All Years
   const [filterMonth, setFilterMonth] = useState("all"); // Default to All Months
 
+  // Lightbox zoom + pan
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+  const initialPinchDist = useRef(null);
+  const initialScale = useRef(1);
+  const lastTap = useRef(0);
+  const panStart = useRef(null);
+  const initialOffset = useRef({ x: 0, y: 0 });
+
   useEffect(() => {
     // 1. Fetch all students
     axios
@@ -5348,6 +5359,23 @@ const GalleryRepositoryTab = () => {
   }
 };
 
+  // Share Handler
+  const handleShare = async (e, imageUrl, title) => {
+    e.stopPropagation();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: title || "Artwork", text: `Check out this artwork: ${title}`, url: imageUrl });
+      } else {
+        await navigator.clipboard.writeText(imageUrl);
+        alert("Image URL copied to clipboard!");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        try { await navigator.clipboard.writeText(imageUrl); alert("Image URL copied!"); } catch {}
+      }
+    }
+  };
+
   // Lightbox Navigation
   const handleNext = (e) => {
     if (e) e.stopPropagation();
@@ -5360,17 +5388,74 @@ const GalleryRepositoryTab = () => {
     );
   };
 
-  // Keyboard
+  // Reset zoom when image changes
+  useEffect(() => {
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  }, [lightboxIndex]);
+
+  // Keyboard + scroll lock
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (lightboxIndex === null) return;
       if (e.key === "ArrowRight") handleNext();
       if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Escape") setLightboxIndex(null);
+      if (e.key === "Escape") { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
+      if (e.key === "+" || e.key === "=") setZoomScale(s => Math.min(s + 0.5, 5));
+      if (e.key === "-") setZoomScale(s => Math.max(s - 0.5, 1));
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxIndex]);
+    if (lightboxIndex !== null) { document.body.style.overflow = "hidden"; }
+    else { document.body.style.overflow = ""; }
+    return () => { window.removeEventListener("keydown", handleKeyDown); document.body.style.overflow = ""; };
+  }, [lightboxIndex, filteredArtwork]);
+
+  // Touch helpers for pinch-to-zoom + swipe
+  const getTouchDistance = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  const onTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      initialPinchDist.current = getTouchDistance(e.touches);
+      initialScale.current = zoomScale;
+    } else if (e.touches.length === 1) {
+      touchEndX.current = null;
+      touchStartX.current = e.touches[0].clientX;
+      const now = Date.now();
+      if (now - lastTap.current < 300) {
+        if (zoomScale > 1) { setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
+        else setZoomScale(2.5);
+        lastTap.current = 0; return;
+      }
+      lastTap.current = now;
+      if (zoomScale > 1) { panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; initialOffset.current = { ...panOffset }; }
+    }
+  };
+  const onTouchMove = (e) => {
+    if (e.touches.length === 2 && initialPinchDist.current) {
+      e.preventDefault();
+      const newScale = Math.min(Math.max(initialScale.current * (getTouchDistance(e.touches) / initialPinchDist.current), 1), 5);
+      setZoomScale(newScale);
+      if (newScale <= 1) setPanOffset({ x: 0, y: 0 });
+    } else if (e.touches.length === 1) {
+      touchEndX.current = e.touches[0].clientX;
+      if (zoomScale > 1 && panStart.current) {
+        e.preventDefault();
+        setPanOffset({ x: initialOffset.current.x + (e.touches[0].clientX - panStart.current.x), y: initialOffset.current.y + (e.touches[0].clientY - panStart.current.y) });
+      }
+    }
+  };
+  const onTouchEnd = () => {
+    initialPinchDist.current = null; panStart.current = null;
+    if (zoomScale <= 1 && touchStartX.current && touchEndX.current) {
+      const d = touchStartX.current - touchEndX.current;
+      if (d > 50) handleNext();
+      if (d < -50) handlePrev();
+    }
+  };
 
   // Constants
   const years = [2024, 2025, 2026, 2027];
@@ -5389,273 +5474,133 @@ const GalleryRepositoryTab = () => {
     "December",
   ];
 
+  const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
+
   return (
     <div className="form-wrapper">
-      {/* HEADER & FILTERS */}
-      <div
-        style={{
-          background: "#f8fafc",
-          padding: "15px",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          marginBottom: "20px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "15px",
-          }}
-        >
-          <h3 style={{ margin: 0 }} className="gallery-header-title">Gallery Manager</h3>
-
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            {/* Student Selector */}
-            <select
-              value={selectedStudent}
-              onChange={(e) => setSelectedStudent(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontWeight: "bold",
-                minWidth: "180px",
-              }}
-            >
-              <option value="all">🌍 All Students</option>
-              <option disabled>──────────</option>
-              {students.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.childName}
-                </option>
-              ))}
-            </select>
-
-            {/* Year Filter */}
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                cursor: "pointer",
-              }}
-            >
-              <option value="all">All Years</option>
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-
-            {/* Month Filter */}
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                cursor: "pointer",
-              }}
-            >
-              <option value="all">All Months</option>
-              {months.map((m, i) => (
-                <option key={i} value={i}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* MODERN FILTER BAR */}
+      <div className="gallery-filter-bar">
+        <h3 className="gallery-filter-title">
+          🖼️ Gallery Manager
+          <span className="gallery-count-badge">{filteredArtwork.length}</span>
+        </h3>
+        <div className="gallery-filter-controls">
+          <select className="gallery-filter-select" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ minWidth: "160px" }}>
+            <option value="all">🌍 All Students</option>
+            <option disabled>──────────</option>
+            {students.map((s) => (<option key={s._id} value={s._id}>{s.childName}</option>))}
+          </select>
+          <select className="gallery-filter-select" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+            <option value="all">All Years</option>
+            {years.map((y) => (<option key={y} value={y}>{y}</option>))}
+          </select>
+          <select className="gallery-filter-select" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+            <option value="all">All Months</option>
+            {months.map((m, i) => (<option key={i} value={i}>{m}</option>))}
+          </select>
         </div>
-      </div>
-
-      <div
-        style={{ marginBottom: "15px", fontSize: "0.9rem", color: "#64748b" }}
-      >
-        Found <strong>{filteredArtwork.length}</strong> items in
-        <span style={{ color: "#2563eb", fontWeight: "bold" }}>
-          {" "}
-          {filterMonth === "all" ? "All Months" : months[filterMonth]}{" "}
-          {filterYear === "all" ? "" : filterYear}
-        </span>
       </div>
 
       {/* GALLERY GRID */}
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap: "20px",
-  }}
->
-  {loading ? (
-    <p>Loading Gallery...</p>
-  ) : filteredArtwork.length === 0 ? (
-    <div
-      style={{
-        gridColumn: "1/-1",
-        textAlign: "center",
-        padding: "40px",
-        background: "#f1f5f9",
-        borderRadius: "12px",
-        color: "#94a3b8",
-      }}
-    >
-      No artwork found for this filter.
-    </div>
-  ) : (
-    filteredArtwork.map((art, index) => (
-      <div
-        key={art._id}
-        style={{
-          border: "1px solid #e2e8f0",
-          borderRadius: "12px",
-          overflow: "hidden",
-          background: "#fff",
-          position: "relative",
-          cursor: "pointer",
-          boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-        }}
-        onClick={() => setLightboxIndex(index)}
-      >
-        <img
-          src={art.imageUrl}
-          alt={art.title}
-          style={{ width: "100%", height: "200px", objectFit: "cover" }}
-        />
-        <div style={{ padding: "12px" }}>
-          {selectedStudent === "all" && (
-            <div
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: "bold",
-                color: "#2563eb",
-                marginBottom: "4px",
-                textTransform: "uppercase",
-              }}
-            >
-              {art.studentId?.childName || "Unknown"}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="gallery-skeleton-card">
+              <div className="gallery-skeleton-img" />
+              <div className="gallery-skeleton-info">
+                <div className="gallery-skeleton-line" />
+                <div className="gallery-skeleton-line short" />
+                <div className="gallery-skeleton-line xs" />
+              </div>
             </div>
-          )}
-          <div style={{ fontWeight: "bold", color: "#334155" }}>
-            {art.title || "Untitled"}
+          ))
+        ) : filteredArtwork.length === 0 ? (
+          <div className="gallery-empty-state">
+            <div className="gallery-empty-icon">🎨</div>
+            <p className="gallery-empty-title">No artwork found</p>
+            <p className="gallery-empty-sub">Try adjusting the filters above</p>
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-            {art.medium} •{" "}
-            {new Date(art.dateCreated).toLocaleDateString()}
-          </div>
-        </div>
-
-        {/* ACTION BUTTONS — top-right corner */}
-        <div
-          style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
-          }}
-        >
-          {/* DELETE */}
-          <button
-            onClick={(e) => handleDelete(e, art._id)}
-            style={{
-              background: "rgba(255,255,255,0.9)",
-              border: "none",
-              borderRadius: "50%",
-              width: "30px",
-              height: "30px",
-              cursor: "pointer",
-              color: "#ef4444",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-            }}
-            title="Delete Artwork"
-          >
-            🗑️
-          </button>
-
-          {/* DOWNLOAD */}
-          <button
-            onClick={(e) => handleDownload(e, art.imageUrl, art.title)}
-            style={{
-              background: "rgba(255,255,255,0.9)",
-              border: "none",
-              borderRadius: "50%",
-              width: "30px",
-              height: "30px",
-              cursor: "pointer",
-              color: "#2563eb",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-            }}
-            title="Download Artwork"
-          >
-            ⬇️
-          </button>
-        </div>
+        ) : (
+          filteredArtwork.map((art, index) => (
+            <div key={art._id} className="gal-card" onClick={() => setLightboxIndex(index)}>
+              <img src={art.imageUrl} alt={art.title} className="gal-card-img" />
+              <div className="gal-card-overlay">
+                {selectedStudent === "all" && (
+                  <div className="gal-card-overlay-student">{art.studentId?.childName || "Unknown"}</div>
+                )}
+                <div className="gal-card-overlay-title">{art.title || "Untitled"}</div>
+                <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
+              </div>
+              <div className="gal-card-actions">
+                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
+                <button className="gal-action-btn share" onClick={(e) => handleShare(e, art.imageUrl, art.title)} title="Share">📤</button>
+                <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete">🗑</button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
-    ))
-  )}
-</div>
 
       {/* LIGHTBOX OVERLAY */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
         <div
           className="lightbox-overlay"
-          onClick={() => setLightboxIndex(null)}
+          onClick={closeLightbox}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          style={{ touchAction: "none" }}
         >
-          <button
-            className="lightbox-close"
-            onClick={() => setLightboxIndex(null)}
-          >
-            ×
-          </button>
-          <button className="lightbox-nav-btn prev" onClick={handlePrev}>
-            ‹
-          </button>
+          <button className="lightbox-close" onClick={closeLightbox}>×</button>
+          <button className="lightbox-nav-btn prev" onClick={handlePrev}>‹</button>
           <div
             className="lightbox-content"
             onClick={(e) => e.stopPropagation()}
+            style={{
+              transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
+              transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
+            }}
           >
             <img
               src={filteredArtwork[lightboxIndex].imageUrl}
               alt={filteredArtwork[lightboxIndex].title}
               className="lightbox-img"
+              draggable="false"
             />
           </div>
-          <button className="lightbox-nav-btn next" onClick={handleNext}>
-            ›
-          </button>
+          <button className="lightbox-nav-btn next" onClick={handleNext}>›</button>
+
+          {/* Action bar */}
+          <div className="lightbox-action-bar">
+            <div className="lightbox-zoom-pill">
+              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.max(s - 0.5, 1)); }}>−</button>
+              <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
+              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
+            </div>
+            <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
+              ⬇ Download
+            </button>
+            <button className="lightbox-action-pill share" onClick={(e) => handleShare(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
+              📤 Share
+            </button>
+            <button className="lightbox-action-pill danger" onClick={(e) => handleDelete(e, filteredArtwork[lightboxIndex]._id)}>
+              🗑 Delete
+            </button>
+          </div>
+
           <div className="lightbox-caption">
             {selectedStudent === "all" && (
-              <h2 style={{ margin: "0 0 5px 0", fontSize: "1.4rem" }}>
+              <h2 style={{ margin: "0 0 5px 0", fontSize: "1.2rem" }}>
                 {filteredArtwork[lightboxIndex].studentId?.childName}
               </h2>
             )}
-            <strong>
-              {filteredArtwork[lightboxIndex].title || "Untitled"}
-            </strong>
+            <strong>{filteredArtwork[lightboxIndex].title || "Untitled"}</strong>
             <span>
               {filteredArtwork[lightboxIndex].medium} •{" "}
-              {new Date(
-                filteredArtwork[lightboxIndex].dateCreated,
-              ).toLocaleDateString()}
+              {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}
             </span>
           </div>
+          <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
         </div>
       )}
     </div>

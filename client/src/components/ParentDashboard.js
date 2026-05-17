@@ -98,9 +98,18 @@ const ParentGalleryTab = ({ studentId }) => {
   const [filterYear, setFilterYear] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
 
-  // Swipe Refs
+  // Zoom + pan state
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+
+  // Touch refs (swipe + pinch-to-zoom + pan)
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+  const initialPinchDist = useRef(null);
+  const initialScale = useRef(1);
+  const lastTap = useRef(0);
+  const panStart = useRef(null);
+  const initialOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     setLoading(true);
@@ -246,6 +255,25 @@ const ParentGalleryTab = ({ studentId }) => {
     }
   };
 
+  // Download Handler
+  const handleDownload = async (e, imageUrl, title) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${title || "artwork"}.${blob.type.split("/")[1] || "jpg"}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to download. Try again.");
+    }
+  };
+
   // Navigation Helpers
   const handleNext = (e) => {
     if (e) e.stopPropagation();
@@ -259,36 +287,73 @@ const ParentGalleryTab = ({ studentId }) => {
     );
   };
 
-  // KEYBOARD NAVIGATION
+  // Reset zoom when image changes
+  useEffect(() => {
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  }, [lightboxIndex]);
+
+  // KEYBOARD NAVIGATION + scroll lock
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (lightboxIndex === null) return;
       if (e.key === "ArrowRight") handleNext();
       if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Escape") setLightboxIndex(null);
+      if (e.key === "Escape") { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
+      if (e.key === "+" || e.key === "=") setZoomScale(s => Math.min(s + 0.5, 5));
+      if (e.key === "-") setZoomScale(s => Math.max(s - 0.5, 1));
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    if (lightboxIndex !== null) { document.body.style.overflow = "hidden"; document.body.style.touchAction = "none"; }
+    else { document.body.style.overflow = ""; document.body.style.touchAction = ""; }
+    return () => { window.removeEventListener("keydown", handleKeyDown); document.body.style.overflow = ""; document.body.style.touchAction = ""; };
   }, [lightboxIndex, filteredArtwork]);
 
-  // SWIPE HANDLERS
+  // TOUCH HANDLERS (swipe + pinch-to-zoom + double-tap + pan)
+  const getTouchDistance = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
   const onTouchStart = (e) => {
-    touchEndX.current = null;
-    touchStartX.current = e.targetTouches[0].clientX;
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      initialPinchDist.current = getTouchDistance(e.touches);
+      initialScale.current = zoomScale;
+    } else if (e.touches.length === 1) {
+      touchEndX.current = null;
+      touchStartX.current = e.touches[0].clientX;
+      const now = Date.now();
+      if (now - lastTap.current < 300) {
+        if (zoomScale > 1) { setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
+        else setZoomScale(2.5);
+        lastTap.current = 0; return;
+      }
+      lastTap.current = now;
+      if (zoomScale > 1) { panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; initialOffset.current = { ...panOffset }; }
+    }
   };
-
   const onTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
+    if (e.touches.length === 2 && initialPinchDist.current) {
+      e.preventDefault();
+      const newScale = Math.min(Math.max(initialScale.current * (getTouchDistance(e.touches) / initialPinchDist.current), 1), 5);
+      setZoomScale(newScale);
+      if (newScale <= 1) setPanOffset({ x: 0, y: 0 });
+    } else if (e.touches.length === 1) {
+      touchEndX.current = e.touches[0].clientX;
+      if (zoomScale > 1 && panStart.current) {
+        e.preventDefault();
+        setPanOffset({ x: initialOffset.current.x + (e.touches[0].clientX - panStart.current.x), y: initialOffset.current.y + (e.touches[0].clientY - panStart.current.y) });
+      }
+    }
   };
-
   const onTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) handleNext();
-    if (isRightSwipe) handlePrev();
+    initialPinchDist.current = null; panStart.current = null;
+    if (zoomScale <= 1 && touchStartX.current && touchEndX.current) {
+      const d = touchStartX.current - touchEndX.current;
+      if (d > 50) handleNext();
+      if (d < -50) handlePrev();
+    }
   };
 
   const years = [2024, 2025, 2026, 2027];
@@ -307,156 +372,61 @@ const ParentGalleryTab = ({ studentId }) => {
     "December",
   ];
 
+  const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
+
   return (
     <div className="form-wrapper" style={{ padding: "20px" }}>
-      {/* HEADER */}
-      <div
-        style={{
-          background: "#f8fafc",
-          padding: "15px",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          marginBottom: "20px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "15px",
-          }}
-        >
-          <h3 style={{ margin: 0, color: "var(--p-text, #334155)" }}>My Art Gallery</h3>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                cursor: "pointer",
-              }}
-            >
-              <option value="all">All Years</option>
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                cursor: "pointer",
-              }}
-            >
-              <option value="all">All Months</option>
-              {months.map((m, i) => (
-                <option key={i} value={i}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* MODERN FILTER BAR */}
+      <div className="gallery-filter-bar">
+        <h3 className="gallery-filter-title">
+          🎨 My Art Gallery
+          <span className="gallery-count-badge">{filteredArtwork.length}</span>
+        </h3>
+        <div className="gallery-filter-controls">
+          <select className="gallery-filter-select" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+            <option value="all">All Years</option>
+            {years.map((y) => (<option key={y} value={y}>{y}</option>))}
+          </select>
+          <select className="gallery-filter-select" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+            <option value="all">All Months</option>
+            {months.map((m, i) => (<option key={i} value={i}>{m}</option>))}
+          </select>
         </div>
       </div>
 
-      {/* GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "20px",
-        }}
-      >
+      {/* GALLERY GRID */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
         {loading ? (
-          <p>Loading...</p>
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="gallery-skeleton-card">
+              <div className="gallery-skeleton-img" />
+              <div className="gallery-skeleton-info">
+                <div className="gallery-skeleton-line" />
+                <div className="gallery-skeleton-line short" />
+                <div className="gallery-skeleton-line xs" />
+              </div>
+            </div>
+          ))
         ) : filteredArtwork.length === 0 ? (
-          <div
-            style={{
-              gridColumn: "1/-1",
-              textAlign: "center",
-              padding: "40px",
-              background: "#fff",
-              borderRadius: "12px",
-              color: "#94a3b8",
-            }}
-          >
-            No artwork found yet.
+          <div className="gallery-empty-state">
+            <div className="gallery-empty-icon">🎨</div>
+            <p className="gallery-empty-title">No artwork yet</p>
+            <p className="gallery-empty-sub">Your child's artwork will appear here</p>
           </div>
         ) : (
           filteredArtwork.map((art, index) => (
-            <div
-              key={art._id}
-              style={{
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                overflow: "hidden",
-                background: "#fff",
-                position: "relative",
-                cursor: "pointer",
-              }}
-              onClick={() => setLightboxIndex(index)}
-            >
-              <img
-                src={art.imageUrl}
-                alt={art.title}
-                style={{ width: "100%", height: "200px", objectFit: "cover" }}
-              />
-              <div style={{ padding: "12px" }}>
-                <div
-                  style={{
-                    fontWeight: "bold",
-                    color: "#334155",
-                    fontSize: "1rem",
-                  }}
-                >
-                  {art.title || "Untitled"}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                  {art.medium}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#94a3b8",
-                    marginTop: "5px",
-                  }}
-                >
-                  {new Date(art.dateCreated).toLocaleDateString()}
-                </div>
+            <div key={art._id} className="gal-card" onClick={() => setLightboxIndex(index)}>
+              <img src={art.imageUrl} alt={art.title} className="gal-card-img" />
+              <div className="gal-card-overlay">
+                <div className="gal-card-overlay-title">{art.title || "Untitled"}</div>
+                <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
               </div>
-              {/* WhatsApp Button */}
-              {/* <button
-                onClick={(e) => handleWhatsAppStatus(e, art)}
-                disabled={shareLoading}
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "10px",
-                  background: "#25D366",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "40px",
-                  height: "40px",
-                  cursor: "pointer",
-                  color: "white",
-                  fontSize: "1.2rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                }}
-              >
-                <FaShareFromSquare size={20} />
-              </button> */}
+              <div className="gal-card-actions">
+                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
+                <button className="gal-action-btn share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={shareLoading} title="Share on WhatsApp">
+                  {shareLoading ? "…" : "📤"}
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -466,146 +436,50 @@ const ParentGalleryTab = ({ studentId }) => {
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
         <div
           className="lightbox-overlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.95)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-          }}
-          onClick={() => setLightboxIndex(null)}
+          onClick={closeLightbox}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          style={{ touchAction: "none" }}
         >
-          <button
-            style={{
-              position: "absolute",
-              top: "20px",
-              right: "30px",
-              background: "none",
-              border: "none",
-              color: "white",
-              fontSize: "3rem",
-              cursor: "pointer",
-              zIndex: 10001,
-            }}
-            onClick={() => setLightboxIndex(null)}
-          >
-            ×
-          </button>
-
-          <button
-            style={{
-              position: "absolute",
-              left: "20px",
-              background: "rgba(255,255,255,0.2)",
-              border: "none",
-              color: "white",
-              fontSize: "2rem",
-              padding: "10px 15px",
-              borderRadius: "50%",
-              cursor: "pointer",
-              zIndex: 10001,
-            }}
-            onClick={handlePrev}
-          >
-            ‹
-          </button>
-
+          <button className="lightbox-close" onClick={closeLightbox}>×</button>
+          <button className="lightbox-nav-btn prev" onClick={handlePrev}>‹</button>
           <div
+            className="lightbox-content"
             onClick={(e) => e.stopPropagation()}
             style={{
-              maxWidth: "90vw",
-              maxHeight: "80vh",
-              position: "relative",
+              transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
+              transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
             }}
           >
-            <img
-              src={filteredArtwork[lightboxIndex].imageUrl}
-              alt={filteredArtwork[lightboxIndex].title}
-              style={{
-                maxWidth: "100%",
-                maxHeight: "80vh",
-                borderRadius: "8px",
-              }}
-            />
+            <img src={filteredArtwork[lightboxIndex].imageUrl} alt={filteredArtwork[lightboxIndex].title} className="lightbox-img" draggable="false" />
           </div>
+          <button className="lightbox-nav-btn next" onClick={handleNext}>›</button>
 
-          <button
-            style={{
-              position: "absolute",
-              right: "20px",
-              background: "rgba(255,255,255,0.2)",
-              border: "none",
-              color: "white",
-              fontSize: "2rem",
-              padding: "10px 15px",
-              borderRadius: "50%",
-              cursor: "pointer",
-              zIndex: 10001,
-            }}
-            onClick={handleNext}
-          >
-            ›
-          </button>
-
-          <div
-            style={{
-              marginTop: "15px",
-              textAlign: "center",
-              color: "white",
-              padding: "0 20px",
-            }}
-          >
-            <h3 style={{ margin: "0 0 5px 0" }}>
-              {filteredArtwork[lightboxIndex].title || "Untitled"}
-            </h3>
-            <p style={{ margin: 0, opacity: 0.8 }}>
-              {filteredArtwork[lightboxIndex].medium} •{" "}
-              {new Date(
-                filteredArtwork[lightboxIndex].dateCreated,
-              ).toLocaleDateString()}
-            </p>
-
-            {/* WhatsApp Large Button */}
-            <div style={{ marginTop: "20px" }}>
-              <button
-                onClick={(e) =>
-                  handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])
-                }
-                disabled={shareLoading}
-                style={{
-                  background: "#25D366",
-                  color: "white",
-                  border: "none",
-                  padding: "20px",
-                  borderRadius: "30px",
-                  cursor: "pointer",
-                  fontSize: "1.1rem",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  margin: "0 auto",
-                }}
-              >
-                {shareLoading ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <FaShareFromSquare size={20} />
-                  </>
-                )}
-              </button>
+          {/* Action bar */}
+          <div className="lightbox-action-bar">
+            <div className="lightbox-zoom-pill">
+              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.max(s - 0.5, 1)); }}>−</button>
+              <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
+              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
             </div>
+            <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
+              ⬇ Download
+            </button>
+            <button
+              className="lightbox-action-pill share"
+              onClick={(e) => handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])}
+              disabled={shareLoading}
+            >
+              {shareLoading ? "Processing…" : "📤 Share"}
+            </button>
           </div>
+
+          <div className="lightbox-caption">
+            <strong>{filteredArtwork[lightboxIndex].title || "Untitled"}</strong>
+            <span>{filteredArtwork[lightboxIndex].medium} • {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}</span>
+          </div>
+          <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
         </div>
       )}
     </div>

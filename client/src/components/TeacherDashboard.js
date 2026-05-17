@@ -433,84 +433,30 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     "December",
   ];
 
+  const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
+
   return (
     <div className="form-wrapper">
-      {/* HEADER */}
-      <div
-        className="gallery-header"
-        style={{
-          background: "#f8fafc",
-          padding: "15px",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          marginBottom: "20px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "15px",
-          }}
-        >
-          <h3 style={{ margin: 0 }} className="gallery-header-title">Gallery Manager</h3>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <select
-              value={selectedStudent}
-              onChange={(e) => setSelectedStudent(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontWeight: "bold",
-                minWidth: "150px",
-              }}
-            >
-              <option value="all">🌍 View All Students</option>
-              <option disabled>──────────</option>
-              {students.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.childName}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                cursor: "pointer",
-              }}
-            >
-              <option value="all">All Years</option>
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
-              style={{
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                cursor: "pointer",
-              }}
-            >
-              <option value="all">All Months</option>
-              {months.map((m, i) => (
-                <option key={i} value={i}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* MODERN FILTER BAR */}
+      <div className="gallery-filter-bar">
+        <h3 className="gallery-filter-title">
+          🖼️ Gallery Manager
+          <span className="gallery-count-badge">{filteredArtwork.length}</span>
+        </h3>
+        <div className="gallery-filter-controls">
+          <select className="gallery-filter-select" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ minWidth: "150px" }}>
+            <option value="all">🌍 All Students</option>
+            <option disabled>──────────</option>
+            {students.map((s) => (<option key={s._id} value={s._id}>{s.childName}</option>))}
+          </select>
+          <select className="gallery-filter-select" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+            <option value="all">All Years</option>
+            {years.map((y) => (<option key={y} value={y}>{y}</option>))}
+          </select>
+          <select className="gallery-filter-select" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+            <option value="all">All Months</option>
+            {months.map((m, i) => (<option key={i} value={i}>{m}</option>))}
+          </select>
         </div>
       </div>
 
@@ -661,310 +607,98 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         </div>
       )}
 
-      {/* GALLERY GRID HEADER */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid #e2e8f0",
-          paddingBottom: "10px",
-          flexWrap: "wrap",
-          gap: "10px",
-        }}
-      >
-        <h4 style={{ color: "#64748b", margin: 0 }}>
+      {/* PORTFOLIO HEADER + SELECT MODE */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+        <h4 style={{ color: "#64748b", margin: 0, fontWeight: 600 }}>
           {selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
-          <span
-            style={{
-              fontWeight: "normal",
-              fontSize: "0.9rem",
-              marginLeft: "10px",
-            }}
-          >
-            ({filteredArtwork.length} found)
-          </span>
         </h4>
-
-        {/* Select / Cancel toggle */}
         {filteredArtwork.length > 0 && (
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             {selectMode ? (
               <>
-                <button
-                  onClick={handleSelectAll}
-                  style={{
-                    background: "none",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "6px",
-                    padding: "6px 12px",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    color: "#2563eb",
-                  }}
-                >
-                  {selectedIds.length === filteredArtwork.length
-                    ? "Deselect All"
-                    : "Select All"}
+                <button onClick={handleSelectAll} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#2563eb" }}>
+                  {selectedIds.length === filteredArtwork.length ? "Deselect All" : "Select All"}
                 </button>
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={selectedIds.length === 0 || bulkDeleting}
-                  style={{
-                    background: selectedIds.length > 0 ? "#ef4444" : "#fca5a5",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "6px 14px",
-                    fontSize: "0.8rem",
-                    fontWeight: 700,
-                    cursor:
-                      selectedIds.length > 0 ? "pointer" : "not-allowed",
-                    opacity: bulkDeleting ? 0.6 : 1,
-                  }}
-                >
-                  {bulkDeleting
-                    ? "Deleting..."
-                    : `Delete${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+                <button onClick={handleBulkDelete} disabled={selectedIds.length === 0 || bulkDeleting}
+                  style={{ background: selectedIds.length > 0 ? "#ef4444" : "#fca5a5", color: "white", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: selectedIds.length > 0 ? "pointer" : "not-allowed", opacity: bulkDeleting ? 0.6 : 1 }}>
+                  {bulkDeleting ? "Deleting..." : `Delete${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
                 </button>
-                <button
-                  onClick={exitSelectMode}
-                  style={{
-                    background: "none",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "6px",
-                    padding: "6px 12px",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    color: "#64748b",
-                  }}
-                >
-                  Cancel
-                </button>
+                <button onClick={exitSelectMode} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
               </>
             ) : (
-              <button
-                onClick={() => setSelectMode(true)}
-                style={{
-                  background: "none",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "6px",
-                  padding: "6px 12px",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: "#64748b",
-                }}
-              >
-                Select
-              </button>
+              <button onClick={() => setSelectMode(true)} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Select</button>
             )}
           </div>
         )}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "20px",
-          marginTop: "20px",
-        }}
-      >
+      {/* GALLERY GRID */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
         {loadingGallery ? (
-          <p>Loading...</p>
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="gallery-skeleton-card">
+              <div className="gallery-skeleton-img" />
+              <div className="gallery-skeleton-info">
+                <div className="gallery-skeleton-line" />
+                <div className="gallery-skeleton-line short" />
+                <div className="gallery-skeleton-line xs" />
+              </div>
+            </div>
+          ))
         ) : filteredArtwork.length === 0 ? (
-          <div
-            className="gallery-empty"
-            style={{
-              gridColumn: "1/-1",
-              textAlign: "center",
-              padding: "40px",
-              color: "#94a3b8",
-              background: "#f8fafc",
-              borderRadius: "12px",
-            }}
-          >
-            No artwork found.
+          <div className="gallery-empty-state">
+            <div className="gallery-empty-icon">🎨</div>
+            <p className="gallery-empty-title">No artwork found</p>
+            <p className="gallery-empty-sub">Upload some artwork or adjust filters</p>
           </div>
         ) : (
           filteredArtwork.map((art, index) => (
             <div
               key={art._id}
-              className="gallery-card"
-              style={{
-                border: selectMode && selectedIds.includes(art._id)
-                  ? "2px solid #2563eb"
-                  : "1px solid #e2e8f0",
-                borderRadius: "12px",
-                overflow: "hidden",
-                background: selectMode && selectedIds.includes(art._id)
-                  ? "#eff6ff"
-                  : "#fff",
-                position: "relative",
-                cursor: "pointer",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                transition: "all 0.2s",
-              }}
-              onClick={() =>
-                selectMode
-                  ? toggleSelectId(art._id)
-                  : setLightboxIndex(index)
-              }
+              className={`gal-card${selectMode && selectedIds.includes(art._id) ? " gal-selected" : ""}`}
+              onClick={() => selectMode ? toggleSelectId(art._id) : setLightboxIndex(index)}
             >
-              {/* Select mode checkbox */}
               {selectMode && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "10px",
-                    left: "10px",
-                    zIndex: 5,
-                    width: "26px",
-                    height: "26px",
-                    borderRadius: "50%",
-                    background: selectedIds.includes(art._id)
-                      ? "#2563eb"
-                      : "rgba(255,255,255,0.9)",
-                    border: selectedIds.includes(art._id)
-                      ? "2px solid #2563eb"
-                      : "2px solid #cbd5e1",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                    color: "white",
-                    fontSize: "0.8rem",
-                    fontWeight: "bold",
-                  }}
-                >
+                <div className={`gal-select-badge${selectedIds.includes(art._id) ? " active" : ""}`}>
                   {selectedIds.includes(art._id) && "✓"}
                 </div>
               )}
               <img
                 src={art.imageUrl}
                 alt={art.title}
-                style={{
-                  width: "100%",
-                  height: "200px",
-                  objectFit: "cover",
-                  opacity: selectMode && selectedIds.includes(art._id) ? 0.8 : 1,
-                  transition: "opacity 0.2s",
-                }}
+                className="gal-card-img"
+                style={{ opacity: selectMode && selectedIds.includes(art._id) ? 0.8 : 1 }}
               />
-              <div style={{ padding: "10px" }}>
+              <div className="gal-card-overlay">
                 {selectedStudent === "all" && art.studentId && (
-                  <div
-                    style={{
-                      fontSize: "0.7rem",
-                      color: "#2563eb",
-                      fontWeight: "bold",
-                      marginBottom: "3px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {art.studentId.childName}
-                  </div>
+                  <div className="gal-card-overlay-student">{art.studentId.childName}</div>
                 )}
-                <div style={{ fontWeight: "bold", color: "#334155" }}>
-                  {art.title || "Untitled"}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                  {art.medium}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.7rem",
-                    color: "#94a3b8",
-                    marginTop: "5px",
-                  }}
-                >
-                  {new Date(art.dateCreated).toLocaleDateString()}
-                </div>
+                <div className="gal-card-overlay-title">{art.title || "Untitled"}</div>
+                <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
               </div>
-              {/* ACTION BUTTONS — top-right corner (hidden in select mode) */}
               {!selectMode && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}
-              >
-                {/* DELETE */}
-                <button
-                  onClick={(e) => handleDelete(e, art._id)}
-                  style={{
-                    background: "rgba(255,255,255,0.9)",
-                    border: "none",
-                    borderRadius: "50%",
-                    width: "30px",
-                    height: "30px",
-                    cursor: "pointer",
-                    color: "#ef4444",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                  }}
-                  title="Delete Artwork"
-                >
-                  🗑️
-                </button>
-
-                {/* DOWNLOAD */}
-                <button
-                  onClick={(e) => handleDownload(e, art.imageUrl, art.title)}
-                  style={{
-                    background: "rgba(255,255,255,0.9)",
-                    border: "none",
-                    borderRadius: "50%",
-                    width: "30px",
-                    height: "30px",
-                    cursor: "pointer",
-                    color: "#2563eb",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                  }}
-                  title="Download Artwork"
-                >
-                  ⬇️
-                </button>
-              </div>
+                <div className="gal-card-actions">
+                  <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
+                  <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete">🗑</button>
+                </div>
               )}
             </div>
           ))
         )}
       </div>
 
-      {/* LIGHTBOX (Enhanced with Pinch-to-Zoom) */}
+      {/* LIGHTBOX (Pinch-to-Zoom + Action Bar) */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
         <div
           className="lightbox-overlay"
-          onClick={() => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }}
+          onClick={closeLightbox}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           style={{ touchAction: "none" }}
         >
-          <button
-            className="lightbox-close"
-            onClick={() => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }}
-          >
-            ×
-          </button>
-          <button className="lightbox-nav-btn prev" onClick={handlePrev}>
-            ‹
-          </button>
+          <button className="lightbox-close" onClick={closeLightbox}>×</button>
+          <button className="lightbox-nav-btn prev" onClick={handlePrev}>‹</button>
           <div
             className="lightbox-content"
             onClick={(e) => e.stopPropagation()}
@@ -973,43 +707,35 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
             }}
           >
-            <img
-              src={filteredArtwork[lightboxIndex].imageUrl}
-              alt={filteredArtwork[lightboxIndex].title}
-              className="lightbox-img"
-              draggable="false"
-            />
+            <img src={filteredArtwork[lightboxIndex].imageUrl} alt={filteredArtwork[lightboxIndex].title} className="lightbox-img" draggable="false" />
           </div>
-          <button className="lightbox-nav-btn next" onClick={handleNext}>
-            ›
-          </button>
+          <button className="lightbox-nav-btn next" onClick={handleNext}>›</button>
+
+          {/* Action bar */}
+          <div className="lightbox-action-bar">
+            <div className="lightbox-zoom-pill">
+              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.max(s - 0.5, 1)); }}>−</button>
+              <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
+              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
+            </div>
+            <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
+              ⬇ Download
+            </button>
+            <button className="lightbox-action-pill danger" onClick={(e) => handleDelete(e, filteredArtwork[lightboxIndex]._id)}>
+              🗑 Delete
+            </button>
+          </div>
+
           <div className="lightbox-caption">
-            {zoomScale > 1 && (
-              <button
-                className="zoom-reset-btn"
-                onClick={(e) => { e.stopPropagation(); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }}
-              >
-                Reset Zoom ({Math.round(zoomScale * 100)}%)
-              </button>
-            )}
             {selectedStudent === "all" && (
-              <h2 style={{ margin: "0 0 5px 0", fontSize: "1.4rem" }}>
+              <h2 style={{ margin: "0 0 5px 0", fontSize: "1.2rem" }}>
                 {filteredArtwork[lightboxIndex].studentId?.childName}
               </h2>
             )}
-            <strong>
-              {filteredArtwork[lightboxIndex].title || "Untitled"}
-            </strong>
-            <span>
-              {filteredArtwork[lightboxIndex].medium} •{" "}
-              {new Date(
-                filteredArtwork[lightboxIndex].dateCreated,
-              ).toLocaleDateString()}
-            </span>
-            <div className="lightbox-counter">
-              {lightboxIndex + 1} / {filteredArtwork.length}
-            </div>
+            <strong>{filteredArtwork[lightboxIndex].title || "Untitled"}</strong>
+            <span>{filteredArtwork[lightboxIndex].medium} • {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}</span>
           </div>
+          <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
         </div>
       )}
     </div>
