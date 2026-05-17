@@ -157,16 +157,26 @@ const checkAttendanceReminders = async () => {
   if (!setupVapid()) return;
 
   const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const CLASS_DURATION_MIN = 60; // assumed 1-hour class
-  // Send at: class end, +30 min — giving up after that
-  const TRIGGER_OFFSETS_MIN = [0, 30];
+  const CLASS_DURATION_MIN = 60;
+  const TRIGGER_OFFSETS_MIN = [0, 30]; // fire at class end, then again 30 min later
 
-  const now = new Date();
-  const todayDay = DAYS_OF_WEEK[now.getDay()];
-  const yyyy = now.getFullYear();
-  const mm   = String(now.getMonth() + 1).padStart(2, '0');
-  const dd   = String(now.getDate()).padStart(2, '0');
+  // ── Timezone-safe "now" in IST (UTC+5:30) ──────────────────────────────────
+  // Render servers run in UTC.  Class times ("6:00", "14:30") are stored in IST
+  // because teachers enter them in their local timezone.  We must compare against
+  // IST wall-clock time — never against raw UTC hours.
+  const IST_OFFSET_MIN = 5 * 60 + 30; // 330 minutes east of UTC
+  const nowUTC  = new Date();
+  const nowIST  = new Date(nowUTC.getTime() + IST_OFFSET_MIN * 60 * 1000);
+
+  // Minutes elapsed since IST midnight (0 – 1439)
+  const nowTotalMin = nowIST.getUTCHours() * 60 + nowIST.getUTCMinutes();
+
+  const todayDay = DAYS_OF_WEEK[nowIST.getUTCDay()];
+  const yyyy = nowIST.getUTCFullYear();
+  const mm   = String(nowIST.getUTCMonth() + 1).padStart(2, '0');
+  const dd   = String(nowIST.getUTCDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
+  // ────────────────────────────────────────────────────────────────────────────
 
   try {
     const classes = await Class.find({ 'schedule.day': todayDay })
@@ -179,20 +189,17 @@ const checkAttendanceReminders = async () => {
 
       for (const slot of todaySlots) {
         const [sh, sm] = slot.time.split(':').map(Number);
-        const totalEndMin = sh * 60 + (sm || 0) + CLASS_DURATION_MIN;
-        const endH = Math.floor(totalEndMin / 60);
-        const endM = totalEndMin % 60;
-        if (endH >= 24) continue;
-
-        const classEndMs = new Date(now);
-        classEndMs.setHours(endH, endM, 0, 0);
+        const classEndTotalMin = sh * 60 + (sm || 0) + CLASS_DURATION_MIN;
+        const endH = Math.floor(classEndTotalMin / 60);
+        const endM = classEndTotalMin % 60;
+        if (endH >= 24) continue; // class runs past midnight — skip
 
         for (const offsetMin of TRIGGER_OFFSETS_MIN) {
-          const triggerMs  = classEndMs.getTime() + offsetMin * 60 * 1000;
-          const diffMs     = Math.abs(now.getTime() - triggerMs);
+          const triggerTotalMin = classEndTotalMin + offsetMin;
 
-          // Fire only within a 60-second window around the trigger point
-          if (diffMs > 60 * 1000) continue;
+          // Fire only when current IST minute matches the trigger minute (±1 min
+          // tolerance covers cron jitter — dedup Set prevents double-send)
+          if (Math.abs(nowTotalMin - triggerTotalMin) > 1) continue;
 
           const notifKey = `${cls._id}_${slot.time}_${todayStr}_${offsetMin}`;
           if (sentAttendanceNotifs.has(notifKey)) continue;
