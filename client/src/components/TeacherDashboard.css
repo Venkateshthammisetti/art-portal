@@ -2553,3 +2553,26 @@
 .teacher-container[data-theme="dark"] .nav-reminder-dot {
   border-color: #1e293b;
 }
+
+/* ---- Teacher dark mode gallery overrides ---- */
+.teacher-container[data-theme="dark"] .gal-card { background: #1e293b; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.teacher-container[data-theme="dark"] .gallery-filter-bar { background: #1e293b; border-color: #334155; }
+.teacher-container[data-theme="dark"] .gallery-filter-title { color: #e2e8f0; }
+.teacher-container[data-theme="dark"] .gallery-filter-select {
+  background-color: #0f172a; border-color: #334155; color: #cbd5e1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+.teacher-container[data-theme="dark"] .gallery-empty-state { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #334155; }
+.teacher-container[data-theme="dark"] .gallery-empty-title { color: #94a3b8; }
+.teacher-container[data-theme="dark"] .gallery-skeleton-card { background: #1e293b; }
+.teacher-container[data-theme="dark"] .gallery-skeleton-img,
+.teacher-container[data-theme="dark"] .gallery-skeleton-line {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 800px 100%;
+}
+/* Upload section dark mode */
+.teacher-container[data-theme="dark"] .gallery-upload-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+.teacher-container[data-theme="dark"] .gallery-upload-card h4 { color: #93c5fd; }

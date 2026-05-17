@@ -1013,3 +1013,20 @@ body.dark .tm-btn.secondary { background: #1e293b; border-color: #334155; color:
   transform: scale(1.1);
   background: rgba(255,255,255,0.3) !important;
 }
+
+/* ---- Parent dark mode gallery overrides ---- */
+body.dark .gal-card { background: #1e293b; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+body.dark .gallery-filter-bar { background: #1e293b; border-color: #334155; }
+body.dark .gallery-filter-title { color: #e2e8f0; }
+body.dark .gallery-filter-select {
+  background-color: #0f172a; border-color: #334155; color: #cbd5e1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+body.dark .gallery-empty-state { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #334155; }
+body.dark .gallery-empty-title { color: #94a3b8; }
+body.dark .gallery-skeleton-card { background: #1e293b; }
+body.dark .gallery-skeleton-img,
+body.dark .gallery-skeleton-line {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 800px 100%;
+}
