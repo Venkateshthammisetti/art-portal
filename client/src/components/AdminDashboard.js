@@ -1141,7 +1141,7 @@ const EditUserModal = ({ user, onClose, onSave }) => {
 };
 
 // --- USER DETAILS VIEW ---
-const UserDetailsView = ({ user, onBack, onDelete }) => {
+const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
   const [credentials, setCredentials] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loadingCreds, setLoadingCreds] = useState(false);
@@ -1193,9 +1193,27 @@ const UserDetailsView = ({ user, onBack, onDelete }) => {
                 : new Date(user.createdAt).toLocaleDateString()}
             </span>
           </div>
-          <button className="delete-btn-large" onClick={onDelete}>
-            Delete User
-          </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
+            <button
+              className="edit-btn"
+              onClick={onEdit}
+              style={{
+                background: "#eff6ff",
+                padding: "8px 16px",
+                border: "1px solid #bfdbfe",
+                borderRadius: "6px",
+                color: "#2563eb",
+                fontSize: "0.9rem",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              Edit Details
+            </button>
+            <button className="delete-btn-large" onClick={onDelete}>
+              Delete User
+            </button>
+          </div>
         </div>
       </div>
       <div className="object-body-grid">
@@ -2447,6 +2465,7 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
           user={selectedUser}
           onBack={() => setSelectedUser(null)}
           onDelete={() => initiateDelete(null, selectedUser._id)}
+          onEdit={() => setEditingUser(selectedUser)}
         />
       ) : (
         <div className="table-wrapper">
