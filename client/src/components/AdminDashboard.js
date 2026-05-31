@@ -1147,6 +1147,37 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
   const [loadingCreds, setLoadingCreds] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
 
+  // Build fee history rows from registeredDate → current month
+  const feeHistory = (() => {
+    if (user.role !== "parent") return null;
+    const payments = user.payments || [];
+    const passes = user.passes || [];
+
+    const dateStr = user.registeredDate || user.joiningDate || user.createdAt;
+    const startMonth = dateStr
+      ? (typeof dateStr === "string" ? dateStr : new Date(dateStr).toISOString()).slice(0, 7)
+      : new Date().toISOString().slice(0, 7);
+
+    const today = new Date();
+    const [cy, cm] = [today.getFullYear(), today.getMonth() + 1];
+    const [sy, sm0] = startMonth.split("-").map(Number);
+
+    const months = [];
+    let y = sy, m = sm0;
+    while (y * 12 + m <= cy * 12 + cm) {
+      months.push(`${y}-${String(m).padStart(2, "0")}`);
+      m++; if (m > 12) { m = 1; y++; }
+    }
+
+    return months.reverse().map((month) => {
+      const payment = payments.find((p) => p.month === month && p.status === "Paid");
+      const pass = passes.find((p) => p.month === month);
+      if (payment) return { month, status: "Paid", amount: payment.amount, paidDate: payment.paidDate };
+      if (pass) return { month, status: "Pass", amount: 0, paidDate: null, reason: pass.reason };
+      return { month, status: "Pending", amount: user.monthlyFee, paidDate: null };
+    });
+  })();
+
   const handleToggleCredentials = async () => {
     if (!credentials) {
       setLoadingCreds(true);
@@ -1172,6 +1203,59 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
   };
 
   const displayDob = user.role === "admin" ? user.dob : user.childDob;
+
+  const [activeSection, setActiveSection] = useState("overview");
+
+  const tabs = [
+    { id: "overview", label: "Overview", icon: "👤" },
+    { id: "details", label: user.role === "parent" ? "Student Details" : "Professional Details", icon: user.role === "parent" ? "🎓" : "💼" },
+    ...(user.role === "parent" ? [{ id: "fees", label: "Fee History", icon: "💳" }] : []),
+  ];
+
+  const tabBarStyle = {
+    display: "flex",
+    gap: "4px",
+    padding: "4px",
+    background: "#f1f5f9",
+    borderRadius: "12px",
+    marginBottom: "24px",
+    width: "fit-content",
+  };
+
+  const tabBtnStyle = (id) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 18px",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.875rem",
+    fontWeight: activeSection === id ? "700" : "500",
+    background: activeSection === id ? "#fff" : "transparent",
+    color: activeSection === id ? "#1e293b" : "#64748b",
+    boxShadow: activeSection === id ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+    transition: "all 0.15s ease",
+  });
+
+  // ---- Fee history helpers (only computed when needed) ----
+  const feeStats = feeHistory
+    ? {
+        totalPaid: feeHistory.filter(r => r.status === "Paid").reduce((acc, r) => acc + (r.amount || 0), 0),
+        paidCount: feeHistory.filter(r => r.status === "Paid").length,
+        passCount: feeHistory.filter(r => r.status === "Pass").length,
+        pendingCount: feeHistory.filter(r => r.status === "Pending").length,
+      }
+    : null;
+
+  const statusBadgeStyle = (status) => ({
+    padding: "3px 10px",
+    borderRadius: "6px",
+    fontSize: "0.78rem",
+    fontWeight: "600",
+    background: status === "Paid" ? "#dcfce7" : status === "Pass" ? "#ede9fe" : "#fee2e2",
+    color: status === "Paid" ? "#166534" : status === "Pass" ? "#5b21b6" : "#991b1b",
+  });
 
   return (
     <div className="object-page">
@@ -1216,254 +1300,247 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
           </div>
         </div>
       </div>
-      <div className="object-body-grid">
-        <div className="top-row-grid">
-          <div
-            className="detail-card"
-            style={{ borderLeft: "4px solid #3b82f6" }}
+
+      {/* ── Tab Bar ── */}
+      <div style={tabBarStyle}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            style={tabBtnStyle(tab.id)}
+            onClick={() => setActiveSection(tab.id)}
           >
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
+            {tab.id === "fees" && feeStats && feeStats.pendingCount > 0 && (
+              <span style={{
+                background: "#dc2626",
+                color: "#fff",
+                borderRadius: "10px",
+                fontSize: "0.68rem",
+                fontWeight: "700",
+                padding: "1px 6px",
+                lineHeight: "1.4",
+              }}>
+                {feeStats.pendingCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="object-body-grid">
+
+        {/* ── OVERVIEW TAB ── */}
+        {activeSection === "overview" && (
+          <div className="top-row-grid">
             <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "15px",
-              }}
+              className="detail-card"
+              style={{ borderLeft: "4px solid #3b82f6" }}
             >
-              <h3>Login Credentials</h3>
-              {copyMsg && (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "#10b981",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {copyMsg}
-                </span>
-              )}
-            </div>
-            <div
-              className="credential-box"
-              style={{
-                background: "#f8fafc",
-                padding: "15px",
-                borderRadius: "8px",
-              }}
-            >
-              <div
-                style={{
-                  marginBottom: "10px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <span style={{ fontSize: "12px", color: "#64748b" }}>
-                    Username
-                  </span>
-                  <strong
-                    style={{
-                      display: "block",
-                      fontSize: "16px",
-                      color: "#334155",
-                    }}
-                  >
-                    {user.username}
-                  </strong>
-                </div>
-                <button
-                  onClick={() => handleCopy(user.username)}
-                  className="icon-btn"
-                  title="Copy Username"
-                >
-                  📋
-                </button>
-              </div>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  marginBottom: "15px",
                 }}
               >
-                <div>
-                  <span style={{ fontSize: "12px", color: "#64748b" }}>
-                    Password
+                <h3>Login Credentials</h3>
+                {copyMsg && (
+                  <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "bold" }}>
+                    {copyMsg}
                   </span>
-                  {loadingCreds ? (
-                    <span style={{ fontSize: "12px", color: "#999" }}>
-                      Fetching...
-                    </span>
-                  ) : showPassword && credentials ? (
-                    <strong
-                      style={{
-                        display: "block",
-                        fontSize: "16px",
-                        fontFamily: "monospace",
-                      }}
-                    >
-                      {credentials.password}
+                )}
+              </div>
+              <div
+                className="credential-box"
+                style={{ background: "#f8fafc", padding: "15px", borderRadius: "8px" }}
+              >
+                <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                  <div>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>Username</span>
+                    <strong style={{ display: "block", fontSize: "16px", color: "#334155" }}>
+                      {user.username}
                     </strong>
-                  ) : (
-                    <strong
-                      style={{
-                        display: "block",
-                        fontSize: "16px",
-                        letterSpacing: "2px",
-                      }}
-                    >
-                      ••••••••
-                    </strong>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: "5px" }}>
-                  <button
-                    onClick={handleToggleCredentials}
-                    className="icon-btn"
-                    style={{ color: "#0284c7" }}
-                  >
-                    {showPassword ? "👁️‍🗨️" : "👁️"}
+                  </div>
+                  <button onClick={() => handleCopy(user.username)} className="icon-btn" title="Copy Username">
+                    📋
                   </button>
-                  {showPassword && credentials && (
-                    <button
-                      onClick={() => handleCopy(credentials.password)}
-                      className="icon-btn"
-                      title="Copy Password"
-                    >
-                      📋
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>Password</span>
+                    {loadingCreds ? (
+                      <span style={{ fontSize: "12px", color: "#999" }}>Fetching...</span>
+                    ) : showPassword && credentials ? (
+                      <strong style={{ display: "block", fontSize: "16px", fontFamily: "monospace" }}>
+                        {credentials.password}
+                      </strong>
+                    ) : (
+                      <strong style={{ display: "block", fontSize: "16px", letterSpacing: "2px" }}>
+                        ••••••••
+                      </strong>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: "5px" }}>
+                    <button onClick={handleToggleCredentials} className="icon-btn" style={{ color: "#0284c7" }}>
+                      {showPassword ? "👁️‍🗨️" : "👁️"}
                     </button>
-                  )}
+                    {showPassword && credentials && (
+                      <button onClick={() => handleCopy(credentials.password)} className="icon-btn" title="Copy Password">
+                        📋
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="detail-card">
-            <h3>Contact Information</h3>
-            <div className="info-row">
-              <label>Email:</label> <span>{user.email || "N/A"}</span>
-            </div>
-            <div className="info-row">
-              <label>Phone:</label> <span>{user.phone || "N/A"}</span>
-            </div>
-            <div className="info-row">
-              <label>Location:</label> <span>{user.location || "N/A"}</span>
-            </div>
-            <div className="info-row">
-              <label>City:</label> <span>{user.city || "N/A"}</span>
-            </div>
-            <div className="info-row">
-              <label>Zoom ID:</label> <span>{user.zoomId || "N/A"}</span>
+
+            <div className="detail-card">
+              <h3>Contact Information</h3>
+              <div className="info-row"><label>Email:</label> <span>{user.email || "N/A"}</span></div>
+              <div className="info-row"><label>Phone:</label> <span>{user.phone || "N/A"}</span></div>
+              <div className="info-row"><label>Location:</label> <span>{user.location || "N/A"}</span></div>
+              <div className="info-row"><label>City:</label> <span>{user.city || "N/A"}</span></div>
+              <div className="info-row"><label>Zoom ID:</label> <span>{user.zoomId || "N/A"}</span></div>
             </div>
           </div>
-        </div>
-        <div className="detail-card full-width-card">
-          <h3>
-            {user.role === "parent"
-              ? "Student Details"
-              : "Professional Details"}
-          </h3>
-          <div className="details-grid-layout">
-            <div className="info-col">
-              <div className="info-row">
-                <label>Joining Date:</label>{" "}
-                <span style={{ fontWeight: "bold" }}>
-                  {user.joiningDate
-                    ? new Date(user.joiningDate).toLocaleDateString()
-                    : "N/A"}
-                </span>
+        )}
+
+        {/* ── DETAILS TAB ── */}
+        {activeSection === "details" && (
+          <div className="detail-card full-width-card" style={{ borderLeft: "4px solid #64748b" }}>
+            <h3>{user.role === "parent" ? "Student Details" : "Professional Details"}</h3>
+            <div className="details-grid-layout">
+              <div className="info-col">
+                <div className="info-row">
+                  <label>Joining Date:</label>{" "}
+                  <span style={{ fontWeight: "bold" }}>
+                    {user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : "N/A"}
+                  </span>
+                </div>
+                {user.role === "parent" ? (
+                  <>
+                    <div className="info-row"><label>Child Name:</label> <span>{user.childName || "N/A"}</span></div>
+                    <div className="info-row"><label>Gender:</label> <span>{user.gender || "N/A"}</span></div>
+                    <div className="info-row">
+                      <label>Date of Birth:</label>{" "}
+                      <span>{user.childDob ? new Date(user.childDob).toLocaleDateString() : "N/A"}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="info-row"><label>Specialization:</label> <span>{user.specialization || "N/A"}</span></div>
+                    <div className="info-row">
+                      <label>Date of Birth:</label>{" "}
+                      <span>{displayDob ? new Date(displayDob).toLocaleDateString() : "N/A"}</span>
+                    </div>
+                  </>
+                )}
               </div>
-              {user.role === "parent" ? (
-                <>
+              <div className="info-col">
+                {user.role === "parent" ? (
+                  <>
+                    <div className="info-row"><label>Age:</label> <span>{user.childAge || "N/A"}</span></div>
+                    <div className="info-row"><label>Class:</label> <span>{user.childClass || "N/A"}</span></div>
+                    <div className="info-row">
+                      <label>Total Classes:</label>{" "}
+                      <span style={{ fontWeight: "bold" }}>{user.monthlyClassesTarget || 8} Classes/Mo</span>
+                    </div>
+                    <div className="info-row">
+                      <label>Monthly Fee:</label>
+                      <span style={{ color: "#16a34a", fontWeight: "bold", fontSize: "16px" }}>
+                        ₹{user.monthlyFee || 0}
+                      </span>
+                    </div>
+                  </>
+                ) : user.role === "teacher" ? (
                   <div className="info-row">
-                    <label>Child Name:</label>{" "}
-                    <span>{user.childName || "N/A"}</span>
-                  </div>
-                  <div className="info-row">
-                    <label>Gender:</label> <span>{user.gender || "N/A"}</span>
-                  </div>
-                  <div className="info-row">
-                    <label>Date of Birth:</label>{" "}
-                    <span>
-                      {user.childDob
-                        ? new Date(user.childDob).toLocaleDateString()
-                        : "N/A"}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="info-row">
-                    <label>Specialization:</label>{" "}
-                    <span>{user.specialization || "N/A"}</span>
-                  </div>
-                  <div className="info-row">
-                    <label>Date of Birth:</label>{" "}
-                    <span>
-                      {displayDob
-                        ? new Date(displayDob).toLocaleDateString()
-                        : "N/A"}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="info-col">
-              {user.role === "parent" ? (
-                <>
-                  <div className="info-row">
-                    <label>Age:</label> <span>{user.childAge || "N/A"}</span>
-                  </div>
-                  <div className="info-row">
-                    <label>Class:</label>{" "}
-                    <span>{user.childClass || "N/A"}</span>
-                  </div>
-                  <div className="info-row">
-                    <label>Total Classes:</label>{" "}
-                    <span style={{ fontWeight: "bold" }}>
-                      {user.monthlyClassesTarget || 8} Classes/Mo
-                    </span>
-                  </div>
-                  <div className="info-row">
-                    <label>Monthly Fee:</label>
-                    <span
-                      style={{
-                        color: "#16a34a",
-                        fontWeight: "bold",
-                        fontSize: "16px",
-                      }}
-                    >
+                    <label>Monthly Salary:</label>
+                    <span style={{ color: "#9333ea", fontWeight: "bold", fontSize: "16px" }}>
                       ₹{user.monthlyFee || 0}
                     </span>
                   </div>
-                </>
-              ) : user.role === "teacher" ? (
-                <div className="info-row">
-                  <label>Monthly Salary:</label>
-                  <span
-                    style={{
-                      color: "#9333ea",
-                      fontWeight: "bold",
-                      fontSize: "16px",
-                    }}
-                  >
-                    ₹{user.monthlyFee || 0}
-                  </span>
-                </div>
-              ) : (
-                <div className="info-row">
-                  <label>Role Type:</label> <span>Administrator</span>
-                </div>
-              )}
-              {user.role !== "admin" && (
-                <div className="info-row">
-                  <label>Referred By:</label>{" "}
-                  <span>{user.referredBy || "N/A"}</span>
-                </div>
-              )}
+                ) : (
+                  <div className="info-row"><label>Role Type:</label> <span>Administrator</span></div>
+                )}
+                {user.role !== "admin" && (
+                  <div className="info-row"><label>Referred By:</label> <span>{user.referredBy || "N/A"}</span></div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ── FEE HISTORY TAB ── */}
+        {activeSection === "fees" && feeHistory && feeStats && (
+          <div className="detail-card full-width-card" style={{ borderLeft: "4px solid #10b981" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+              <h3 style={{ margin: 0 }}>Fee Payment History</h3>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <div style={{ textAlign: "center", background: "#dcfce7", padding: "6px 16px", borderRadius: "8px", minWidth: "80px" }}>
+                  <div style={{ fontSize: "0.68rem", color: "#166534", fontWeight: "700", letterSpacing: "0.04em" }}>TOTAL PAID</div>
+                  <div style={{ fontSize: "1.05rem", fontWeight: "800", color: "#16a34a" }}>₹{feeStats.totalPaid.toLocaleString()}</div>
+                  <div style={{ fontSize: "0.7rem", color: "#166534" }}>{feeStats.paidCount} month{feeStats.paidCount !== 1 ? "s" : ""}</div>
+                </div>
+                {feeStats.passCount > 0 && (
+                  <div style={{ textAlign: "center", background: "#ede9fe", padding: "6px 16px", borderRadius: "8px", minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.68rem", color: "#5b21b6", fontWeight: "700", letterSpacing: "0.04em" }}>PASS</div>
+                    <div style={{ fontSize: "1.05rem", fontWeight: "800", color: "#7c3aed" }}>{feeStats.passCount}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#5b21b6" }}>month{feeStats.passCount !== 1 ? "s" : ""}</div>
+                  </div>
+                )}
+                {feeStats.pendingCount > 0 && (
+                  <div style={{ textAlign: "center", background: "#fef2f2", padding: "6px 16px", borderRadius: "8px", minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.68rem", color: "#991b1b", fontWeight: "700", letterSpacing: "0.04em" }}>PENDING</div>
+                    <div style={{ fontSize: "1.05rem", fontWeight: "800", color: "#dc2626" }}>{feeStats.pendingCount}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#991b1b" }}>month{feeStats.pendingCount !== 1 ? "s" : ""}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {feeHistory.length === 0 ? (
+              <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>No fee history available.</p>
+            ) : (
+              <div className="table-container" style={{ maxHeight: "360px", overflowY: "auto" }}>
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Paid On</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feeHistory.map(({ month, status, amount, paidDate, reason }) => {
+                      const label = new Date(month + "-02").toLocaleString("default", { month: "long", year: "numeric" });
+                      return (
+                        <tr key={month}>
+                          <td style={{ fontWeight: "600", color: "#334155" }}>{label}</td>
+                          <td style={{ fontWeight: "700", color: status === "Paid" ? "#16a34a" : status === "Pass" ? "#7c3aed" : "#dc2626" }}>
+                            {status === "Pass" ? "₹0 (Pass)" : `₹${(amount || 0).toLocaleString()}`}
+                          </td>
+                          <td>
+                            <div>
+                              <span style={statusBadgeStyle(status)}>{status}</span>
+                              {reason && <div style={{ fontSize: "0.72rem", color: "#7c3aed", marginTop: "3px" }}>{reason}</div>}
+                            </div>
+                          </td>
+                          <td style={{ color: "#64748b", fontSize: "0.85rem" }}>
+                            {paidDate ? new Date(paidDate).toLocaleDateString() : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -4453,17 +4530,19 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
 
   const totalEstRevenue = students.reduce((acc, s) => {
     const status = getPaymentStatus(s);
-    // Exclude students not joined or on pass from estimated revenue
-    return status !== "Not Joined" && status !== "Pass"
-      ? acc + (s.monthlyFee || 0)
-      : acc;
+    if (status === "Not Joined" || status === "Pass") return acc;
+    if (status === "Paid") {
+      const payment = (s.payments || []).find(p => p.month === selectedMonth);
+      return acc + (payment?.amount ?? s.monthlyFee ?? 0);
+    }
+    return acc + (s.monthlyFee || 0);
   }, 0);
 
-  const currentCollected = students.reduce(
-    (acc, s) =>
-      getPaymentStatus(s) === "Paid" ? acc + (s.monthlyFee || 0) : acc,
-    0,
-  );
+  const currentCollected = students.reduce((acc, s) => {
+    if (getPaymentStatus(s) !== "Paid") return acc;
+    const payment = (s.payments || []).find(p => p.month === selectedMonth);
+    return acc + (payment?.amount ?? s.monthlyFee ?? 0);
+  }, 0);
   const currentPending = totalEstRevenue - currentCollected;
   const totalOutstandingAllTime = students.reduce(
     (acc, s) => acc + calculateTotalPending(s).amount,
@@ -4936,6 +5015,8 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
                           <td style={{ fontWeight: "bold" }}>
                             {isPass ? (
                               <span style={{ color: "#7c3aed" }}>₹0 (Pass)</span>
+                            ) : isPaid ? (
+                              <>₹{(student.payments || []).find(p => p.month === selectedMonth)?.amount ?? student.monthlyFee}</>
                             ) : (
                               <>₹{student.monthlyFee}</>
                             )}
