@@ -52,6 +52,12 @@ const UserSchema = new mongoose.Schema({
     paidDate: Date
   }],
 
+  // Fee Change History — records every fee revision so pending months use the correct rate
+  feeChangeHistory: [{
+    effectiveFrom: String, // "YYYY-MM" — the month from which this fee applies
+    fee: Number
+  }],
+
   // Student Pass History (months where fee is waived)
   passes: [{
     month: String, // Format: "YYYY-MM"

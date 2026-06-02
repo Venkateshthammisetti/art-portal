@@ -136,9 +136,38 @@ app.get("/api/users", async (req, res) => {
 
 app.put("/api/users/:id", async (req, res) => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const existing = await User.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: "User not found" });
+
+    const newFee = req.body.monthlyFee !== undefined ? Number(req.body.monthlyFee) : null;
+    const feeChanged = newFee !== null && newFee !== Number(existing.monthlyFee);
+
+    if (feeChanged) {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const existingHistory = existing.feeChangeHistory || [];
+      const newEntries = [];
+
+      // Seed initial entry with old fee so months before this change keep the right rate
+      if (existingHistory.length === 0) {
+        const rawStart = existing.registeredDate || existing.joiningDate || existing.createdAt;
+        const startMonth = rawStart
+          ? (typeof rawStart === "string" ? rawStart : new Date(rawStart).toISOString()).slice(0, 7)
+          : currentMonth;
+        newEntries.push({ effectiveFrom: startMonth, fee: Number(existing.monthlyFee) || 0 });
+      }
+      newEntries.push({ effectiveFrom: currentMonth, fee: newFee });
+
+      // Strip feeChangeHistory from body to avoid conflict with $push
+      const { feeChangeHistory: _drop, ...bodyFields } = req.body;
+      const updatedUser = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: bodyFields, $push: { feeChangeHistory: { $each: newEntries } } },
+        { new: true }
+      );
+      return res.json(updatedUser);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(updatedUser);
   } catch (err) {
     res.status(500).json({ message: "Error updating user" });

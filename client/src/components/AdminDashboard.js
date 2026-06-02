@@ -53,6 +53,24 @@ const isRegisteredInOrBefore = (regDate, currentMonth) => {
   return regYM <= currentMonth;
 };
 
+// Returns the fee that was in effect for a given month, using feeChangeHistory when available.
+// Falls back to user.monthlyFee if no history exists (backwards compatible).
+const getFeeForMonth = (user, monthStr) => {
+  const history = user.feeChangeHistory || [];
+  if (history.length === 0) return Number(user.monthlyFee) || 0;
+
+  // Find the most recent history entry whose effectiveFrom <= monthStr
+  const applicable = history
+    .filter(h => h.effectiveFrom <= monthStr)
+    .sort((a, b) => (a.effectiveFrom > b.effectiveFrom ? -1 : 1));
+
+  if (applicable.length > 0) return Number(applicable[0].fee) || 0;
+
+  // Month is before all history entries — use the earliest recorded fee
+  const earliest = [...history].sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? -1 : 1));
+  return Number(earliest[0].fee) || Number(user.monthlyFee) || 0;
+};
+
 // ==========================================
 // 2. LEAF COMPONENTS (Modals & Views)
 // ==========================================
@@ -1174,7 +1192,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
       const pass = passes.find((p) => p.month === month);
       if (payment) return { month, status: "Paid", amount: payment.amount, paidDate: payment.paidDate };
       if (pass) return { month, status: "Pass", amount: 0, paidDate: null, reason: pass.reason };
-      return { month, status: "Pending", amount: user.monthlyFee, paidDate: null };
+      return { month, status: "Pending", amount: getFeeForMonth(user, month), paidDate: null };
     });
   })();
 
@@ -4520,7 +4538,7 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
 
       if (!isPaid && !isPass) {
         pendingCount++;
-        pendingAmount += Number(student.monthlyFee) || 0;
+        pendingAmount += getFeeForMonth(student, monthStr);
       }
       iterIndex++;
     }
@@ -4533,9 +4551,9 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
     if (status === "Not Joined" || status === "Pass") return acc;
     if (status === "Paid") {
       const payment = (s.payments || []).find(p => p.month === selectedMonth);
-      return acc + (payment?.amount ?? s.monthlyFee ?? 0);
+      return acc + (payment?.amount ?? getFeeForMonth(s, selectedMonth) ?? 0);
     }
-    return acc + (s.monthlyFee || 0);
+    return acc + getFeeForMonth(s, selectedMonth);
   }, 0);
 
   const currentCollected = students.reduce((acc, s) => {
