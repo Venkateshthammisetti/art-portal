@@ -807,10 +807,24 @@ const ParentDashboard = ({ user, onLogout }) => {
     if (!rawDate) return currentUserPayments;
 
     const regDate = new Date(rawDate);
-    const historyStartDate = new Date(2026, 0, 1); // January 2026
-    // Show history from Jan 2026 or registration date, whichever is later
-    const startDate = regDate > historyStartDate ? regDate : historyStartDate;
-    let iterDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    // Use UTC year/month to avoid timezone shift: e.g. "2026-06-01T00:00:00Z"
+    // reads as May 31 for USA users if local getMonth() is used instead of UTC.
+    const regYear = regDate.getUTCFullYear();
+    const regMonth = regDate.getUTCMonth(); // 0-indexed
+
+    const historyStartYear = 2026;
+    const historyStartMonth = 0; // January
+
+    let startYear, startMonth;
+    if (regYear > historyStartYear || (regYear === historyStartYear && regMonth >= historyStartMonth)) {
+      startYear = regYear;
+      startMonth = regMonth;
+    } else {
+      startYear = historyStartYear;
+      startMonth = historyStartMonth;
+    }
+
+    let iterDate = new Date(startYear, startMonth, 1);
     const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
 
     const fullHistory = [];
