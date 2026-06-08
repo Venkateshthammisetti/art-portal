@@ -59,16 +59,25 @@ const getFeeForMonth = (user, monthStr) => {
   const history = user.feeChangeHistory || [];
   if (history.length === 0) return Number(user.monthlyFee) || 0;
 
-  // Find the most recent history entry whose effectiveFrom <= monthStr
-  const applicable = history
-    .filter(h => h.effectiveFrom <= monthStr)
-    .sort((a, b) => (a.effectiveFrom > b.effectiveFrom ? -1 : 1));
+  // Walk the array once: track the best entry (greatest effectiveFrom <= monthStr).
+  // For ties on effectiveFrom, the LAST entry in the array wins (most recently saved).
+  let best = null;
+  let earliest = null;
+  for (const entry of history) {
+    // Track earliest for the fallback below
+    if (!earliest || entry.effectiveFrom < earliest.effectiveFrom) earliest = entry;
 
-  if (applicable.length > 0) return Number(applicable[0].fee) || 0;
+    if (entry.effectiveFrom <= monthStr) {
+      if (!best || entry.effectiveFrom >= best.effectiveFrom) {
+        best = entry;
+      }
+    }
+  }
 
-  // Month is before all history entries — use the earliest recorded fee
-  const earliest = [...history].sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? -1 : 1));
-  return Number(earliest[0].fee) || Number(user.monthlyFee) || 0;
+  if (best) return Number(best.fee) || 0;
+
+  // monthStr is before all history entries — use the earliest recorded fee
+  return Number(earliest?.fee) || Number(user.monthlyFee) || 0;
 };
 
 // ==========================================
@@ -2500,13 +2509,14 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
   };
   const handleEditSave = async (updatedData) => {
     try {
-      await axios.put(
+      const res = await axios.put(
         `https://art-portal-7n6r.onrender.com/api/users/${updatedData._id}`,
         updatedData,
       );
-      setUsers(users.map((u) => (u._id === updatedData._id ? updatedData : u)));
-      if (selectedUser && selectedUser._id === updatedData._id) {
-        setSelectedUser(updatedData);
+      const savedUser = res.data;
+      setUsers(users.map((u) => (u._id === savedUser._id ? savedUser : u)));
+      if (selectedUser && selectedUser._id === savedUser._id) {
+        setSelectedUser(savedUser);
       }
       setEditingUser(null);
       showToast("User details updated!", "success");
