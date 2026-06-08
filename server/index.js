@@ -254,6 +254,8 @@ app.post("/api/classes", async (req, res) => {
         .json({ message: `Class "${className}" already exists.` });
     }
     const newClass = new Class(req.body);
+    // Explicitly set classMode so strict mode doesn't silently drop it
+    if (req.body.classMode) newClass.set("classMode", req.body.classMode, { strict: false });
     await newClass.save();
     res.json(newClass);
   } catch (err) {
@@ -263,10 +265,11 @@ app.post("/api/classes", async (req, res) => {
 
 app.put("/api/classes/:id", async (req, res) => {
   try {
+    // Use $set with strict:false so classMode is saved even if schema cache is stale
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true },
+      { $set: req.body },
+      { new: true, strict: false },
     ).populate("teacher");
     res.json(updatedClass);
   } catch (err) {

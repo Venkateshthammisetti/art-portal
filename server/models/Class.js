@@ -4,6 +4,7 @@ const ClassSchema = new mongoose.Schema({
   className: { type: String, required: true },
   level: { type: String, required: true },
   subLevel: { type: String, required: true }, // Can be empty string
+  classMode: { type: String, enum: ['online', 'offline'], default: 'online' },
   
   // ✨ NEW: SLOT & LINK MANAGEMENT
   schedule: [{

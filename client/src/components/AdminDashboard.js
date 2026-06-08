@@ -99,6 +99,7 @@ const ClassModal = ({
     teacher: initialData && initialData.teacher ? initialData.teacher._id : "",
     meetingLink: initialData ? initialData.meetingLink || "" : "",
     maxCapacity: initialData ? initialData.maxCapacity : 10,
+    classMode: initialData ? (initialData.classMode || "online") : "online",
     schedule:
       initialData && initialData.schedule && initialData.schedule.length > 0
         ? initialData.schedule.map((s) => ({ day: s.day, time: s.time, link: s.link || "" }))
@@ -138,19 +139,23 @@ const ClassModal = ({
   }, [formData.className, existingClasses, initialData]);
 
   const handleScheduleChange = (index, field, value) => {
-    const newSchedule = [...formData.schedule];
-    newSchedule[index][field] = value;
-    setFormData({ ...formData, schedule: newSchedule });
-  };
-  const addScheduleSlot = () => {
-    setFormData({
-      ...formData,
-      schedule: [...formData.schedule, { day: "Monday", time: "17:00", link: "" }],
+    setFormData(prev => {
+      const newSchedule = [...prev.schedule];
+      newSchedule[index] = { ...newSchedule[index], [field]: value };
+      return { ...prev, schedule: newSchedule };
     });
   };
+  const addScheduleSlot = () => {
+    setFormData(prev => ({
+      ...prev,
+      schedule: [...prev.schedule, { day: "Monday", time: "17:00", link: "" }],
+    }));
+  };
   const removeScheduleSlot = (index) => {
-    const newSchedule = formData.schedule.filter((_, i) => i !== index);
-    setFormData({ ...formData, schedule: newSchedule });
+    setFormData(prev => ({
+      ...prev,
+      schedule: prev.schedule.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -191,7 +196,7 @@ const ClassModal = ({
                 placeholder="e.g. Oil Painting A"
                 value={formData.className}
                 onChange={(e) =>
-                  setFormData({ ...formData, className: e.target.value })
+                  setFormData(prev => ({ ...prev, className: e.target.value }))
                 }
                 className={duplicateError ? "input-error" : ""}
               />
@@ -203,7 +208,7 @@ const ClassModal = ({
                 required
                 value={formData.maxCapacity}
                 onChange={(e) =>
-                  setFormData({ ...formData, maxCapacity: e.target.value })
+                  setFormData(prev => ({ ...prev, maxCapacity: e.target.value }))
                 }
                 style={{ width: "80px" }}
               />
@@ -217,6 +222,17 @@ const ClassModal = ({
               ⛔ {duplicateError}
             </div>
           )}
+          <div className="form-group">
+            <label>Class Mode *</label>
+            <select
+              value={formData.classMode}
+              onChange={(e) => setFormData(prev => ({ ...prev, classMode: e.target.value }))}
+              style={{ fontWeight: "bold" }}
+            >
+              <option value="online">🌐 Online</option>
+              <option value="offline">🏫 Offline</option>
+            </select>
+          </div>
           <div className="form-row">
             <div className="form-group">
               <label>Level</label>
@@ -224,11 +240,7 @@ const ClassModal = ({
                 required
                 value={formData.level}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    level: e.target.value,
-                    subLevel: "",
-                  })
+                  setFormData(prev => ({ ...prev, level: e.target.value, subLevel: "" }))
                 }
               >
                 <option value="">Select Level</option>
@@ -245,7 +257,7 @@ const ClassModal = ({
                 required
                 value={formData.subLevel}
                 onChange={(e) =>
-                  setFormData({ ...formData, subLevel: e.target.value })
+                  setFormData(prev => ({ ...prev, subLevel: e.target.value }))
                 }
                 disabled={!formData.level}
               >
@@ -268,9 +280,16 @@ const ClassModal = ({
               border: "1px solid #e2e8f0",
             }}
           >
-            <label style={{ color: "#334155", fontWeight: "600" }}>
-              Class Schedule
-            </label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label style={{ color: "#334155", fontWeight: "600" }}>
+                Class Schedule
+              </label>
+              {formData.classMode === "offline" && (
+                <span style={{ fontSize: "0.75rem", color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "8px", fontWeight: "600" }}>
+                  🏫 Offline — no meeting links
+                </span>
+              )}
+            </div>
             {formData.schedule.map((slot, index) => (
               <div
                 key={index}
@@ -328,15 +347,17 @@ const ClassModal = ({
                     ✕
                   </button>
                 </div>
-                <input
-                  type="url"
-                  placeholder={`Meeting link for ${slot.day || "this slot"} (optional)`}
-                  value={slot.link || ""}
-                  onChange={(e) =>
-                    handleScheduleChange(index, "link", e.target.value)
-                  }
-                  style={{ fontSize: "0.85rem", color: "#334155" }}
-                />
+                {formData.classMode !== "offline" && (
+                  <input
+                    type="url"
+                    placeholder={`Meeting link for ${slot.day || "this slot"} (optional)`}
+                    value={slot.link || ""}
+                    onChange={(e) =>
+                      handleScheduleChange(index, "link", e.target.value)
+                    }
+                    style={{ fontSize: "0.85rem", color: "#334155" }}
+                  />
+                )}
               </div>
             ))}
             <button
@@ -361,7 +382,7 @@ const ClassModal = ({
               required
               value={formData.teacher}
               onChange={(e) =>
-                setFormData({ ...formData, teacher: e.target.value })
+                setFormData(prev => ({ ...prev, teacher: e.target.value }))
               }
             >
               <option value="">Select Teacher</option>
@@ -672,6 +693,9 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                   • {cls.subLevel}
                 </span>
               )}
+              <span className={`mode-badge ${cls.classMode || "online"}`} style={{ fontSize: "0.85rem" }}>
+                {cls.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+              </span>
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
@@ -809,6 +833,14 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
 
           <div className="detail-card">
             <h3>Class Info</h3>
+            <div className="info-row">
+              <label>Mode:</label>
+              <span>
+                <span className={`mode-badge ${cls.classMode || "online"}`}>
+                  {cls.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                </span>
+              </span>
+            </div>
             <div className="info-row">
               <label>Teacher:</label>{" "}
               <span>
@@ -2073,7 +2105,7 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
         </div>
         <div
           className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("users", { roleFilter: "parent" })}
+          onClick={() => onNavigate("users", { roleFilter: "parent", modeFilter: "online" })}
           title="View online students"
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
@@ -2100,7 +2132,7 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
         </div>
         <div
           className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("users", { roleFilter: "parent" })}
+          onClick={() => onNavigate("users", { roleFilter: "parent", modeFilter: "offline" })}
           title="View offline students"
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
@@ -2508,10 +2540,11 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
 };
 
 // --- TAB 2: USER MANAGEMENT ---
-const UserManagementTab = ({ initialRoleFilter = "all" }) => {
+const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all" }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
+  const [modeFilter, setModeFilter] = useState(initialModeFilter);
   const [sortOrder, setSortOrder] = useState("newest");
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
@@ -2611,9 +2644,15 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
 
   const filteredUsers = users.filter((user) => {
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const userMode = user.classMode || "online";
+    const matchesMode =
+      modeFilter === "all" ||
+      user.role !== "parent" ||
+      userMode === modeFilter;
     const searchLower = searchTerm.toLowerCase();
     return (
       matchesRole &&
+      matchesMode &&
       ((user.username && user.username.toLowerCase().includes(searchLower)) ||
         (user.fullName && user.fullName.toLowerCase().includes(searchLower)) ||
         (user.email && user.email.toLowerCase().includes(searchLower)) ||
@@ -2682,6 +2721,17 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
                   <option value="parent">Students</option>
                   <option value="teacher">Teachers</option>
                   <option value="admin">Admins</option>
+                </select>
+              </div>
+              <div className="filter-dropdown">
+                <label>Mode:</label>
+                <select
+                  value={modeFilter}
+                  onChange={(e) => setModeFilter(e.target.value)}
+                >
+                  <option value="all">All Modes</option>
+                  <option value="online">🌐 Online</option>
+                  <option value="offline">🏫 Offline</option>
                 </select>
               </div>
               <div className="filter-dropdown">
@@ -3783,6 +3833,7 @@ const ClassManagementTab = () => {
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
+  const [classModeFilter, setClassModeFilter] = useState("all");
 
   useEffect(() => {
     fetchData();
@@ -3853,7 +3904,9 @@ const ClassManagementTab = () => {
         (s.childName && s.childName.toLowerCase().includes(term)) ||
         (s.fullName && s.fullName.toLowerCase().includes(term)),
     );
-    return matchesBasic || matchesTeacher || matchesStudent;
+    const matchesMode =
+      classModeFilter === "all" || (cls.classMode || "online") === classModeFilter;
+    return (matchesBasic || matchesTeacher || matchesStudent) && matchesMode;
   });
 
   const sortedClasses = [...filteredClasses].sort((a, b) => {
@@ -3915,6 +3968,17 @@ const ClassManagementTab = () => {
             </div>
             <div className="filter-actions">
               <div className="filter-dropdown">
+                <label>Mode:</label>
+                <select
+                  value={classModeFilter}
+                  onChange={(e) => setClassModeFilter(e.target.value)}
+                >
+                  <option value="all">All Modes</option>
+                  <option value="online">🌐 Online</option>
+                  <option value="offline">🏫 Offline</option>
+                </select>
+              </div>
+              <div className="filter-dropdown">
                 <label>Sort By:</label>
                 <select
                   value={sortOrder}
@@ -3948,6 +4012,7 @@ const ClassManagementTab = () => {
               <thead>
                 <tr>
                   <th>Class Name</th>
+                  <th>Mode</th>
                   <th>Level / Sub-Level</th>
                   <th>Teacher</th>
                   <th>Students</th>
@@ -3977,6 +4042,11 @@ const ClassManagementTab = () => {
                     >
                       <td style={{ fontWeight: "600", color: "#0284c7" }}>
                         {cls.className}
+                      </td>
+                      <td>
+                        <span className={`mode-badge ${cls.classMode || "online"}`}>
+                          {cls.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                        </span>
                       </td>
                       <td>
                         <span className="level-badge">{cls.level}</span>
@@ -5845,6 +5915,7 @@ const AdminDashboard = ({ onLogout }) => {
   );
   const [feeInitialFilter, setFeeInitialFilter] = useState("all");
   const [userInitialRoleFilter, setUserInitialRoleFilter] = useState("all");
+  const [userInitialModeFilter, setUserInitialModeFilter] = useState("all");
 
   // ICONS
   const IconHome = () => (
@@ -5995,6 +6066,8 @@ const AdminDashboard = ({ onLogout }) => {
     else setFeeInitialFilter("all");
     if (params.roleFilter) setUserInitialRoleFilter(params.roleFilter);
     else setUserInitialRoleFilter("all");
+    if (params.modeFilter) setUserInitialModeFilter(params.modeFilter);
+    else setUserInitialModeFilter("all");
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -6113,7 +6186,7 @@ const AdminDashboard = ({ onLogout }) => {
 
         <div className="content-scrollable">
           {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onNavigate={handleNavigate} />}
-          {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} />}
+          {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} />}
           {activeTab === "classes" && <ClassManagementTab />}
           {activeTab === "add-user" && <AddUserTab />}
           {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
