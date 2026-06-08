@@ -1072,6 +1072,18 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                     style={{ border: "1px solid #ea580c" }}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Class Mode</label>
+                  <select
+                    name="classMode"
+                    value={formData.classMode || "online"}
+                    onChange={handleChange}
+                    style={{ fontWeight: "bold" }}
+                  >
+                    <option value="online">🌐 Online</option>
+                    <option value="offline">🏫 Offline</option>
+                  </select>
+                </div>
               </div>
             ) : user.role === "teacher" ? (
               <div className="edit-form-grid">
@@ -1430,6 +1442,16 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
               <div className="info-row"><label>Location:</label> <span>{user.location || "N/A"}</span></div>
               <div className="info-row"><label>City:</label> <span>{user.city || "N/A"}</span></div>
               <div className="info-row"><label>Zoom ID:</label> <span>{user.zoomId || "N/A"}</span></div>
+              {user.role === "parent" && (
+                <div className="info-row">
+                  <label>Class Mode:</label>
+                  <span>
+                    <span className={`mode-badge ${user.classMode || "online"}`}>
+                      {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2049,6 +2071,60 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
           </div>
           <div className="stat-card-nav-hint" style={{ color: "#ea580c" }}>View Pending →</div>
         </div>
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("users", { roleFilter: "parent" })}
+          title="View online students"
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
+            <div
+              style={{
+                width: "40px", height: "40px", borderRadius: "10px",
+                background: "#ecfdf5", color: "#059669",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
+              }}
+            >
+              🌐
+            </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#059669", background: "#d1fae5", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
+              Online
+            </span>
+          </div>
+          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}>
+            {(stats.students || 0) - (stats.offlineStudents || 0)}
+          </div>
+          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}>
+            Online Students
+          </div>
+          <div className="stat-card-nav-hint" style={{ color: "#059669" }}>View Students →</div>
+        </div>
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("users", { roleFilter: "parent" })}
+          title="View offline students"
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
+            <div
+              style={{
+                width: "40px", height: "40px", borderRadius: "10px",
+                background: "#fef3c7", color: "#d97706",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
+              }}
+            >
+              🏫
+            </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
+              Offline
+            </span>
+          </div>
+          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}>
+            {stats.offlineStudents ?? 0}
+          </div>
+          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}>
+            Offline Students
+          </div>
+          <div className="stat-card-nav-hint" style={{ color: "#d97706" }}>View Students →</div>
+        </div>
       </div>
 
       <div
@@ -2449,6 +2525,7 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
       : {
           name: true,
           role: true,
+          mode: true,
           fee: true,
           joiningDate: true,
           status: true,
@@ -2658,6 +2735,14 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
                     <label>
                       <input
                         type="checkbox"
+                        checked={visibleColumns.mode}
+                        onChange={() => toggleColumn("mode")}
+                      />{" "}
+                      Mode
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
                         checked={visibleColumns.fee}
                         onChange={() => toggleColumn("fee")}
                       />{" "}
@@ -2698,6 +2783,7 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
                 <tr>
                   {visibleColumns.name && <th>Name / ID</th>}
                   {visibleColumns.role && <th>Role</th>}
+                  {visibleColumns.mode && <th>Mode</th>}
                   {visibleColumns.fee && <th>Fee / Salary</th>}
                   {visibleColumns.joiningDate && <th>Joining Date</th>}
                   {visibleColumns.status && <th>Status</th>}
@@ -2728,6 +2814,17 @@ const UserManagementTab = ({ initialRoleFilter = "all" }) => {
                         <span className={`role-badge ${user.role}`}>
                           {user.role}
                         </span>
+                      </td>
+                    )}
+                    {visibleColumns.mode && (
+                      <td>
+                        {user.role === "parent" ? (
+                          <span className={`mode-badge ${user.classMode || "online"}`}>
+                            {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                          </span>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
+                        )}
                       </td>
                     )}
                     {visibleColumns.fee && (
@@ -2889,6 +2986,7 @@ const AddUserTab = () => {
     registeredDate: new Date().toISOString().split("T")[0],
     dob: "",
     monthlyClassesTarget: 8,
+    classMode: "online",
   });
 
   const [showSibling, setShowSibling] = useState(false);
@@ -3045,6 +3143,7 @@ const AddUserTab = () => {
         monthlyFee: "",
         zoomId: "",
         monthlyClassesTarget: 8,
+        classMode: "online",
       });
       setShowSibling(false);
     } catch (err) {
@@ -3234,6 +3333,19 @@ const AddUserTab = () => {
                   onChange={handleChange}
                 />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label>Class Mode *</label>
+              <select
+                name="classMode"
+                value={formData.classMode}
+                onChange={handleChange}
+                style={{ fontWeight: "bold" }}
+              >
+                <option value="online">🌐 Online</option>
+                <option value="offline">🏫 Offline</option>
+              </select>
             </div>
 
             <div className="form-group">

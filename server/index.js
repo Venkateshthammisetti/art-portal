@@ -201,6 +201,8 @@ app.get("/api/dashboard/stats", async (req, res) => {
   try {
     const totalStudents = await User.countDocuments({ role: "parent" });
     const totalTeachers = await User.countDocuments({ role: "teacher" });
+    const offlineStudents = await User.countDocuments({ role: "parent", classMode: "offline" });
+    const onlineStudents = totalStudents - offlineStudents;
     const revenueResult = await User.aggregate([
       { $match: { role: "parent" } },
       { $group: { _id: null, totalRevenue: { $sum: "$monthlyFee" } } },
@@ -208,6 +210,8 @@ app.get("/api/dashboard/stats", async (req, res) => {
     res.json({
       students: totalStudents,
       teachers: totalTeachers,
+      onlineStudents,
+      offlineStudents,
       revenue: revenueResult[0]?.totalRevenue || 0,
     });
   } catch (err) {

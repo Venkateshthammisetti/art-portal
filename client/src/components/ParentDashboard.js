@@ -1455,6 +1455,14 @@ const ParentDashboard = ({ user, onLogout }) => {
                     )}
                   </span>
                 </div>
+                <div className="detail-row">
+                  <span className="lbl">Class Mode:</span>
+                  <span className="val">
+                    <span className={`mode-badge ${studentProfile?.classMode || "online"}`}>
+                      {studentProfile?.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                    </span>
+                  </span>
+                </div>
               </div>
             </div>
           )}

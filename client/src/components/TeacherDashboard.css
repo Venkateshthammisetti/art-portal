@@ -1549,6 +1549,9 @@
 .std-table td { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; color: var(--text-main); font-size: 0.9rem; }
 .std-name-cell { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .class-badge { background: #eff6ff; color: var(--primary); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+.mode-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.mode-badge.online { background: #dcfce7; color: #16a34a; }
+.mode-badge.offline { background: #fef3c7; color: #d97706; }
 .analytics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
 .chart-card { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 25px; box-shadow: var(--shadow); }
 .chart-card h4 { margin: 0 0 20px 0; color: var(--text-main); font-size: 1.1rem; }
