@@ -145,23 +145,26 @@ app.put("/api/users/:id", async (req, res) => {
     if (feeChanged) {
       const currentMonth = new Date().toISOString().slice(0, 7);
       const existingHistory = existing.feeChangeHistory || [];
-      const newEntries = [];
 
-      // Seed initial entry with old fee so months before this change keep the right rate
+      // Remove any existing entry for currentMonth to avoid duplicates, then rebuild
+      let updatedHistory = existingHistory.filter(h => h.effectiveFrom !== currentMonth);
+
       if (existingHistory.length === 0) {
         const rawStart = existing.registeredDate || existing.joiningDate || existing.createdAt;
         const startMonth = rawStart
           ? (typeof rawStart === "string" ? rawStart : new Date(rawStart).toISOString()).slice(0, 7)
           : currentMonth;
-        newEntries.push({ effectiveFrom: startMonth, fee: Number(existing.monthlyFee) || 0 });
+        // Only seed the old-fee entry if startMonth differs from currentMonth
+        if (startMonth !== currentMonth) {
+          updatedHistory.push({ effectiveFrom: startMonth, fee: Number(existing.monthlyFee) || 0 });
+        }
       }
-      newEntries.push({ effectiveFrom: currentMonth, fee: newFee });
+      updatedHistory.push({ effectiveFrom: currentMonth, fee: newFee });
 
-      // Strip feeChangeHistory from body to avoid conflict with $push
       const { feeChangeHistory: _drop, ...bodyFields } = req.body;
       const updatedUser = await User.findByIdAndUpdate(
         req.params.id,
-        { $set: bodyFields, $push: { feeChangeHistory: { $each: newEntries } } },
+        { $set: { ...bodyFields, feeChangeHistory: updatedHistory } },
         { new: true }
       );
       return res.json(updatedUser);
