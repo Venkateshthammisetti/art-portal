@@ -1357,6 +1357,22 @@ body {
   color: #d97706;
 }
 
+.mode-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+.mode-badge.online {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.mode-badge.offline {
+  background: #fef3c7;
+  color: #d97706;
+}
+
 .action-cell {
   white-space: nowrap;
 }

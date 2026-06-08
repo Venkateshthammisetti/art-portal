@@ -152,6 +152,9 @@ body.dark .logout-btn { background: #450a0a; border-color: #7f1d1d; color: #fca5
 .detail-row .lbl, .nc-label { color: var(--p-muted); }
 .detail-row .val, .nc-val { font-weight: 600; color: var(--p-text); }
 .detail-row .val.tag { background: #f3e8ff; color: #7e22ce; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+.mode-badge { padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.mode-badge.online { background: #dcfce7; color: #16a34a; }
+.mode-badge.offline { background: #fef3c7; color: #d97706; }
 .highlight { color: var(--p-primary); }
 .join-btn { display: block; width: 100%; text-align: center; padding: 10px; background: var(--p-primary); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: auto; }
 .join-btn.disabled { background: #cbd5e1; cursor: not-allowed; }

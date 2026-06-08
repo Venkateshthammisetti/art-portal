@@ -870,6 +870,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     id: true,
     className: true,
     gender: true,
+    mode: true,
     phone: true,
   });
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
@@ -1865,6 +1866,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           />{" "}
                           Gender
                         </label>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={visibleColumns.mode}
+                            onChange={() =>
+                              setVisibleColumns({
+                                ...visibleColumns,
+                                mode: !visibleColumns.mode,
+                              })
+                            }
+                          />{" "}
+                          Mode
+                        </label>
                         {/* <label>
                           <input
                             type="checkbox"
@@ -1916,6 +1930,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         {visibleColumns.gender && (
                           <th onClick={() => handleSort("gender")}>Gender</th>
                         )}
+                        {visibleColumns.mode && <th>Mode</th>}
                         {/* {visibleColumns.phone && <th>Phone</th>} */}
                       </tr>
                     </thead>
@@ -1939,6 +1954,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                             </td>
                           )}
                           {visibleColumns.gender && <td>{s.gender}</td>}
+                          {visibleColumns.mode && (
+                            <td>
+                              <span className={`mode-badge ${s.classMode || "online"}`}>
+                                {s.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                              </span>
+                            </td>
+                          )}
                           {/* {visibleColumns.phone && <td>+91 98765 43210</td>} */}
                         </tr>
                       ))}
