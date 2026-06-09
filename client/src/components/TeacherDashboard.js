@@ -1715,6 +1715,32 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     <div className="stat-label">My Classes</div>
                   </div>
                 </div>
+                <div
+                  className="stat-card"
+                  onClick={() => setActiveTab("students")}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="icon-circle" style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>🌐</div>
+                  <div>
+                    <div className="stat-value">
+                      {myStudents.filter((s) => (s.classMode || "online") === "online").length}
+                    </div>
+                    <div className="stat-label">Online Students</div>
+                  </div>
+                </div>
+                <div
+                  className="stat-card"
+                  onClick={() => setActiveTab("students")}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="icon-circle" style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>🏫</div>
+                  <div>
+                    <div className="stat-value">
+                      {myStudents.filter((s) => s.classMode === "offline").length}
+                    </div>
+                    <div className="stat-label">Offline Students</div>
+                  </div>
+                </div>
               </div>
               <h3 className="section-title">Today's Agenda</h3>
               {getTodayClasses().length === 0 ? (
