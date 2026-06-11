@@ -2935,7 +2935,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
 };
 
 // --- TAB 3: ADD USER ---
-const AddUserTab = () => {
+const AddUserTab = ({ onRefresh }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -3078,6 +3078,8 @@ const AddUserTab = () => {
       } else {
         setMsg("✅ User Registered Successfully!");
       }
+
+      if (onRefresh) onRefresh();
 
       setFormData({
         username: "",
@@ -6205,7 +6207,7 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onNavigate={handleNavigate} />}
           {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} />}
           {activeTab === "classes" && <ClassManagementTab />}
-          {activeTab === "add-user" && <AddUserTab />}
+          {activeTab === "add-user" && <AddUserTab onRefresh={() => { fetchStats(); fetchOverviewData(); }} />}
           {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
           {activeTab === "online-fees" && <FeeTrackerTab initialFilter="all" onlineOnly={true} />}
           {activeTab === "offline-fees" && <FeeTrackerTab initialFilter="all" offlineOnly={true} />}
