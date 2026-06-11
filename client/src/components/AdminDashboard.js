@@ -1724,6 +1724,18 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
   ).length;
   const pendingCount = students.length - paidCount;
 
+  const actualRevenue = students.reduce((acc, s) => {
+    const payment = (s.payments || []).find(
+      (p) => p.month === currentMonth && p.status === "Paid",
+    );
+    return acc + (payment ? payment.amount || s.monthlyFee || 0 : 0);
+  }, 0);
+  const pendingAmount = students.reduce((acc, s) => {
+    const hasPaid = (s.payments || []).some((p) => p.month === currentMonth && p.status === "Paid");
+    const hasPass = (s.passes || []).some((p) => p.month === currentMonth);
+    return acc + (!hasPaid && !hasPass ? s.monthlyFee || 0 : 0);
+  }, 0);
+
   const levelCounts = {};
   classes.forEach((cls) => {
     const lvl = cls.level || "Unknown";
@@ -1934,52 +1946,51 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
           className="overview-stat-card stat-card-clickable"
           onClick={() => onNavigate("users", { roleFilter: "parent" })}
           title="View all students"
+          style={{ cursor: "pointer" }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "15px",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
             <div
               style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "#eff6ff",
-                color: "#2563eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.2rem",
+                width: "40px", height: "40px", borderRadius: "10px",
+                background: "#eff6ff", color: "#2563eb",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
               }}
             >
               🎓
             </div>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: "600",
-                color: "#16a34a",
-                background: "#dcfce7",
-                padding: "2px 8px",
-                borderRadius: "10px",
-                height: "fit-content",
-              }}
-            >
+            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#16a34a", background: "#dcfce7", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
               + Active
             </span>
           </div>
-          <div
-            style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}
-          >
+          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
             {stats.students}
           </div>
-          <div
-            style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}
-          >
+          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
             Total Students
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <div
+              className="stat-mini-tile"
+              onClick={(e) => { e.stopPropagation(); onNavigate("users", { roleFilter: "parent", modeFilter: "online" }); }}
+              style={{ flex: 1, background: "#ecfdf5", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
+              title="View online students"
+            >
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#059669", fontWeight: "700", marginBottom: "2px" }}>🌐 Online</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.2rem", fontWeight: "800", color: "#065f46" }}>
+                {(stats.students || 0) - (stats.offlineStudents || 0)}
+              </div>
+            </div>
+            <div
+              className="stat-mini-tile"
+              onClick={(e) => { e.stopPropagation(); onNavigate("users", { roleFilter: "parent", modeFilter: "offline" }); }}
+              style={{ flex: 1, background: "#fef3c7", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
+              title="View offline students"
+            >
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: "700", marginBottom: "2px" }}>🏫 Offline</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.2rem", fontWeight: "800", color: "#92400e" }}>
+                {stats.offlineStudents ?? 0}
+              </div>
+            </div>
           </div>
           <div className="stat-card-nav-hint">View Students →</div>
         </div>
@@ -2027,135 +2038,53 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
           className="overview-stat-card stat-card-clickable"
           onClick={() => onNavigate("fees")}
           title="View fee tracker"
+          style={{ cursor: "pointer" }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "15px",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
             <div
               style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "#f5f3ff",
-                color: "#7c3aed",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.2rem",
+                width: "40px", height: "40px", borderRadius: "10px",
+                background: "#f5f3ff", color: "#7c3aed",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
               }}
             >
               💰
             </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#7c3aed", background: "#ede9fe", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
+              This Month
+            </span>
           </div>
-          <div
-            style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}
-          >
+          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
             ₹{(stats.revenue || 0).toLocaleString()}
           </div>
-          <div
-            style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}
-          >
+          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
             Monthly Revenue (Est.)
           </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <div
+              className="stat-mini-tile"
+              onClick={(e) => { e.stopPropagation(); onNavigate("fees"); }}
+              style={{ flex: 1, background: "#dcfce7", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
+              title="View actual collected"
+            >
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#166534", fontWeight: "700", marginBottom: "2px" }}>✅ Actual</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#15803d" }}>
+                ₹{actualRevenue.toLocaleString()}
+              </div>
+            </div>
+            <div
+              className="stat-mini-tile"
+              onClick={(e) => { e.stopPropagation(); onNavigate("fees", { filter: "Pending" }); }}
+              style={{ flex: 1, background: "#fef2f2", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
+              title="View pending payments"
+            >
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#991b1b", fontWeight: "700", marginBottom: "2px" }}>⚠️ Pending</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#dc2626" }}>
+                ₹{pendingAmount.toLocaleString()}
+              </div>
+            </div>
+          </div>
           <div className="stat-card-nav-hint">View Fee Tracker →</div>
-        </div>
-        <div
-          className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("fees", { filter: "Pending" })}
-          title="View pending payments"
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "15px",
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "#fff7ed",
-                color: "#ea580c",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.2rem",
-              }}
-            >
-              ⚠️
-            </div>
-          </div>
-          <div
-            style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}
-          >
-            {pendingCount}
-          </div>
-          <div
-            style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}
-          >
-            Pending Payments
-          </div>
-          <div className="stat-card-nav-hint" style={{ color: "#ea580c" }}>View Pending →</div>
-        </div>
-        <div
-          className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("users", { roleFilter: "parent", modeFilter: "online" })}
-          title="View online students"
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
-            <div
-              style={{
-                width: "40px", height: "40px", borderRadius: "10px",
-                background: "#ecfdf5", color: "#059669",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
-              }}
-            >
-              🌐
-            </div>
-            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#059669", background: "#d1fae5", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
-              Online
-            </span>
-          </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}>
-            {(stats.students || 0) - (stats.offlineStudents || 0)}
-          </div>
-          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}>
-            Online Students
-          </div>
-          <div className="stat-card-nav-hint" style={{ color: "#059669" }}>View Students →</div>
-        </div>
-        <div
-          className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("users", { roleFilter: "parent", modeFilter: "offline" })}
-          title="View offline students"
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
-            <div
-              style={{
-                width: "40px", height: "40px", borderRadius: "10px",
-                background: "#fef3c7", color: "#d97706",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
-              }}
-            >
-              🏫
-            </div>
-            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
-              Offline
-            </span>
-          </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}>
-            {stats.offlineStudents ?? 0}
-          </div>
-          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}>
-            Offline Students
-          </div>
-          <div className="stat-card-nav-hint" style={{ color: "#d97706" }}>View Students →</div>
         </div>
       </div>
 
@@ -4532,8 +4461,13 @@ const SlotManagementTab = () => {
   );
 };
 
-const FeeTrackerTab = ({ initialFilter = "all" }) => {
-  const [students, setStudents] = useState([]);
+const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly = false }) => {
+  const [allStudents, setAllStudents] = useState([]);
+  const students = offlineOnly
+    ? allStudents.filter((s) => s.classMode === "offline")
+    : onlineOnly
+      ? allStudents.filter((s) => (s.classMode || "online") !== "offline")
+      : allStudents;
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
@@ -4559,7 +4493,7 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
       const res = await axios.get(
         "https://art-portal-7n6r.onrender.com/api/users",
       );
-      setStudents(res.data.filter((u) => u.role === "parent"));
+      setAllStudents(res.data.filter((u) => u.role === "parent"));
     } catch (err) {
       console.error(err);
     } finally {
@@ -4583,7 +4517,7 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
     if (currentStatus === "Not Joined") return; // 🔒 Prevent action if not joined
 
     const newStatus = currentStatus === "Paid" ? "Pending" : "Paid";
-    const updatedStudents = students.map((s) => {
+    const updatedStudents = allStudents.map((s) => {
       if (s._id === studentId) {
         let newPayments = [...(s.payments || [])];
         if (newStatus === "Paid") {
@@ -4599,7 +4533,7 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
       }
       return s;
     });
-    setStudents(updatedStudents);
+    setAllStudents(updatedStudents);
     try {
       await axios.post("https://art-portal-7n6r.onrender.com/api/fees/update", {
         userId: studentId,
@@ -4624,7 +4558,7 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
         reason: passReason,
         markedBy: "admin",
       });
-      setStudents((prev) =>
+      setAllStudents((prev) =>
         prev.map((s) =>
           s._id === passModal.student._id
             ? { ...s, passes: res.data.passes, payments: res.data.payments }
@@ -4646,7 +4580,7 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
         userId: studentId,
         month: selectedMonth,
       });
-      setStudents((prev) =>
+      setAllStudents((prev) =>
         prev.map((s) =>
           s._id === studentId ? { ...s, passes: res.data.passes } : s,
         ),
@@ -4870,6 +4804,33 @@ const FeeTrackerTab = ({ initialFilter = "all" }) => {
 
   return (
     <>
+      {(offlineOnly || onlineOnly) && (
+        <div style={{
+          background: offlineOnly
+            ? "linear-gradient(135deg, #d97706 0%, #b45309 100%)"
+            : "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+          borderRadius: "12px",
+          padding: "16px 24px",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "20px",
+          boxShadow: offlineOnly
+            ? "0 4px 12px rgba(217, 119, 6, 0.3)"
+            : "0 4px 12px rgba(2, 132, 199, 0.3)",
+        }}>
+          <span style={{ fontSize: "1.5rem" }}>{offlineOnly ? "🏫" : "🌐"}</span>
+          <div>
+            <div style={{ fontWeight: "700", fontSize: "1rem" }}>
+              {offlineOnly ? "Offline Fee Tracker" : "Online Fee Tracker"}
+            </div>
+            <div style={{ fontSize: "0.85rem", opacity: 0.9 }}>
+              Showing only {offlineOnly ? "offline" : "online"} students · {students.length} student{students.length !== 1 ? "s" : ""}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="table-wrapper">
         <div
           className="filter-bar fee-filter-bar"
@@ -5905,6 +5866,7 @@ const GalleryRepositoryTab = () => {
 // ==========================================
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [feeMenuOpen, setFeeMenuOpen] = useState(false);
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
   const [overviewUsers, setOverviewUsers] = useState([]);
   const [overviewClasses, setOverviewClasses] = useState([]);
@@ -6026,6 +5988,19 @@ const AdminDashboard = ({ onLogout }) => {
       <polyline points="21 15 16 10 5 21"></polyline>
     </svg>
   );
+  const IconOfflineFee = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+    </svg>
+  );
 
   const fetchStats = () => {
     axios
@@ -6057,6 +6032,7 @@ const AdminDashboard = ({ onLogout }) => {
   const handleNavClick = (tab) => {
     setFeeInitialFilter("all");
     setUserInitialRoleFilter("all");
+    if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -6099,11 +6075,48 @@ const AdminDashboard = ({ onLogout }) => {
             <IconClasses /> <span>Class Management</span>
           </button>
           <button
-            className={activeTab === "fees" ? "active" : ""}
-            onClick={() => handleNavClick("fees")}
+            className={(activeTab === "fees" || activeTab === "offline-fees" || activeTab === "online-fees") ? "active" : ""}
+            onClick={() => {
+              if (activeTab !== "fees" && activeTab !== "offline-fees" && activeTab !== "online-fees") {
+                handleNavClick("fees");
+              } else {
+                setFeeMenuOpen((o) => !o);
+              }
+            }}
+            style={{ justifyContent: "space-between" }}
           >
-            <IconFee /> <span>Fee Tracker</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <IconFee /> <span>Fee Tracker</span>
+            </span>
+            <span style={{
+              fontSize: "0.7rem",
+              transition: "transform 0.2s",
+              transform: feeMenuOpen ? "rotate(180deg)" : "rotate(0deg)",
+              opacity: 0.7,
+            }}>▼</span>
           </button>
+          {feeMenuOpen && (
+            <div className="sidebar-sub-nav">
+              <button
+                className={activeTab === "fees" ? "active" : ""}
+                onClick={() => handleNavClick("fees")}
+              >
+                <IconFee /> <span>All Students</span>
+              </button>
+              <button
+                className={activeTab === "online-fees" ? "active" : ""}
+                onClick={() => handleNavClick("online-fees")}
+              >
+                <IconFee /> <span>Online Students</span>
+              </button>
+              <button
+                className={activeTab === "offline-fees" ? "active" : ""}
+                onClick={() => handleNavClick("offline-fees")}
+              >
+                <IconOfflineFee /> <span>Offline Students</span>
+              </button>
+            </div>
+          )}
           <button
             className={activeTab === "add-user" ? "active" : ""}
             onClick={() => handleNavClick("add-user")}
@@ -6140,11 +6153,15 @@ const AdminDashboard = ({ onLogout }) => {
                     ? "Class Management"
                     : activeTab === "fees"
                       ? "Fee Tracker"
-                      : activeTab === "slots"
-                        ? "Slot Manager"
-                        : activeTab === "gallery"
-                          ? "Art Gallery"
-                          : "Register User"}
+                      : activeTab === "offline-fees"
+                        ? "Offline Fee Tracker"
+                        : activeTab === "online-fees"
+                          ? "Online Fee Tracker"
+                          : activeTab === "slots"
+                          ? "Slot Manager"
+                          : activeTab === "gallery"
+                            ? "Art Gallery"
+                            : "Register User"}
             </h2>
             <p>Welcome back, Admin</p>
           </div>
@@ -6190,6 +6207,8 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "classes" && <ClassManagementTab />}
           {activeTab === "add-user" && <AddUserTab />}
           {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
+          {activeTab === "online-fees" && <FeeTrackerTab initialFilter="all" onlineOnly={true} />}
+          {activeTab === "offline-fees" && <FeeTrackerTab initialFilter="all" offlineOnly={true} />}
           {activeTab === "slots" && <SlotManagementTab />}
           {/* ✨ ADDED GALLERY TAB */}
           {activeTab === "gallery" && <GalleryRepositoryTab />}
