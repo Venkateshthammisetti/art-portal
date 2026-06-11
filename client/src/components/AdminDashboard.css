@@ -694,6 +694,30 @@ body {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
+/* Sub-nav (e.g. Fee Tracker children) */
+.sidebar-sub-nav {
+  margin-left: 16px;
+  margin-bottom: 4px;
+  border-left: 2px solid #334155;
+  padding-left: 8px;
+}
+
+.sidebar-sub-nav button {
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  margin-bottom: 2px;
+}
+
+.sidebar-sub-nav button.active {
+  background: #d97706;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+}
+
+.sidebar-sub-nav button:hover {
+  background-color: #1e293b;
+  color: #ffffff;
+}
+
 .sidebar-footer {
   margin-top: auto;
   font-size: 0.8rem;
@@ -858,46 +882,69 @@ body {
     padding: 12px 12px 80px 12px;
   }
 
-  /* 4 tiles in a single row on mobile */
+  /* 2-column grid: students + teachers on top, revenue full-width below */
   .overview-stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     margin-bottom: 15px;
   }
 
+  /* Revenue card (3rd child) spans full width */
+  .overview-stats-grid .overview-stat-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
   .overview-stat-card {
-    padding: 10px 8px;
-    border-radius: 10px;
+    padding: 14px 12px;
+    border-radius: 12px;
   }
 
   .overview-stat-card > div:first-child {
-    margin-bottom: 6px !important;
+    margin-bottom: 8px !important;
   }
 
   /* Icon box: smaller on mobile */
   .overview-stat-card > div:first-child > div:first-child {
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 0.9rem !important;
-    border-radius: 6px !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1rem !important;
+    border-radius: 8px !important;
   }
 
-  /* Hide the +Active badge on mobile to save space */
+  /* Hide the +Active / This Month badge on mobile */
   .overview-stat-card > div:first-child > span {
     display: none;
   }
 
   /* Big number */
   .overview-stat-card > div:nth-child(2) {
-    font-size: 1.1rem !important;
+    font-size: 1.4rem !important;
     font-weight: 800 !important;
+    line-height: 1 !important;
   }
 
   /* Label text */
   .overview-stat-card > div:nth-child(3) {
-    font-size: 0.6rem !important;
+    font-size: 0.7rem !important;
     line-height: 1.2;
     color: #64748b;
+    margin-bottom: 10px !important;
+  }
+
+  /* Mini sub-tiles (Online/Offline, Actual/Pending) */
+  .overview-stat-card .stat-mini-tile {
+    padding: 7px 8px !important;
+  }
+
+  .overview-stat-card .stat-mini-label {
+    font-size: 0.65rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .overview-stat-card .stat-mini-value {
+    font-size: 1rem !important;
   }
   .top-header {
     padding: 0 15px;
