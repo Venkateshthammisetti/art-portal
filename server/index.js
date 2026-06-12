@@ -13,6 +13,7 @@ const Class = require("./models/Class");
 const Attendance = require("./models/Attendance");
 const Feedback = require("./models/Feedback");
 const Artwork = require("./models/Artwork");
+const Expense = require("./models/Expense");
 const nodemailer = require("nodemailer");
 const webpush = require("web-push");
 
@@ -804,6 +805,38 @@ app.post("/api/notifications/subscribe", async (req, res) => {
     res.status(201).json({});
   } catch (err) {
     res.status(500).json({ error: "Could not save subscription" });
+  }
+});
+
+// ===========================
+//        EXPENSES
+// ===========================
+
+app.get("/api/expenses", async (req, res) => {
+  try {
+    const expenses = await Expense.find().sort({ date: -1 });
+    res.json(expenses);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/expenses", async (req, res) => {
+  try {
+    const expense = new Expense(req.body);
+    await expense.save();
+    res.json(expense);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/expenses/:id", async (req, res) => {
+  try {
+    await Expense.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -3051,3 +3051,68 @@ body {
   background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
   background-size: 800px 100%;
 }
+
+/* ==========================================
+   EXPENSES — Dark Mode Overrides
+   ========================================== */
+
+/* Summary cards */
+.admin-container[data-theme="dark"] .expense-summary-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border) !important;
+}
+
+/* Colored type summary cards — keep tinted bg but darken it */
+.admin-container[data-theme="dark"] .expense-summary-card[style*="bg: #eff6ff"],
+.admin-container[data-theme="dark"] .expense-summary-card[style*="#eff6ff"] {
+  background: #0c2040 !important;
+}
+.admin-container[data-theme="dark"] .expense-summary-card[style*="#f3e8ff"] {
+  background: #1a0d2e !important;
+}
+.admin-container[data-theme="dark"] .expense-summary-card[style*="#fef3c7"] {
+  background: #2a1a00 !important;
+}
+.admin-container[data-theme="dark"] .expense-summary-card[style*="#dcfce7"] {
+  background: #052e16 !important;
+}
+.admin-container[data-theme="dark"] .expense-summary-card[style*="#ecfeff"] {
+  background: #032830 !important;
+}
+.admin-container[data-theme="dark"] .expense-summary-card[style*="#f1f5f9"] {
+  background: var(--card-bg) !important;
+}
+
+/* Expense type badge inline spans */
+.admin-container[data-theme="dark"] .custom-table tbody td span[style*="#eff6ff"],
+.admin-container[data-theme="dark"] .custom-table tbody td span[style*="#f3e8ff"],
+.admin-container[data-theme="dark"] .custom-table tbody td span[style*="#fef3c7"],
+.admin-container[data-theme="dark"] .custom-table tbody td span[style*="#dcfce7"],
+.admin-container[data-theme="dark"] .custom-table tbody td span[style*="#ecfeff"],
+.admin-container[data-theme="dark"] .custom-table tbody td span[style*="#f1f5f9"] {
+  filter: brightness(0.75) saturate(1.2);
+}
+
+/* Month input in expense filter bar */
+.admin-container[data-theme="dark"] .table-wrapper input[type="month"] {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #93c5fd !important;
+}
+
+/* Add Expense form — textarea dark mode */
+.admin-container[data-theme="dark"] .form-wrapper textarea {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .form-wrapper textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+@media (max-width: 768px) {
+  /* Expense summary cards: 2 columns on mobile */
+  .expense-summary-card:first-child {
+    grid-column: 1 / -1;
+  }
+}
