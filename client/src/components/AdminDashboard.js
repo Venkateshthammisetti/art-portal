@@ -5910,11 +5910,406 @@ const GalleryRepositoryTab = () => {
   );
 };
 // ==========================================
+// 3b. EXPENSE TABS
+// ==========================================
+
+const EXPENSE_TYPES = [
+  { value: "academy_expense", label: "Academy Expense",     emoji: "🏫", color: "#2563eb", bg: "#eff6ff" },
+  { value: "teacher_salary",  label: "Teacher Salary",      emoji: "👨‍🏫", color: "#9333ea", bg: "#f3e8ff" },
+  { value: "maintenance",     label: "Maintenance",          emoji: "🔧", color: "#f59e0b", bg: "#fef3c7" },
+  { value: "supplies",        label: "Supplies & Materials", emoji: "🎨", color: "#10b981", bg: "#dcfce7" },
+  { value: "utilities",       label: "Utilities",            emoji: "💡", color: "#06b6d4", bg: "#ecfeff" },
+  { value: "other",           label: "Other",                emoji: "📦", color: "#64748b", bg: "#f1f5f9" },
+];
+
+const getExpenseTypeInfo = (type) =>
+  EXPENSE_TYPES.find((t) => t.value === type) || EXPENSE_TYPES[EXPENSE_TYPES.length - 1];
+
+// --- ADD EXPENSE TAB ---
+const AddExpenseTab = ({ onSuccess }) => {
+  const today = new Date().toISOString().split("T")[0];
+  const [formData, setFormData] = useState({
+    title: "",
+    type: "academy_expense",
+    amount: "",
+    description: "",
+    date: today,
+  });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: "", type: "" });
+
+  const showToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+  };
+
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await axios.post("https://art-portal-7n6r.onrender.com/api/expenses", {
+        ...formData,
+        amount: Number(formData.amount),
+      });
+      showToast("Expense added successfully!", "success");
+      setFormData({ title: "", type: "academy_expense", amount: "", description: "", date: today });
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast("Failed to save expense.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="form-wrapper">
+      <h3 style={{ marginTop: 0 }}>Add New Expense</h3>
+
+      <form onSubmit={handleSubmit}>
+        <div className="form-group" style={{ marginBottom: "15px" }}>
+          <label>Title *</label>
+          <input
+            name="title"
+            required
+            placeholder="e.g. Art Supplies for June"
+            value={formData.title}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Type *</label>
+            <select name="type" required value={formData.type} onChange={handleChange} style={{ fontWeight: "600" }}>
+              {EXPENSE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.emoji} {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Amount (₹) *</label>
+            <input
+              type="number"
+              name="amount"
+              required
+              min="0"
+              placeholder="0"
+              value={formData.amount}
+              onChange={handleChange}
+              style={{ fontWeight: "700", color: "#dc2626" }}
+            />
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: "15px" }}>
+          <label>Date</label>
+          <input type="date" name="date" value={formData.date} onChange={handleChange} />
+        </div>
+
+        <div className="form-group" style={{ marginBottom: "20px" }}>
+          <label>Description (optional)</label>
+          <textarea
+            name="description"
+            placeholder="Additional notes..."
+            value={formData.description}
+            onChange={handleChange}
+            rows={3}
+            style={{
+              padding: "10px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "6px",
+              fontSize: "1rem",
+              resize: "vertical",
+              fontFamily: "inherit",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Type preview badge */}
+        {formData.type && (
+          <div style={{ marginBottom: "20px" }}>
+            {(() => {
+              const info = getExpenseTypeInfo(formData.type);
+              return (
+                <span
+                  style={{
+                    background: info.bg,
+                    color: info.color,
+                    padding: "5px 14px",
+                    borderRadius: "20px",
+                    fontSize: "0.85rem",
+                    fontWeight: "600",
+                  }}
+                >
+                  {info.emoji} {info.label}
+                  {formData.amount ? ` — ₹${Number(formData.amount).toLocaleString()}` : ""}
+                </span>
+              );
+            })()}
+          </div>
+        )}
+
+        <button type="submit" className="save-btn" disabled={saving} style={{ marginTop: "5px" }}>
+          {saving ? "Saving..." : "➕ Add Expense"}
+        </button>
+      </form>
+
+      {toast.show && (
+        <div
+          className={`toast-notification ${toast.type} show`}
+          style={{ position: "fixed", top: "20px", right: "20px", zIndex: 2000 }}
+        >
+          {toast.type === "success" ? "✅" : "❌"} {toast.message}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- EXPENSE HISTORY TAB ---
+const ExpenseHistoryTab = () => {
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState("all");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get("https://art-portal-7n6r.onrender.com/api/expenses");
+      setExpenses(res.data);
+    } catch (err) {
+      console.error("Failed to load expenses", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this expense record?")) return;
+    try {
+      await axios.delete(`https://art-portal-7n6r.onrender.com/api/expenses/${id}`);
+      setExpenses((prev) => prev.filter((e) => e._id !== id));
+    } catch (err) {
+      alert("Failed to delete expense");
+    }
+  };
+
+  const filtered = expenses.filter((e) => {
+    const typeMatch = filterType === "all" || e.type === filterType;
+    const dateStr = e.date ? e.date.slice(0, 7) : "";
+    const monthMatch = !filterMonth || dateStr === filterMonth;
+    const searchMatch =
+      !searchTerm || (e.title || "").toLowerCase().includes(searchTerm.toLowerCase());
+    return typeMatch && monthMatch && searchMatch;
+  });
+
+  const totalAmount = filtered.reduce((acc, e) => acc + (e.amount || 0), 0);
+
+  const typeSummary = EXPENSE_TYPES.map((t) => ({
+    ...t,
+    total: filtered.filter((e) => e.type === t.value).reduce((acc, e) => acc + (e.amount || 0), 0),
+  })).filter((t) => t.total > 0);
+
+  return (
+    <div>
+      {/* ── Summary Cards ── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+          gap: "14px",
+          marginBottom: "24px",
+        }}
+      >
+        <div
+          style={{
+            background: "#fff",
+            padding: "16px 20px",
+            borderRadius: "14px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+          }}
+          className="expense-summary-card"
+        >
+          <div style={{ fontSize: "0.72rem", fontWeight: "700", color: "#64748b", marginBottom: "6px", letterSpacing: "0.05em" }}>
+            TOTAL EXPENSES
+          </div>
+          <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#dc2626", lineHeight: 1 }}>
+            ₹{totalAmount.toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "4px" }}>
+            {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+
+        {typeSummary.map((t) => (
+          <div
+            key={t.value}
+            style={{
+              background: t.bg,
+              padding: "16px 20px",
+              borderRadius: "14px",
+              border: `1px solid ${t.color}30`,
+            }}
+            className="expense-summary-card"
+          >
+            <div style={{ fontSize: "0.72rem", fontWeight: "700", color: t.color, marginBottom: "6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              {t.emoji} {t.label}
+            </div>
+            <div style={{ fontSize: "1.4rem", fontWeight: "800", color: t.color, lineHeight: 1 }}>
+              ₹{t.total.toLocaleString()}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Table ── */}
+      <div className="table-wrapper">
+        <div className="filter-bar" style={{ flexWrap: "wrap", gap: "12px" }}>
+          <div className="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              placeholder="Search by title..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="filter-dropdown">
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="all">All Types</option>
+              {EXPENSE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.emoji} {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input
+            type="month"
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            style={{
+              padding: "6px 10px",
+              border: "1px solid #e2e8f0",
+              borderRadius: "6px",
+              fontSize: "0.9rem",
+              background: "white",
+              color: "#334155",
+            }}
+          />
+          {filterMonth && (
+            <button
+              onClick={() => setFilterMonth("")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#64748b",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+                textDecoration: "underline",
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="table-container">
+          <table className="custom-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                    Loading expenses...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                    No expenses found.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((expense) => {
+                  const info = getExpenseTypeInfo(expense.type);
+                  return (
+                    <tr key={expense._id}>
+                      <td style={{ fontWeight: "600", color: "#334155" }}>{expense.title}</td>
+                      <td>
+                        <span
+                          style={{
+                            background: info.bg,
+                            color: info.color,
+                            padding: "3px 10px",
+                            borderRadius: "10px",
+                            fontSize: "0.78rem",
+                            fontWeight: "700",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {info.emoji} {info.label}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: "700", color: "#dc2626" }}>
+                        ₹{(expense.amount || 0).toLocaleString()}
+                      </td>
+                      <td style={{ color: "#64748b" }}>
+                        {expense.date ? new Date(expense.date).toLocaleDateString("en-GB") : "—"}
+                      </td>
+                      <td style={{ color: "#64748b", fontSize: "0.88rem", maxWidth: "220px" }}>
+                        {expense.description || "—"}
+                      </td>
+                      <td>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDelete(expense._id)}
+                          title="Delete expense"
+                        >
+                          🗑
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
 // 4. MAIN COMPONENT (Defined LAST to fix dependency errors)
 // ==========================================
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [feeMenuOpen, setFeeMenuOpen] = useState(false);
+  const [expenseMenuOpen, setExpenseMenuOpen] = useState(false);
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
   const [overviewUsers, setOverviewUsers] = useState([]);
   const [overviewClasses, setOverviewClasses] = useState([]);
@@ -6049,6 +6444,21 @@ const AdminDashboard = ({ onLogout }) => {
       <polyline points="9 22 9 12 15 12 15 22"></polyline>
     </svg>
   );
+  const IconExpense = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+      <line x1="2" y1="10" x2="22" y2="10"></line>
+      <line x1="7" y1="15" x2="7" y2="15" strokeLinecap="round" strokeWidth="3"></line>
+      <line x1="12" y1="15" x2="17" y2="15" strokeLinecap="round"></line>
+    </svg>
+  );
 
   const fetchStats = () => {
     axios
@@ -6081,6 +6491,7 @@ const AdminDashboard = ({ onLogout }) => {
     setFeeInitialFilter("all");
     setUserInitialRoleFilter("all");
     if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
+    if (tab === "expense-add" || tab === "expense-history") setExpenseMenuOpen(true);
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -6183,6 +6594,43 @@ const AdminDashboard = ({ onLogout }) => {
           >
             <IconGallery /> <span>Gallery</span>
           </button>
+          <button
+            className={(activeTab === "expense-add" || activeTab === "expense-history") ? "active" : ""}
+            onClick={() => {
+              if (activeTab !== "expense-add" && activeTab !== "expense-history") {
+                handleNavClick("expense-add");
+              } else {
+                setExpenseMenuOpen((o) => !o);
+              }
+            }}
+            style={{ justifyContent: "space-between" }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <IconExpense /> <span>Expenses</span>
+            </span>
+            <span style={{
+              fontSize: "0.7rem",
+              transition: "transform 0.2s",
+              transform: expenseMenuOpen ? "rotate(180deg)" : "rotate(0deg)",
+              opacity: 0.7,
+            }}>▼</span>
+          </button>
+          {expenseMenuOpen && (
+            <div className="sidebar-sub-nav">
+              <button
+                className={activeTab === "expense-add" ? "active" : ""}
+                onClick={() => handleNavClick("expense-add")}
+              >
+                <IconAdd /> <span>Add Expense</span>
+              </button>
+              <button
+                className={activeTab === "expense-history" ? "active" : ""}
+                onClick={() => handleNavClick("expense-history")}
+              >
+                <IconClock /> <span>Expense History</span>
+              </button>
+            </div>
+          )}
         </nav>
         <div className="sidebar-footer">
           <p>Admin Portal v1.0</p>
@@ -6209,7 +6657,11 @@ const AdminDashboard = ({ onLogout }) => {
                           ? "Slot Manager"
                           : activeTab === "gallery"
                             ? "Art Gallery"
-                            : "Register User"}
+                            : activeTab === "expense-add"
+                              ? "Add Expense"
+                              : activeTab === "expense-history"
+                                ? "Expense History"
+                                : "Register User"}
             </h2>
             <p>Welcome back, Admin</p>
           </div>
@@ -6260,6 +6712,8 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "slots" && <SlotManagementTab />}
           {/* ✨ ADDED GALLERY TAB */}
           {activeTab === "gallery" && <GalleryRepositoryTab />}
+          {activeTab === "expense-add" && <AddExpenseTab onSuccess={() => {}} />}
+          {activeTab === "expense-history" && <ExpenseHistoryTab />}
         </div>
       </main>
 
