@@ -831,6 +831,15 @@ app.post("/api/expenses", async (req, res) => {
   }
 });
 
+app.put("/api/expenses/:id", async (req, res) => {
+  try {
+    const expense = await Expense.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(expense);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete("/api/expenses/:id", async (req, res) => {
   try {
     await Expense.findByIdAndDelete(req.params.id);
