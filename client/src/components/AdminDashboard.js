@@ -1736,6 +1736,29 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
     return acc + (!hasPaid && !hasPass ? s.monthlyFee || 0 : 0);
   }, 0);
 
+  const totalEstimation = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
+
+  const totalAllPending = students.reduce((acc, s) => {
+    const payments = s.payments || [];
+    const passes = s.passes || [];
+    const dateStr = s.registeredDate || s.joiningDate || s.createdAt;
+    const startMonth = dateStr
+      ? (typeof dateStr === "string" ? dateStr : new Date(dateStr).toISOString()).slice(0, 7)
+      : currentMonth;
+    const today = new Date();
+    const [cy, cm] = [today.getFullYear(), today.getMonth() + 1];
+    const [sy, sm0] = startMonth.split("-").map(Number);
+    let y = sy, m = sm0;
+    while (y * 12 + m <= cy * 12 + cm) {
+      const monthStr = `${y}-${String(m).padStart(2, "0")}`;
+      const hasPaid = payments.some((p) => p.month === monthStr && p.status === "Paid");
+      const hasPass = passes.some((p) => p.month === monthStr);
+      if (!hasPaid && !hasPass) acc += getFeeForMonth(s, monthStr);
+      m++; if (m > 12) { m = 1; y++; }
+    }
+    return acc;
+  }, 0);
+
   const levelCounts = {};
   classes.forEach((cls) => {
     const lvl = cls.level || "Unknown";
@@ -2055,32 +2078,55 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
             </span>
           </div>
           <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
-            ₹{(stats.revenue || 0).toLocaleString()}
+            ₹{actualRevenue.toLocaleString()}
           </div>
           <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
-            Monthly Revenue (Est.)
+            Collected This Month
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "6px" }}>
             <div
               className="stat-mini-tile"
-              onClick={(e) => { e.stopPropagation(); onNavigate("fees"); }}
-              style={{ flex: 1, background: "#dcfce7", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
-              title="View actual collected"
+              style={{ flex: 1, background: "#f0fdf4", borderRadius: "8px", padding: "8px 10px" }}
+              title="Total estimated monthly revenue (excl. arrears)"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#166534", fontWeight: "700", marginBottom: "2px" }}>✅ Actual</div>
-              <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#15803d" }}>
-                ₹{actualRevenue.toLocaleString()}
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#15803d", fontWeight: "700", marginBottom: "2px" }}>📊 Monthly Est.</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#166534" }}>
+                ₹{(actualRevenue + pendingAmount).toLocaleString()}
               </div>
             </div>
             <div
               className="stat-mini-tile"
               onClick={(e) => { e.stopPropagation(); onNavigate("fees", { filter: "Pending" }); }}
               style={{ flex: 1, background: "#fef2f2", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
-              title="View pending payments"
+              title="View pending payments this month"
             >
               <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#991b1b", fontWeight: "700", marginBottom: "2px" }}>⚠️ Pending</div>
               <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#dc2626" }}>
                 ₹{pendingAmount.toLocaleString()}
+              </div>
+            </div>
+          </div>
+          <div style={{ borderTop: "1px dashed #e2e8f0", margin: "4px 0 6px" }} />
+          <div style={{ display: "flex", gap: "8px" }}>
+            <div
+              className="stat-mini-tile"
+              style={{ flex: 1, background: "#eff6ff", borderRadius: "8px", padding: "8px 10px" }}
+              title="Collected + total outstanding (all months)"
+            >
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#1d4ed8", fontWeight: "700", marginBottom: "2px" }}>💼 Total Est.</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#1d4ed8" }}>
+                ₹{(actualRevenue + totalAllPending).toLocaleString()}
+              </div>
+            </div>
+            <div
+              className="stat-mini-tile"
+              onClick={(e) => { e.stopPropagation(); onNavigate("fees", { filter: "Pending" }); }}
+              style={{ flex: 1, background: "#fff7ed", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
+              title="Total pending across all months"
+            >
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#c2410c", fontWeight: "700", marginBottom: "2px" }}>🕐 Arrears</div>
+              <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#ea580c" }}>
+                ₹{totalAllPending.toLocaleString()}
               </div>
             </div>
           </div>
@@ -2935,7 +2981,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
 };
 
 // --- TAB 3: ADD USER ---
-const AddUserTab = () => {
+const AddUserTab = ({ onRefresh }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -3078,6 +3124,8 @@ const AddUserTab = () => {
       } else {
         setMsg("✅ User Registered Successfully!");
       }
+
+      if (onRefresh) onRefresh();
 
       setFormData({
         username: "",
@@ -6205,7 +6253,7 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onNavigate={handleNavigate} />}
           {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} />}
           {activeTab === "classes" && <ClassManagementTab />}
-          {activeTab === "add-user" && <AddUserTab />}
+          {activeTab === "add-user" && <AddUserTab onRefresh={() => { fetchStats(); fetchOverviewData(); }} />}
           {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
           {activeTab === "online-fees" && <FeeTrackerTab initialFilter="all" onlineOnly={true} />}
           {activeTab === "offline-fees" && <FeeTrackerTab initialFilter="all" offlineOnly={true} />}
