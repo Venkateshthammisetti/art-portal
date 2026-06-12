@@ -6080,6 +6080,9 @@ const ExpenseHistoryTab = () => {
   const [filterType, setFilterType] = useState("all");
   const [filterMonth, setFilterMonth] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingExpense, setEditingExpense] = useState(null); // null = modal closed
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
 
   const fetchExpenses = useCallback(async () => {
     try {
@@ -6096,6 +6099,34 @@ const ExpenseHistoryTab = () => {
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
+
+  const openEdit = (expense) => {
+    setEditingExpense(expense);
+    setEditForm({
+      title: expense.title || "",
+      type: expense.type || "academy_expense",
+      amount: expense.amount ?? "",
+      description: expense.description || "",
+      date: expense.date ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    });
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await axios.put(
+        `https://art-portal-7n6r.onrender.com/api/expenses/${editingExpense._id}`,
+        { ...editForm, amount: Number(editForm.amount) },
+      );
+      setExpenses((prev) => prev.map((x) => (x._id === editingExpense._id ? res.data : x)));
+      setEditingExpense(null);
+    } catch (err) {
+      alert("Failed to save changes");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this expense record?")) return;
@@ -6125,6 +6156,90 @@ const ExpenseHistoryTab = () => {
 
   return (
     <div>
+      {/* ── Edit Modal ── */}
+      {editingExpense && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: "500px" }}>
+            <div className="modal-header">
+              <h3>Edit Expense</h3>
+              <button className="close-modal" onClick={() => setEditingExpense(null)}>×</button>
+            </div>
+            <form onSubmit={handleEditSave} style={{ padding: "20px" }}>
+              <div className="form-group" style={{ marginBottom: "14px" }}>
+                <label>Title *</label>
+                <input
+                  required
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))}
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Type *</label>
+                  <select
+                    required
+                    value={editForm.type}
+                    onChange={(e) => setEditForm((p) => ({ ...p, type: e.target.value }))}
+                    style={{ fontWeight: "600" }}
+                  >
+                    {EXPENSE_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.emoji} {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm((p) => ({ ...p, amount: e.target.value }))}
+                    style={{ fontWeight: "700", color: "#dc2626" }}
+                  />
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: "14px" }}>
+                <label>Date</label>
+                <input
+                  type="date"
+                  value={editForm.date}
+                  onChange={(e) => setEditForm((p) => ({ ...p, date: e.target.value }))}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: "20px" }}>
+                <label>Description (optional)</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  rows={3}
+                  style={{
+                    padding: "10px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    fontSize: "1rem",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <div className="modal-actions" style={{ justifyContent: "flex-end", padding: 0, border: "none", marginTop: 0 }}>
+                <button type="button" className="cancel-btn" onClick={() => setEditingExpense(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="save-btn" style={{ width: "auto", padding: "10px 24px" }} disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── Summary Cards ── */}
       <div
         style={{
@@ -6282,7 +6397,14 @@ const ExpenseHistoryTab = () => {
                       <td style={{ color: "#64748b", fontSize: "0.88rem", maxWidth: "220px" }}>
                         {expense.description || "—"}
                       </td>
-                      <td>
+                      <td className="action-cell">
+                        <button
+                          className="edit-btn"
+                          onClick={() => openEdit(expense)}
+                          title="Edit expense"
+                        >
+                          ✏️
+                        </button>
                         <button
                           className="delete-btn"
                           onClick={() => handleDelete(expense._id)}
