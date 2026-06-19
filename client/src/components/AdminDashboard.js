@@ -2802,6 +2802,14 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
               </div>
             </div>
           </div>
+          <div style={{ padding: "20px", display: "flex", alignItems: "baseline", gap: "6px" }}>
+            <span style={{ fontSize: "1rem", fontWeight: "700", color: "#1e293b" }}>
+              {roleFilter === "parent" ? "Students" : roleFilter === "teacher" ? "Teachers" : roleFilter === "admin" ? "Admins" : "Users"}
+            </span>
+            <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "#64748b" }}>
+              ({sortedUsers.length})
+            </span>
+          </div>
           <div className="table-container">
             <table className="custom-table clickable-rows">
               <thead>
@@ -2825,11 +2833,13 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                     {visibleColumns.name && (
                       <td>
                         <div style={{ fontWeight: "600", color: "#333" }}>
-                          {user.fullName || user.username}
+                          {user.role === "parent"
+                            ? user.childName || "—"
+                            : user.fullName || user.username}
                         </div>
                         <div style={{ fontSize: "12px", color: "#888" }}>
                           {user.role === "parent"
-                            ? `Student: ${user.childName}`
+                            ? `Parent: ${user.fullName || user.username}`
                             : user.location || "No Location"}
                         </div>
                       </td>
