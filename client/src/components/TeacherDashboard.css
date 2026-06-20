@@ -333,6 +333,11 @@
   background: transparent !important;
   color: var(--text-main) !important;
 }
+.teacher-container[data-theme="dark"] .std-filter-select {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: var(--text-main) !important;
+}
 .teacher-container[data-theme="dark"] .personalize-btn {
   background: var(--bg-card) !important;
   border-color: var(--border) !important;
@@ -1537,6 +1542,9 @@
 .search-icon { font-size: 1rem; color: var(--text-muted); }
 .std-search input { border: none; background: transparent; outline: none; font-size: 0.9rem; flex: 1; color: var(--text-main); }
 .std-actions { display: flex; gap: 15px; align-items: center; }
+.std-filters { display: flex; gap: 10px; align-items: center; }
+.std-filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: white; color: var(--text-main); cursor: pointer; outline: none; }
+.std-filter-select:focus { border-color: var(--primary); }
 .personalize-btn { padding: 8px 15px; background: white; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; cursor: pointer; color: var(--text-main); }
 .personalize-btn:hover { background: #f1f5f9; }
 .col-dropdown { position: absolute; top: 45px; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; width: 180px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 100; display: flex; flex-direction: column; gap: 8px; }
@@ -1915,6 +1923,9 @@
   }
 
   .std-search { width: 100%; }
+
+  .std-filters { flex-wrap: wrap; width: 100%; }
+  .std-filter-select { flex: 1; min-width: 120px; }
 
   .std-actions {
     display: flex;

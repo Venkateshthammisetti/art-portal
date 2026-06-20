@@ -861,6 +861,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
     </svg>
   );
   const [searchText, setSearchText] = useState("");
+  const [studentModeFilter, setStudentModeFilter] = useState("all");
+  const [studentClassFilter, setStudentClassFilter] = useState("all");
   const [sortConfig, setSortConfig] = useState({
     key: "childName",
     direction: "asc",
@@ -1498,9 +1500,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
   };
 
   const getProcessedStudents = () => {
-    let filtered = myStudents.filter((s) =>
-      s.childName.toLowerCase().includes(searchText.toLowerCase()),
-    );
+    let filtered = myStudents.filter((s) => {
+      const matchesSearch = s.childName.toLowerCase().includes(searchText.toLowerCase());
+      const matchesMode = studentModeFilter === "all" || (s.classMode || "online") === studentModeFilter;
+      const matchesClass = studentClassFilter === "all" || s.className === studentClassFilter;
+      return matchesSearch && matchesMode && matchesClass;
+    });
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         const valA = a[sortConfig.key]?.toString().toLowerCase() || "";
@@ -1717,7 +1722,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 </div>
                 <div
                   className="stat-card"
-                  onClick={() => setActiveTab("students")}
+                  onClick={() => { setStudentModeFilter("online"); setStudentClassFilter("all"); setActiveTab("students"); }}
                   style={{ cursor: "pointer" }}
                 >
                   <div className="icon-circle" style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>🌐</div>
@@ -1730,7 +1735,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 </div>
                 <div
                   className="stat-card"
-                  onClick={() => setActiveTab("students")}
+                  onClick={() => { setStudentModeFilter("offline"); setStudentClassFilter("all"); setActiveTab("students"); }}
                   style={{ cursor: "pointer" }}
                 >
                   <div className="icon-circle" style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>🏫</div>
@@ -1826,6 +1831,27 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                   />
+                </div>
+                <div className="std-filters">
+                  <select
+                    className="std-filter-select"
+                    value={studentModeFilter}
+                    onChange={(e) => setStudentModeFilter(e.target.value)}
+                  >
+                    <option value="all">All Modes</option>
+                    <option value="online">🌐 Online</option>
+                    <option value="offline">🏫 Offline</option>
+                  </select>
+                  <select
+                    className="std-filter-select"
+                    value={studentClassFilter}
+                    onChange={(e) => setStudentClassFilter(e.target.value)}
+                  >
+                    <option value="all">All Classes</option>
+                    {[...new Set(myStudents.map((s) => s.className))].sort().map((cn) => (
+                      <option key={cn} value={cn}>{cn}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="std-actions">
                   <div
