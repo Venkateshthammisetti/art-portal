@@ -1697,7 +1697,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <div className="overview-view">
               <div className="hero-banner">
                 <div>
-                  <h1>Dashboard Overview</h1>
+                  <p className="hero-date">
+                    {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                  </p>
+                  <h1>Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 17 ? "Afternoon" : "Evening"}, {currentUser.fullName?.split(" ")[0]} 👋</h1>
                   <p>Here is what's happening in your classes today.</p>
                 </div>
               </div>
