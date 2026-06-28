@@ -512,6 +512,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                 <option>Pencil</option>
                 <option>Color Pencil</option>
                 <option>Charcoal Pencil</option>
+                <option>Oil Pastel</option>
                 <option>Mixed Media</option>
               </select>
               <input
