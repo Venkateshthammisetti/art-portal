@@ -67,6 +67,14 @@ const UserSchema = new mongoose.Schema({
     reason: { type: String, default: '' },
     markedAt: { type: Date, default: Date.now },
     markedBy: String // admin username or ID
+  }],
+
+  // Inactivity History — tracks periods when a student is not attending
+  inactiveHistory: [{
+    inactiveFrom: String,    // "YYYY-MM" — first inactive month (inclusive)
+    inactiveTo: String,      // "YYYY-MM" — last inactive month (inclusive); null = still inactive
+    reason: { type: String, default: '' },
+    markedAt: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
 

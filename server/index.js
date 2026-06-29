@@ -181,9 +181,38 @@ app.put("/api/users/:id", async (req, res) => {
 app.put("/api/users/:id/status", async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-    user.isActive = !user.isActive;
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const wasActive = user.isActive;
+    user.isActive = !wasActive;
+
+    if (wasActive) {
+      // Going inactive — record history entry with reason and start month
+      const { reason = '', inactiveFrom } = req.body;
+      if (!user.inactiveHistory) user.inactiveHistory = [];
+      user.inactiveHistory.push({
+        inactiveFrom: inactiveFrom || new Date().toISOString().slice(0, 7),
+        reason,
+        markedAt: new Date(),
+      });
+    } else {
+      // Going active — close the last open inactive period
+      if (user.inactiveHistory && user.inactiveHistory.length > 0) {
+        const last = user.inactiveHistory[user.inactiveHistory.length - 1];
+        if (!last.inactiveTo) {
+          // inactiveTo = previous month (fees resume from current month)
+          const d = new Date();
+          d.setDate(1);
+          d.setMonth(d.getMonth() - 1);
+          let prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          if (prevMonth < last.inactiveFrom) prevMonth = last.inactiveFrom;
+          last.inactiveTo = prevMonth;
+        }
+      }
+    }
+
     await user.save();
-    res.json({ message: "Status updated", isActive: user.isActive });
+    res.json({ message: "Status updated", isActive: user.isActive, inactiveHistory: user.inactiveHistory });
   } catch (err) {
     res.status(500).json({ message: "Server Error" });
   }
