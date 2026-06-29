@@ -53,9 +53,21 @@ const isRegisteredInOrBefore = (regDate, currentMonth) => {
   return regYM <= currentMonth;
 };
 
+// Returns true if a student's inactiveHistory covers the given month (fee should be ₹0).
+const isStudentInactiveForMonth = (user, monthStr) => {
+  const history = user.inactiveHistory || [];
+  return history.some(entry => {
+    const from = entry.inactiveFrom;
+    const to = entry.inactiveTo; // null/undefined = still inactive
+    return monthStr >= from && (!to || monthStr <= to);
+  });
+};
+
 // Returns the fee that was in effect for a given month, using feeChangeHistory when available.
 // Falls back to user.monthlyFee if no history exists (backwards compatible).
+// Returns 0 for months where the student was inactive.
 const getFeeForMonth = (user, monthStr) => {
+  if (isStudentInactiveForMonth(user, monthStr)) return 0;
   const history = user.feeChangeHistory || [];
   if (history.length === 0) return Number(user.monthlyFee) || 0;
 
@@ -83,6 +95,58 @@ const getFeeForMonth = (user, monthStr) => {
 // ==========================================
 // 2. LEAF COMPONENTS (Modals & Views)
 // ==========================================
+
+// --- INACTIVE REASON MODAL ---
+const InactiveReasonModal = ({ userName, onConfirm, onCancel }) => {
+  const [reason, setReason] = useState("");
+  const [inactiveFrom, setInactiveFrom] = useState(new Date().toISOString().slice(0, 7));
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ maxWidth: "420px" }}>
+        <div className="modal-header">
+          <h3>Mark as Inactive</h3>
+          <button className="close-modal" onClick={onCancel}>×</button>
+        </div>
+        <div style={{ padding: "20px" }}>
+          <p style={{ color: "#64748b", fontSize: "0.9rem", marginTop: 0, marginBottom: "20px" }}>
+            <strong>{userName}</strong> will be marked inactive. Fee will not be charged for inactive months.
+          </p>
+          <div className="form-group">
+            <label>Inactive From Month</label>
+            <input
+              type="month"
+              value={inactiveFrom}
+              onChange={e => setInactiveFrom(e.target.value)}
+              max={new Date().toISOString().slice(0, 7)}
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div className="form-group">
+            <label>Reason for Inactivity</label>
+            <textarea
+              placeholder="e.g. Family vacation, health issues, exams, relocated..."
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              rows={3}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", resize: "vertical", fontSize: "0.9rem", boxSizing: "border-box" }}
+            />
+          </div>
+        </div>
+        <div className="modal-actions" style={{ justifyContent: "flex-end", padding: "0 20px 20px" }}>
+          <button className="cancel-btn" onClick={onCancel}>Cancel</button>
+          <button
+            className="save-btn"
+            style={{ width: "auto", padding: "10px 20px", background: "#ef4444", marginLeft: "10px" }}
+            onClick={() => onConfirm({ reason, inactiveFrom })}
+          >
+            Confirm Inactive
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- CLASS MODAL ---
 const ClassModal = ({
@@ -1243,8 +1307,10 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
     return months.reverse().map((month) => {
       const payment = payments.find((p) => p.month === month && p.status === "Paid");
       const pass = passes.find((p) => p.month === month);
+      const inactive = isStudentInactiveForMonth(user, month);
       if (payment) return { month, status: "Paid", amount: payment.amount, paidDate: payment.paidDate };
       if (pass) return { month, status: "Pass", amount: 0, paidDate: null, reason: pass.reason };
+      if (inactive) return { month, status: "Inactive", amount: 0, paidDate: null };
       return { month, status: "Pending", amount: getFeeForMonth(user, month), paidDate: null };
     });
   })();
@@ -1315,6 +1381,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
         totalPaid: feeHistory.filter(r => r.status === "Paid").reduce((acc, r) => acc + (r.amount || 0), 0),
         paidCount: feeHistory.filter(r => r.status === "Paid").length,
         passCount: feeHistory.filter(r => r.status === "Pass").length,
+        inactiveCount: feeHistory.filter(r => r.status === "Inactive").length,
         pendingCount: feeHistory.filter(r => r.status === "Pending").length,
       }
     : null;
@@ -1324,8 +1391,8 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
     borderRadius: "6px",
     fontSize: "0.78rem",
     fontWeight: "600",
-    background: status === "Paid" ? "#dcfce7" : status === "Pass" ? "#ede9fe" : "#fee2e2",
-    color: status === "Paid" ? "#166534" : status === "Pass" ? "#5b21b6" : "#991b1b",
+    background: status === "Paid" ? "#dcfce7" : status === "Pass" ? "#ede9fe" : status === "Inactive" ? "#f1f5f9" : "#fee2e2",
+    color: status === "Paid" ? "#166534" : status === "Pass" ? "#5b21b6" : status === "Inactive" ? "#475569" : "#991b1b",
   });
 
   return (
@@ -1571,6 +1638,13 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                     <div style={{ fontSize: "0.7rem", color: "#5b21b6" }}>month{feeStats.passCount !== 1 ? "s" : ""}</div>
                   </div>
                 )}
+                {feeStats.inactiveCount > 0 && (
+                  <div style={{ textAlign: "center", background: "#f1f5f9", padding: "6px 16px", borderRadius: "8px", minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.68rem", color: "#475569", fontWeight: "700", letterSpacing: "0.04em" }}>INACTIVE</div>
+                    <div style={{ fontSize: "1.05rem", fontWeight: "800", color: "#64748b" }}>{feeStats.inactiveCount}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#475569" }}>month{feeStats.inactiveCount !== 1 ? "s" : ""}</div>
+                  </div>
+                )}
                 {feeStats.pendingCount > 0 && (
                   <div style={{ textAlign: "center", background: "#fef2f2", padding: "6px 16px", borderRadius: "8px", minWidth: "80px" }}>
                     <div style={{ fontSize: "0.68rem", color: "#991b1b", fontWeight: "700", letterSpacing: "0.04em" }}>PENDING</div>
@@ -1597,15 +1671,15 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                   <tbody>
                     {feeHistory.map(({ month, status, amount, paidDate, reason }) => {
                       const label = new Date(month + "-02").toLocaleString("default", { month: "long", year: "numeric" });
+                      const amountColor = status === "Paid" ? "#16a34a" : status === "Pass" ? "#7c3aed" : status === "Inactive" ? "#94a3b8" : "#dc2626";
+                      const amountLabel = status === "Pass" ? "₹0 (Pass)" : status === "Inactive" ? "₹0 (Inactive)" : `₹${(amount || 0).toLocaleString()}`;
                       return (
-                        <tr key={month}>
+                        <tr key={month} style={status === "Inactive" ? { opacity: 0.7 } : {}}>
                           <td style={{ fontWeight: "600", color: "#334155" }}>{label}</td>
-                          <td style={{ fontWeight: "700", color: status === "Paid" ? "#16a34a" : status === "Pass" ? "#7c3aed" : "#dc2626" }}>
-                            {status === "Pass" ? "₹0 (Pass)" : `₹${(amount || 0).toLocaleString()}`}
-                          </td>
+                          <td style={{ fontWeight: "700", color: amountColor }}>{amountLabel}</td>
                           <td>
                             <div>
-                              <span style={statusBadgeStyle(status)}>{status}</span>
+                              <span style={statusBadgeStyle(status)}>{status === "Inactive" ? "💤 Inactive" : status}</span>
                               {reason && <div style={{ fontSize: "0.72rem", color: "#7c3aed", marginTop: "3px" }}>{reason}</div>}
                             </div>
                           </td>
@@ -1733,7 +1807,8 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
   const pendingAmount = students.reduce((acc, s) => {
     const hasPaid = (s.payments || []).some((p) => p.month === currentMonth && p.status === "Paid");
     const hasPass = (s.passes || []).some((p) => p.month === currentMonth);
-    return acc + (!hasPaid && !hasPass ? s.monthlyFee || 0 : 0);
+    const isInactive = isStudentInactiveForMonth(s, currentMonth);
+    return acc + (!hasPaid && !hasPass && !isInactive ? s.monthlyFee || 0 : 0);
   }, 0);
 
   const totalEstimation = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
@@ -2526,6 +2601,8 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
   const [deleteModal, setDeleteModal] = useState({ show: false, userId: null });
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [showColMenu, setShowColMenu] = useState(false);
+  const [viewMode, setViewMode] = useState("active"); // "active" | "inactive"
+  const [inactiveModal, setInactiveModal] = useState({ show: false, userId: null, userName: "" });
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const savedColumns = localStorage.getItem("admin_visible_columns");
     return savedColumns
@@ -2541,9 +2618,8 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
         };
   });
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
+
   const fetchUsers = () => {
     axios
       .get("https://art-portal-7n6r.onrender.com/api/users")
@@ -2560,9 +2636,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
   };
   const confirmDelete = async () => {
     try {
-      await axios.delete(
-        `https://art-portal-7n6r.onrender.com/api/users/${deleteModal.userId}`,
-      );
+      await axios.delete(`https://art-portal-7n6r.onrender.com/api/users/${deleteModal.userId}`);
       setUsers(users.filter((user) => user._id !== deleteModal.userId));
       showToast("User deleted successfully!", "success");
       setDeleteModal({ show: false, userId: null });
@@ -2572,22 +2646,49 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
       setDeleteModal({ show: false, userId: null });
     }
   };
-  const handleToggleStatus = async (e, userId, currentStatus) => {
+
+  // Show InactiveReasonModal when deactivating; reactivate directly
+  const handleToggleStatus = (e, user) => {
     e.stopPropagation();
-    try {
-      await axios.put(
-        `https://art-portal-7n6r.onrender.com/api/users/${userId}/status`,
-      );
-      setUsers(
-        users.map((user) =>
-          user._id === userId ? { ...user, isActive: !currentStatus } : user,
-        ),
-      );
-      showToast("Status updated", "success");
-    } catch (err) {
-      showToast("Error", "error");
+    if (user.isActive !== false) {
+      const displayName = user.role === "parent"
+        ? (user.childName || user.fullName || user.username)
+        : (user.fullName || user.username);
+      setInactiveModal({ show: true, userId: user._id, userName: displayName });
+    } else {
+      handleReactivate(user._id);
     }
   };
+
+  const handleDeactivate = async ({ reason, inactiveFrom }) => {
+    const { userId } = inactiveModal;
+    setInactiveModal({ show: false, userId: null, userName: "" });
+    try {
+      const res = await axios.put(
+        `https://art-portal-7n6r.onrender.com/api/users/${userId}/status`,
+        { reason, inactiveFrom },
+      );
+      setUsers(users.map(u =>
+        u._id === userId ? { ...u, isActive: false, inactiveHistory: res.data.inactiveHistory } : u
+      ));
+      showToast("Student marked as inactive. Fee paused from selected month.", "success");
+    } catch (err) {
+      showToast("Error updating status.", "error");
+    }
+  };
+
+  const handleReactivate = async (userId) => {
+    try {
+      const res = await axios.put(`https://art-portal-7n6r.onrender.com/api/users/${userId}/status`);
+      setUsers(users.map(u =>
+        u._id === userId ? { ...u, isActive: true, inactiveHistory: res.data.inactiveHistory } : u
+      ));
+      showToast("Student reactivated. Fee resumes from current month.", "success");
+    } catch (err) {
+      showToast("Error reactivating student.", "error");
+    }
+  };
+
   const handleEditClick = (e, user) => {
     e.stopPropagation();
     setEditingUser(user);
@@ -2600,9 +2701,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
       );
       const savedUser = res.data;
       setUsers(users.map((u) => (u._id === savedUser._id ? savedUser : u)));
-      if (selectedUser && selectedUser._id === savedUser._id) {
-        setSelectedUser(savedUser);
-      }
+      if (selectedUser && selectedUser._id === savedUser._id) setSelectedUser(savedUser);
       setEditingUser(null);
       showToast("User details updated!", "success");
     } catch (err) {
@@ -2617,45 +2716,70 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
     });
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const userMode = user.classMode || "online";
-    const matchesMode =
-      modeFilter === "all" ||
-      user.role !== "parent" ||
-      userMode === modeFilter;
+  // Base search filter (shared across both views)
+  const matchesSearch = (user) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      matchesRole &&
-      matchesMode &&
-      ((user.username && user.username.toLowerCase().includes(searchLower)) ||
-        (user.fullName && user.fullName.toLowerCase().includes(searchLower)) ||
-        (user.email && user.email.toLowerCase().includes(searchLower)) ||
-        (user.phone && user.phone.includes(searchLower)) ||
-        (user.location && user.location.toLowerCase().includes(searchLower)) ||
-        (user.city && user.city.toLowerCase().includes(searchLower)) ||
-        (user.childName && user.childName.toLowerCase().includes(searchLower)))
+      (user.username && user.username.toLowerCase().includes(searchLower)) ||
+      (user.fullName && user.fullName.toLowerCase().includes(searchLower)) ||
+      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+      (user.phone && user.phone.includes(searchLower)) ||
+      (user.location && user.location.toLowerCase().includes(searchLower)) ||
+      (user.city && user.city.toLowerCase().includes(searchLower)) ||
+      (user.childName && user.childName.toLowerCase().includes(searchLower))
     );
-  });
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    if (sortOrder === "newest")
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    if (sortOrder === "oldest")
-      return new Date(a.createdAt) - new Date(b.createdAt);
-    if (sortOrder === "fee-high")
-      return (b.monthlyFee || 0) - (a.monthlyFee || 0);
-    if (sortOrder === "fee-low")
-      return (a.monthlyFee || 0) - (b.monthlyFee || 0);
+  };
+
+  const matchesRoleMode = (user) => {
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesMode = modeFilter === "all" || user.role !== "parent" || (user.classMode || "online") === modeFilter;
+    return matchesRole && matchesMode;
+  };
+
+  // Active users: isActive is true or undefined (legacy records default true)
+  const activeUsers = users.filter(u => matchesRoleMode(u) && u.isActive !== false && matchesSearch(u));
+  // Inactive users: isActive is explicitly false
+  const inactiveUsers = users.filter(u => matchesRoleMode(u) && u.isActive === false && matchesSearch(u));
+
+  // Counts for tab badges (unfiltered by search so tabs always show totals)
+  const activeCount = users.filter(u => matchesRoleMode(u) && u.isActive !== false).length;
+  const inactiveCount = users.filter(u => matchesRoleMode(u) && u.isActive === false).length;
+
+  const sortUsers = (list) => [...list].sort((a, b) => {
+    if (sortOrder === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
+    if (sortOrder === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
+    if (sortOrder === "fee-high") return (b.monthlyFee || 0) - (a.monthlyFee || 0);
+    if (sortOrder === "fee-low") return (a.monthlyFee || 0) - (b.monthlyFee || 0);
     return 0;
   });
 
+  const sortedActive = sortUsers(activeUsers);
+  const sortedInactive = sortUsers(inactiveUsers);
+
+  // Helpers for inactive card display
+  const getInactiveDetails = (user) => {
+    const history = user.inactiveHistory || [];
+    const latest = history[history.length - 1];
+    if (!latest) return { fromLabel: "N/A", reason: "", markedAt: null, monthsInactive: 0 };
+    const { inactiveFrom, reason, markedAt } = latest;
+    const fromLabel = inactiveFrom
+      ? new Date(inactiveFrom + "-02").toLocaleString("default", { month: "long", year: "numeric" })
+      : "N/A";
+    let monthsInactive = 0;
+    if (inactiveFrom) {
+      const today = new Date();
+      const [fy, fm] = inactiveFrom.split("-").map(Number);
+      monthsInactive = (today.getFullYear() * 12 + today.getMonth() + 1) - (fy * 12 + fm) + 1;
+    }
+    return { fromLabel, reason: reason || "", markedAt, monthsInactive };
+  };
+
   return (
     <>
-      <div
-        className={`toast-notification ${toast.type} ${toast.show ? "show" : ""}`}
-      >
+      <div className={`toast-notification ${toast.type} ${toast.show ? "show" : ""}`}>
         {toast.type === "success" ? "✅" : "❌"} {toast.message}
       </div>
+
       {selectedUser ? (
         <UserDetailsView
           user={selectedUser}
@@ -2665,16 +2789,31 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
         />
       ) : (
         <div className="table-wrapper">
+
+          {/* ── Active / Inactive Tab Toggle ── */}
+          <div className="user-status-tab-bar">
+            <button
+              className={`user-status-tab ${viewMode === "active" ? "active" : ""}`}
+              onClick={() => setViewMode("active")}
+            >
+              Active
+              <span className="user-status-tab-count active-count">{activeCount}</span>
+            </button>
+            <button
+              className={`user-status-tab ${viewMode === "inactive" ? "inactive" : ""}`}
+              onClick={() => setViewMode("inactive")}
+            >
+              Inactive
+              {inactiveCount > 0 && (
+                <span className="user-status-tab-count inactive-count">{inactiveCount}</span>
+              )}
+            </button>
+          </div>
+
+          {/* ── Shared Filter Bar ── */}
           <div className="filter-bar">
             <div className="search-box">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#888"
-                strokeWidth="2"
-              >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
@@ -2688,10 +2827,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
             <div className="filter-actions">
               <div className="filter-dropdown">
                 <label>Role:</label>
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                >
+                <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
                   <option value="all">All Users</option>
                   <option value="parent">Students</option>
                   <option value="teacher">Teachers</option>
@@ -2700,281 +2836,274 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
               </div>
               <div className="filter-dropdown">
                 <label>Mode:</label>
-                <select
-                  value={modeFilter}
-                  onChange={(e) => setModeFilter(e.target.value)}
-                >
+                <select value={modeFilter} onChange={(e) => setModeFilter(e.target.value)}>
                   <option value="all">All Modes</option>
                   <option value="online">🌐 Online</option>
                   <option value="offline">🏫 Offline</option>
                 </select>
               </div>
-              <div className="filter-dropdown">
-                <label>Sort:</label>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="fee-high">Highest Fee</option>
-                  <option value="fee-low">Lowest Fee</option>
-                </select>
-              </div>
-              <div style={{ position: "relative" }}>
-                <button
-                  className="customize-btn"
-                  onClick={() => setShowColMenu(!showColMenu)}
-                  title="Customize Columns"
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+              {viewMode === "active" && (
+                <div className="filter-dropdown">
+                  <label>Sort:</label>
+                  <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="fee-high">Highest Fee</option>
+                    <option value="fee-low">Lowest Fee</option>
+                  </select>
+                </div>
+              )}
+              {viewMode === "active" && (
+                <div style={{ position: "relative" }}>
+                  <button
+                    className="customize-btn"
+                    onClick={() => setShowColMenu(!showColMenu)}
+                    title="Customize Columns"
                   >
-                    <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"></path>
-                  </svg>
-                </button>
-                {showColMenu && (
-                  <div className="column-menu-dropdown">
-                    <h4>Show Columns</h4>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.name}
-                        onChange={() => toggleColumn("name")}
-                      />{" "}
-                      Name / ID
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.role}
-                        onChange={() => toggleColumn("role")}
-                      />{" "}
-                      Role
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.mode}
-                        onChange={() => toggleColumn("mode")}
-                      />{" "}
-                      Mode
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.fee}
-                        onChange={() => toggleColumn("fee")}
-                      />{" "}
-                      Fee / Salary
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.joiningDate}
-                        onChange={() => toggleColumn("joiningDate")}
-                      />{" "}
-                      Joining Date
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.status}
-                        onChange={() => toggleColumn("status")}
-                      />{" "}
-                      Status
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.action}
-                        onChange={() => toggleColumn("action")}
-                      />{" "}
-                      Actions
-                    </label>
-                  </div>
-                )}
-              </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"></path>
+                    </svg>
+                  </button>
+                  {showColMenu && (
+                    <div className="column-menu-dropdown">
+                      <h4>Show Columns</h4>
+                      {[
+                        { key: "name", label: "Name / ID" },
+                        { key: "role", label: "Role" },
+                        { key: "mode", label: "Mode" },
+                        { key: "fee", label: "Fee / Salary" },
+                        { key: "joiningDate", label: "Joining Date" },
+                        { key: "status", label: "Status" },
+                        { key: "action", label: "Actions" },
+                      ].map(col => (
+                        <label key={col.key}>
+                          <input
+                            type="checkbox"
+                            checked={visibleColumns[col.key]}
+                            onChange={() => toggleColumn(col.key)}
+                          />{" "}{col.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-          <div style={{ padding: "20px", display: "flex", alignItems: "baseline", gap: "6px" }}>
-            <span style={{ fontSize: "1rem", fontWeight: "700", color: "#1e293b" }}>
-              {roleFilter === "parent" ? "Students" : roleFilter === "teacher" ? "Teachers" : roleFilter === "admin" ? "Admins" : "Users"}
-            </span>
-            <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "#64748b" }}>
-              ({sortedUsers.length})
-            </span>
-          </div>
-          <div className="table-container">
-            <table className="custom-table clickable-rows">
-              <thead>
-                <tr>
-                  {visibleColumns.name && <th>Name / ID</th>}
-                  {visibleColumns.role && <th>Role</th>}
-                  {visibleColumns.mode && <th>Mode</th>}
-                  {visibleColumns.fee && <th>Fee / Salary</th>}
-                  {visibleColumns.joiningDate && <th>Joining Date</th>}
-                  {visibleColumns.status && <th>Status</th>}
-                  {visibleColumns.action && <th>Action</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedUsers.map((user) => (
-                  <tr
-                    key={user._id}
-                    onClick={() => setSelectedUser(user)}
-                    className="user-row"
-                  >
-                    {visibleColumns.name && (
-                      <td>
-                        <div style={{ fontWeight: "600", color: "#333" }}>
-                          {user.role === "parent"
-                            ? user.childName || "—"
-                            : user.fullName || user.username}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#888" }}>
-                          {user.role === "parent"
-                            ? `Parent: ${user.fullName || user.username}`
-                            : user.location || "No Location"}
-                        </div>
-                      </td>
-                    )}
-                    {visibleColumns.role && (
-                      <td>
-                        <span className={`role-badge ${user.role}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                    )}
-                    {visibleColumns.mode && (
-                      <td>
-                        {user.role === "parent" ? (
-                          <span className={`mode-badge ${user.classMode || "online"}`}>
-                            {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
-                          </span>
-                        ) : (
-                          <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
+
+          {/* ══════════════════════════════════════
+              ACTIVE VIEW — existing table
+          ══════════════════════════════════════ */}
+          {viewMode === "active" && (
+            <>
+              <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "baseline", gap: "6px" }}>
+                <span style={{ fontSize: "1rem", fontWeight: "700", color: "#1e293b" }}>
+                  {roleFilter === "parent" ? "Students" : roleFilter === "teacher" ? "Teachers" : roleFilter === "admin" ? "Admins" : "Users"}
+                </span>
+                <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "#64748b" }}>
+                  ({sortedActive.length})
+                </span>
+              </div>
+              <div className="table-container">
+                <table className="custom-table clickable-rows">
+                  <thead>
+                    <tr>
+                      {visibleColumns.name && <th>Name / ID</th>}
+                      {visibleColumns.role && <th>Role</th>}
+                      {visibleColumns.mode && <th>Mode</th>}
+                      {visibleColumns.fee && <th>Fee / Salary</th>}
+                      {visibleColumns.joiningDate && <th>Joining Date</th>}
+                      {visibleColumns.status && <th>Status</th>}
+                      {visibleColumns.action && <th>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedActive.map((user) => (
+                      <tr key={user._id} onClick={() => setSelectedUser(user)} className="user-row">
+                        {visibleColumns.name && (
+                          <td>
+                            <div style={{ fontWeight: "600", color: "#333" }}>
+                              {user.role === "parent" ? user.childName || "—" : user.fullName || user.username}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#888" }}>
+                              {user.role === "parent" ? `Parent: ${user.fullName || user.username}` : user.location || "No Location"}
+                            </div>
+                          </td>
                         )}
-                      </td>
-                    )}
-                    {visibleColumns.fee && (
-                      <td>
-                        {user.role === "parent" ? (
-                          <>
-                            {isRegisteredInOrBefore(
-                              user.registeredDate,
-                              new Date().toISOString().slice(0, 7),
-                            ) ? (
-                              <span
-                                style={{ color: "#16a34a", fontWeight: "bold" }}
-                              >
-                                ₹{user.monthlyFee || 0}
+                        {visibleColumns.role && (
+                          <td><span className={`role-badge ${user.role}`}>{user.role}</span></td>
+                        )}
+                        {visibleColumns.mode && (
+                          <td>
+                            {user.role === "parent" ? (
+                              <span className={`mode-badge ${user.classMode || "online"}`}>
+                                {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
                               </span>
                             ) : (
-                              <span
-                                style={{
-                                  color: "#94a3b8",
-                                  fontSize: "0.85rem",
-                                }}
-                              >
-                                ₹0 (Starts {user.registeredDate})
-                              </span>
+                              <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
                             )}
-                          </>
-                        ) : user.role === "teacher" ? (
-                          <span
-                            style={{ color: "#9333ea", fontWeight: "bold" }}
-                          >
-                            ₹{user.monthlyFee || 0}
-                          </span>
-                        ) : (
-                          "-"
+                          </td>
                         )}
-                      </td>
-                    )}
-                    {visibleColumns.joiningDate && (
-                      <td>
-                        {user.joiningDate
-                          ? new Date(user.joiningDate).toLocaleDateString()
-                          : "-"}
-                      </td>
-                    )}
-                    {visibleColumns.status && (
-                      <td>
-                        <button
-                          className={`status-btn ${user.isActive ? "active" : "inactive"}`}
-                          onClick={(e) =>
-                            handleToggleStatus(e, user._id, user.isActive)
-                          }
-                        >
-                          {user.isActive ? "Active" : "Inactive"}
-                        </button>
-                      </td>
-                    )}
-                    {visibleColumns.action && (
-                      <td className="action-cell">
-                        <button
-                          className="edit-btn"
-                          onClick={(e) => handleEditClick(e, user)}
-                          title="Edit"
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                          </svg>
-                        </button>
-                        <button
-                          className="delete-btn"
-                          onClick={(e) => initiateDelete(e, user._id)}
-                          title="Delete"
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          </svg>
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        {visibleColumns.fee && (
+                          <td>
+                            {user.role === "parent" ? (
+                              isRegisteredInOrBefore(user.registeredDate, new Date().toISOString().slice(0, 7)) ? (
+                                <span style={{ color: "#16a34a", fontWeight: "bold" }}>₹{user.monthlyFee || 0}</span>
+                              ) : (
+                                <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>₹0 (Starts {user.registeredDate})</span>
+                              )
+                            ) : user.role === "teacher" ? (
+                              <span style={{ color: "#9333ea", fontWeight: "bold" }}>₹{user.monthlyFee || 0}</span>
+                            ) : "-"}
+                          </td>
+                        )}
+                        {visibleColumns.joiningDate && (
+                          <td>{user.joiningDate ? new Date(user.joiningDate).toLocaleDateString() : "-"}</td>
+                        )}
+                        {visibleColumns.status && (
+                          <td>
+                            <button
+                              className="status-btn active"
+                              onClick={(e) => handleToggleStatus(e, user)}
+                              title="Click to mark inactive"
+                            >
+                              Active
+                            </button>
+                          </td>
+                        )}
+                        {visibleColumns.action && (
+                          <td className="action-cell">
+                            <button className="edit-btn" onClick={(e) => handleEditClick(e, user)} title="Edit">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                            <button className="delete-btn" onClick={(e) => initiateDelete(e, user._id)} title="Delete">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* ══════════════════════════════════════
+              INACTIVE VIEW — card-based list
+          ══════════════════════════════════════ */}
+          {viewMode === "inactive" && (
+            <div style={{ padding: "20px" }}>
+              {sortedInactive.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                  <div style={{ fontSize: "3.5rem", marginBottom: "12px" }}>✅</div>
+                  <p style={{ fontWeight: "700", fontSize: "1.1rem", color: "#334155", marginBottom: "4px" }}>No inactive students</p>
+                  <p style={{ fontSize: "0.85rem" }}>All filtered students are currently active.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {sortedInactive.map(user => {
+                    const { fromLabel, reason, markedAt, monthsInactive } = getInactiveDetails(user);
+                    const displayName = user.role === "parent"
+                      ? (user.childName || "—")
+                      : (user.fullName || user.username);
+
+                    return (
+                      <div
+                        key={user._id}
+                        className="inactive-student-card"
+                        onClick={() => setSelectedUser(user)}
+                      >
+                        {/* Avatar */}
+                        <div className="inactive-card-avatar">
+                          {(displayName).charAt(0).toUpperCase()}
+                        </div>
+
+                        {/* Info block */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "10px" }}>
+                            <div>
+                              <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "1rem" }}>
+                                {displayName}
+                              </div>
+                              {user.role === "parent" && (
+                                <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                                  Parent: {user.fullName}
+                                  {user.classMode && (
+                                    <span className={`mode-badge ${user.classMode}`} style={{ marginLeft: "8px", fontSize: "0.72rem" }}>
+                                      {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              className="reactivate-btn"
+                              onClick={e => { e.stopPropagation(); handleReactivate(user._id); }}
+                            >
+                              ✓ Reactivate
+                            </button>
+                          </div>
+
+                          {/* Inactivity details row */}
+                          <div className="inactive-detail-row">
+                            <div className="inactive-detail-item">
+                              <div className="inactive-detail-label">INACTIVE FROM</div>
+                              <div className="inactive-detail-value" style={{ color: "#dc2626" }}>{fromLabel}</div>
+                            </div>
+                            <div className="inactive-detail-item">
+                              <div className="inactive-detail-label">DURATION</div>
+                              <div className="inactive-detail-value" style={{ color: "#ef4444" }}>
+                                {monthsInactive > 0 ? `${monthsInactive} month${monthsInactive !== 1 ? "s" : ""}` : "< 1 month"}
+                              </div>
+                            </div>
+                            {markedAt && (
+                              <div className="inactive-detail-item">
+                                <div className="inactive-detail-label">MARKED ON</div>
+                                <div className="inactive-detail-value" style={{ color: "#475569" }}>
+                                  {new Date(markedAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                            )}
+                            {reason && (
+                              <div className="inactive-detail-item" style={{ flex: 2, minWidth: "160px" }}>
+                                <div className="inactive-detail-label">REASON</div>
+                                <div className="inactive-detail-value" style={{ color: "#475569", fontWeight: "500" }}>{reason}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Fee pause notice */}
+                          {user.role === "parent" && (user.monthlyFee || 0) > 0 && (
+                            <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "#ede9fe", color: "#5b21b6", padding: "4px 12px", borderRadius: "20px", fontSize: "0.78rem", fontWeight: "600" }}>
+                              💤 Fee paused: ₹{user.monthlyFee}/mo from {fromLabel}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       )}
+
       {deleteModal.show && (
         <div className="modal-overlay">
           <div className="modal-content delete-modal-content">
             <h3>Are you sure?</h3>
             <div className="modal-actions">
-              <button
-                className="cancel-btn"
-                onClick={() => setDeleteModal({ show: false, userId: null })}
-              >
-                Cancel
-              </button>
-              <button className="confirm-delete-btn" onClick={confirmDelete}>
-                Yes, Delete
-              </button>
+              <button className="cancel-btn" onClick={() => setDeleteModal({ show: false, userId: null })}>Cancel</button>
+              <button className="confirm-delete-btn" onClick={confirmDelete}>Yes, Delete</button>
             </div>
           </div>
         </div>
@@ -2984,6 +3113,13 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSave={handleEditSave}
+        />
+      )}
+      {inactiveModal.show && (
+        <InactiveReasonModal
+          userName={inactiveModal.userName}
+          onConfirm={handleDeactivate}
+          onCancel={() => setInactiveModal({ show: false, userId: null, userName: "" })}
         />
       )}
     </>
@@ -4662,20 +4798,12 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     return (student.passes || []).some((p) => p.month === (month || selectedMonth));
   };
 
-  // ✨ FIX: Check if selected month is BEFORE student joined
+  // Check if selected month is BEFORE student joined, or student is inactive, or has pass
   const getPaymentStatus = (student) => {
     const startMonth = getStudentStartMonth(student);
-
-    // If the selected month is older than the start month
-    if (selectedMonth < startMonth) {
-      return "Not Joined";
-    }
-
-    // If student has a pass for this month
-    if (hasPassForMonth(student)) {
-      return "Pass";
-    }
-
+    if (selectedMonth < startMonth) return "Not Joined";
+    if (isStudentInactiveForMonth(student, selectedMonth)) return "Inactive";
+    if (hasPassForMonth(student)) return "Pass";
     return (student.payments || []).find((p) => p.month === selectedMonth)
       ? "Paid"
       : "Pending";
@@ -4716,11 +4844,10 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       const isPaid = (student.payments || []).some(
         (p) => p.month === monthStr && p.status === "Paid",
       );
-
-      // Skip months where student has a pass
       const isPass = hasPassForMonth(student, monthStr);
+      const isInactive = isStudentInactiveForMonth(student, monthStr);
 
-      if (!isPaid && !isPass) {
+      if (!isPaid && !isPass && !isInactive) {
         pendingCount++;
         pendingAmount += getFeeForMonth(student, monthStr);
       }
@@ -4732,7 +4859,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
 
   const totalEstRevenue = students.reduce((acc, s) => {
     const status = getPaymentStatus(s);
-    if (status === "Not Joined" || status === "Pass") return acc;
+    if (status === "Not Joined" || status === "Pass" || status === "Inactive") return acc;
     if (status === "Paid") {
       const payment = (s.payments || []).find(p => p.month === selectedMonth);
       return acc + (payment?.amount ?? getFeeForMonth(s, selectedMonth) ?? 0);
@@ -4974,6 +5101,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                   <option value="Paid">Paid</option>
                   <option value="Pending">Pending</option>
                   <option value="Pass">Pass</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
               </div>
               <div className="filter-dropdown">
@@ -5209,6 +5337,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                       const isPaid = status === "Paid";
                       const isNotJoined = status === "Not Joined";
                       const isPass = status === "Pass";
+                      const isInactive = status === "Inactive";
                       const pendingStats = calculateTotalPending(student);
                       const passRecord = (student.passes || []).find((p) => p.month === selectedMonth);
                       return (
@@ -5244,6 +5373,8 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                           <td style={{ fontWeight: "bold" }}>
                             {isPass ? (
                               <span style={{ color: "#7c3aed" }}>₹0 (Pass)</span>
+                            ) : isInactive ? (
+                              <span style={{ color: "#94a3b8" }}>₹0 (Inactive)</span>
                             ) : isPaid ? (
                               <>₹{(student.payments || []).find(p => p.month === selectedMonth)?.amount ?? student.monthlyFee}</>
                             ) : (
@@ -5252,26 +5383,16 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                           </td>
                           <td>
                             {isNotJoined ? (
-                              <span
-                                className="role-badge"
-                                style={{
-                                  background: "#e2e8f0",
-                                  color: "#64748b",
-                                  border: "1px solid #cbd5e1",
-                                }}
-                              >
+                              <span className="role-badge" style={{ background: "#e2e8f0", color: "#64748b", border: "1px solid #cbd5e1" }}>
                                 N/A
+                              </span>
+                            ) : isInactive ? (
+                              <span className="role-badge" style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" }}>
+                                💤 Inactive
                               </span>
                             ) : isPass ? (
                               <div>
-                                <span
-                                  className="role-badge"
-                                  style={{
-                                    background: "#ede9fe",
-                                    color: "#7c3aed",
-                                    border: "1px solid #c4b5fd",
-                                  }}
-                                >
+                                <span className="role-badge" style={{ background: "#ede9fe", color: "#7c3aed", border: "1px solid #c4b5fd" }}>
                                   Pass
                                 </span>
                                 {passRecord?.reason && (
@@ -5283,10 +5404,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                             ) : (
                               <span
                                 className={`role-badge ${isPaid ? "teacher" : "admin"}`}
-                                style={{
-                                  background: isPaid ? "#dcfce7" : "#fee2e2",
-                                  color: isPaid ? "#166534" : "#991b1b",
-                                }}
+                                style={{ background: isPaid ? "#dcfce7" : "#fee2e2", color: isPaid ? "#166534" : "#991b1b" }}
                               >
                                 {isPaid ? "Paid" : "Pending"}
                               </span>
@@ -5341,17 +5459,14 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                 <button
                                   className="save-btn"
                                   disabled
-                                  style={{
-                                    width: "auto",
-                                    padding: "6px 12px",
-                                    fontSize: "0.85rem",
-                                    backgroundColor: "#94a3b8",
-                                    cursor: "not-allowed",
-                                    opacity: 0.6,
-                                  }}
+                                  style={{ width: "auto", padding: "6px 12px", fontSize: "0.85rem", backgroundColor: "#94a3b8", cursor: "not-allowed", opacity: 0.6 }}
                                 >
                                   Not Joined
                                 </button>
+                              ) : isInactive ? (
+                                <span style={{ color: "#94a3b8", fontSize: "0.82rem", fontStyle: "italic", padding: "6px 0" }}>
+                                  No fee — student inactive
+                                </span>
                               ) : isPass ? (
                                 <button
                                   className="save-btn"
