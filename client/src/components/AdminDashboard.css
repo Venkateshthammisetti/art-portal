@@ -1156,8 +1156,16 @@ body {
   }
 
   .filter-actions {
-    flex-direction: column;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
     width: 100%;
+  }
+
+  .table-wrapper .filter-bar .filter-actions .filter-dropdown {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 120px;
   }
 
   .filter-dropdown select {
