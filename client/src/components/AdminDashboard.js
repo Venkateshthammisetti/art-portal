@@ -561,8 +561,8 @@ const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
   const getFilteredStudents = () => {
     switch (filter) {
       case "available":
-        // Students who have NO class assigned
-        return students.filter((s) => !s.assignedClass);
+        // Students who have NO class assigned and are not inactive
+        return students.filter((s) => !s.assignedClass && s.isActive !== false);
       case "this_class":
         // Students assigned to THIS specific class
         return students.filter((s) => isSameClass(s.assignedClass));
@@ -603,7 +603,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
             >
               <option value="available">
                 Available to Assign (
-                {students.filter((s) => !s.assignedClass).length})
+                {students.filter((s) => !s.assignedClass && s.isActive !== false).length})
               </option>
               <option value="this_class">
                 Assigned in This Class (
@@ -1705,7 +1705,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
 // 3. TAB COMPONENTS (Dependent on Modals/Helpers)
 // ==========================================
 
-const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
+const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate }) => {
   // ===== ATTENDANCE WIDGET STATE =====
   const [attSelectedClass, setAttSelectedClass] = useState("");
   const [attMonth, setAttMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -1783,11 +1783,14 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 3);
 
-  const maleCount = students.filter((s) => s.gender === "Male").length;
-  const femaleCount = students.filter((s) => s.gender === "Female").length;
+  const activeStudents = students.filter((s) => s.isActive !== false);
+  const maleCount = activeStudents.filter((s) => s.gender === "Male").length;
+  const femaleCount = activeStudents.filter((s) => s.gender === "Female").length;
+  const inactiveCount = students.filter((s) => s.isActive === false).length;
   const genderData = [
     { name: "Male", value: maleCount, color: "#3b82f6" },
     { name: "Female", value: femaleCount, color: "#ec4899" },
+    { name: "Inactive", value: inactiveCount, color: "#94a3b8" },
   ].filter((d) => d.value > 0);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -1805,6 +1808,11 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
     return acc + (payment ? payment.amount || s.monthlyFee || 0 : 0);
   }, 0);
   const pendingAmount = students.reduce((acc, s) => {
+    const dateStr = s.registeredDate || s.joiningDate || s.createdAt;
+    const startMonth = dateStr
+      ? (typeof dateStr === "string" ? dateStr : new Date(dateStr).toISOString()).slice(0, 7)
+      : currentMonth;
+    if (currentMonth < startMonth) return acc; // Not joined yet for this month
     const hasPaid = (s.payments || []).some((p) => p.month === currentMonth && p.status === "Paid");
     const hasPass = (s.passes || []).some((p) => p.month === currentMonth);
     const isInactive = isStudentInactiveForMonth(s, currentMonth);
@@ -1812,6 +1820,20 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
   }, 0);
 
   const totalEstimation = students.reduce((acc, s) => acc + (s.monthlyFee || 0), 0);
+
+  const currentMonthExpenses = expenses
+    .filter((e) => (e.date || "").slice(0, 7) === currentMonth)
+    .reduce((acc, e) => acc + (e.amount || 0), 0);
+
+  const topExpenseCategories = EXPENSE_TYPES.map((t) => ({
+    ...t,
+    total: expenses
+      .filter((e) => e.type === t.value && (e.date || "").slice(0, 7) === currentMonth)
+      .reduce((acc, e) => acc + (e.amount || 0), 0),
+  }))
+    .filter((t) => t.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 2);
 
   const totalAllPending = students.reduce((acc, s) => {
     const payments = s.payments || [];
@@ -1879,7 +1901,7 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
     .sort((a, b) => b.students - a.students)
     .slice(0, 5);
 
-  const ProfessionalDonut = ({ data, totalLabel }) => {
+  const ProfessionalDonut = ({ data, totalLabel, onSliceClick }) => {
     const total = data.reduce((a, b) => a + b.value, 0);
     if (total === 0)
       return (
@@ -1909,12 +1931,13 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
                 paddingAngle={4}
                 dataKey="value"
                 stroke="none"
+                onClick={onSliceClick ? (entry) => onSliceClick(entry.name) : undefined}
               >
                 {data.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={entry.color}
-                    style={{ outline: "none" }}
+                    style={{ outline: "none", cursor: onSliceClick ? "pointer" : "default" }}
                   />
                 ))}
               </Pie>
@@ -1957,7 +1980,13 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
           {data.map((entry, i) => (
             <div
               key={i}
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              onClick={onSliceClick ? () => onSliceClick(entry.name) : undefined}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                cursor: onSliceClick ? "pointer" : "default",
+              }}
             >
               <div
                 style={{
@@ -2090,47 +2119,20 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
               </div>
             </div>
           </div>
-          <div className="stat-card-nav-hint">View Students →</div>
-        </div>
-        <div
-          className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("users", { roleFilter: "teacher" })}
-          title="View all teachers"
-        >
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "15px",
-            }}
+            className="stat-mini-tile"
+            onClick={(e) => { e.stopPropagation(); onNavigate("users", { roleFilter: "teacher" }); }}
+            style={{ background: "#f0fdf4", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", marginBottom: "12px" }}
+            title="View teachers"
           >
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "#f0fdf4",
-                color: "#16a34a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.2rem",
-              }}
-            >
-              👨‍🏫
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px"}}>
+              <span className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#16a34a", fontWeight: "700"}}>👨‍🏫 Expert Teachers</span>
+              <span className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#166534" }}>
+                {stats.teachers}
+              </span>
             </div>
           </div>
-          <div
-            style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}
-          >
-            {stats.teachers}
-          </div>
-          <div
-            style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500" }}
-          >
-            Expert Teachers
-          </div>
-          <div className="stat-card-nav-hint">View Teachers →</div>
+          <div className="stat-card-nav-hint">View Students →</div>
         </div>
         <div
           className="overview-stat-card stat-card-clickable"
@@ -2206,6 +2208,53 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
             </div>
           </div>
           <div className="stat-card-nav-hint">View Fee Tracker →</div>
+        </div>
+        <div
+          className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("expense-history")}
+          title="View expense history"
+          style={{ cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+            <div
+              style={{
+                width: "40px", height: "40px", borderRadius: "10px",
+                background: "#fef2f2", color: "#dc2626",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
+              }}
+            >
+              🧾
+            </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#dc2626", background: "#fee2e2", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
+              This Month
+            </span>
+          </div>
+          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
+            ₹{currentMonthExpenses.toLocaleString()}
+          </div>
+          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
+            Total Expenses
+          </div>
+          {topExpenseCategories.length > 0 && (
+            <div style={{ display: "flex", gap: "8px" }}>
+              {topExpenseCategories.map((t) => (
+                <div
+                  key={t.value}
+                  className="stat-mini-tile"
+                  style={{ flex: 1, background: t.bg, borderRadius: "8px", padding: "8px 10px" }}
+                  title={t.label}
+                >
+                  <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: t.color, fontWeight: "700", marginBottom: "2px" }}>
+                    {t.emoji} {t.label}
+                  </div>
+                  <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: t.color }}>
+                    ₹{t.total.toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="stat-card-nav-hint">View Expense History →</div>
         </div>
       </div>
 
@@ -2299,7 +2348,17 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
           >
             Student Demographics
           </h3>
-          <ProfessionalDonut data={genderData} totalLabel="Students" />
+          <ProfessionalDonut
+            data={genderData}
+            totalLabel="Students"
+            onSliceClick={(name) => {
+              if (name === "Inactive") {
+                onNavigate("users", { roleFilter: "parent", viewMode: "inactive" });
+              } else {
+                onNavigate("users", { roleFilter: "parent", genderFilter: name });
+              }
+            }}
+          />
         </div>
       </div>
 
@@ -2590,18 +2649,19 @@ const OverviewTab = ({ stats, users, classes, loading, onNavigate }) => {
 };
 
 // --- TAB 2: USER MANAGEMENT ---
-const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all" }) => {
+const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all", initialGenderFilter = "all", initialViewMode = "active" }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
   const [modeFilter, setModeFilter] = useState(initialModeFilter);
+  const [genderFilter, setGenderFilter] = useState(initialGenderFilter);
   const [sortOrder, setSortOrder] = useState("newest");
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ show: false, userId: null });
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [showColMenu, setShowColMenu] = useState(false);
-  const [viewMode, setViewMode] = useState("active"); // "active" | "inactive"
+  const [viewMode, setViewMode] = useState(initialViewMode); // "active" | "inactive"
   const [inactiveModal, setInactiveModal] = useState({ show: false, userId: null, userName: "" });
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const savedColumns = localStorage.getItem("admin_visible_columns");
@@ -2733,7 +2793,8 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
   const matchesRoleMode = (user) => {
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesMode = modeFilter === "all" || user.role !== "parent" || (user.classMode || "online") === modeFilter;
-    return matchesRole && matchesMode;
+    const matchesGender = genderFilter === "all" || user.role !== "parent" || user.gender === genderFilter;
+    return matchesRole && matchesMode && matchesGender;
   };
 
   // Active users: isActive is true or undefined (legacy records default true)
@@ -2842,6 +2903,16 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                   <option value="offline">🏫 Offline</option>
                 </select>
               </div>
+              {roleFilter === "parent" && (
+                <div className="filter-dropdown">
+                  <label>Gender:</label>
+                  <select value={genderFilter} onChange={(e) => setGenderFilter(e.target.value)}>
+                    <option value="all">All Genders</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              )}
               {viewMode === "active" && (
                 <div className="filter-dropdown">
                   <label>Sort:</label>
@@ -4881,7 +4952,11 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   const processedStudents = students
     .filter(
       (s) =>
-        (filterStatus === "all" || getPaymentStatus(s) === filterStatus) &&
+        (filterStatus === "Inactive"
+          ? getPaymentStatus(s) === "Inactive"
+          : filterStatus === "all"
+            ? getPaymentStatus(s) !== "Inactive"
+            : getPaymentStatus(s) === filterStatus) &&
         ((s.childName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
           (s.fullName || "").toLowerCase().includes(searchTerm.toLowerCase())),
     )
@@ -6200,10 +6275,12 @@ const AddExpenseTab = ({ onSuccess }) => {
 
 // --- EXPENSE HISTORY TAB ---
 const ExpenseHistoryTab = () => {
+  const currentMonth = new Date().toISOString().slice(0, 7);
   const [expenses, setExpenses] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("all");
-  const [filterMonth, setFilterMonth] = useState("");
+  const [filterMonth, setFilterMonth] = useState(currentMonth);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingExpense, setEditingExpense] = useState(null); // null = modal closed
   const [editForm, setEditForm] = useState({});
@@ -6221,9 +6298,19 @@ const ExpenseHistoryTab = () => {
     }
   }, []);
 
+  const fetchStudents = useCallback(async () => {
+    try {
+      const res = await axios.get("https://art-portal-7n6r.onrender.com/api/users");
+      setStudents(res.data.filter((u) => u.role === "parent"));
+    } catch (err) {
+      console.error("Failed to load students", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchExpenses();
-  }, [fetchExpenses]);
+    fetchStudents();
+  }, [fetchExpenses, fetchStudents]);
 
   const openEdit = (expense) => {
     setEditingExpense(expense);
@@ -6273,6 +6360,16 @@ const ExpenseHistoryTab = () => {
   });
 
   const totalAmount = filtered.reduce((acc, e) => acc + (e.amount || 0), 0);
+
+  // Collected fees for the selected month (defaults to current month when no month filter is set)
+  const savingsMonth = filterMonth || currentMonth;
+  const collectedForMonth = students.reduce((acc, s) => {
+    const payment = (s.payments || []).find(
+      (p) => p.month === savingsMonth && p.status === "Paid",
+    );
+    return acc + (payment ? payment.amount || s.monthlyFee || 0 : 0);
+  }, 0);
+  const savings = collectedForMonth - totalAmount;
 
   const typeSummary = EXPENSE_TYPES.map((t) => ({
     ...t,
@@ -6392,6 +6489,26 @@ const ExpenseHistoryTab = () => {
           </div>
           <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "4px" }}>
             {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: savings >= 0 ? "#f0fdf4" : "#fef2f2",
+            padding: "16px 20px",
+            borderRadius: "14px",
+            border: `1px solid ${savings >= 0 ? "#16a34a30" : "#dc262630"}`,
+          }}
+          className="expense-summary-card"
+        >
+          <div style={{ fontSize: "0.72rem", fontWeight: "700", color: "#64748b", marginBottom: "6px", letterSpacing: "0.05em" }}>
+            SAVINGS ({savingsMonth === currentMonth ? "This Month" : savingsMonth})
+          </div>
+          <div style={{ fontSize: "1.6rem", fontWeight: "800", color: savings >= 0 ? "#16a34a" : "#dc2626", lineHeight: 1 }}>
+            ₹{savings.toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "4px" }}>
+            Collected ₹{collectedForMonth.toLocaleString()} − Expenses ₹{totalAmount.toLocaleString()}
           </div>
         </div>
 
@@ -6560,6 +6677,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
   const [overviewUsers, setOverviewUsers] = useState([]);
   const [overviewClasses, setOverviewClasses] = useState([]);
+  const [overviewExpenses, setOverviewExpenses] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [showMobileLogout, setShowMobileLogout] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -6568,6 +6686,8 @@ const AdminDashboard = ({ onLogout }) => {
   const [feeInitialFilter, setFeeInitialFilter] = useState("all");
   const [userInitialRoleFilter, setUserInitialRoleFilter] = useState("all");
   const [userInitialModeFilter, setUserInitialModeFilter] = useState("all");
+  const [userInitialGenderFilter, setUserInitialGenderFilter] = useState("all");
+  const [userInitialViewMode, setUserInitialViewMode] = useState("active");
 
   // ICONS
   const IconHome = () => (
@@ -6716,12 +6836,14 @@ const AdminDashboard = ({ onLogout }) => {
 
   const fetchOverviewData = async () => {
     try {
-      const [usersRes, classesRes] = await Promise.all([
+      const [usersRes, classesRes, expensesRes] = await Promise.all([
         axios.get("https://art-portal-7n6r.onrender.com/api/users"),
         axios.get("https://art-portal-7n6r.onrender.com/api/classes"),
+        axios.get("https://art-portal-7n6r.onrender.com/api/expenses"),
       ]);
       setOverviewUsers(usersRes.data);
       setOverviewClasses(classesRes.data);
+      setOverviewExpenses(expensesRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -6737,6 +6859,9 @@ const AdminDashboard = ({ onLogout }) => {
   const handleNavClick = (tab) => {
     setFeeInitialFilter("all");
     setUserInitialRoleFilter("all");
+    setUserInitialModeFilter("all");
+    setUserInitialGenderFilter("all");
+    setUserInitialViewMode("active");
     if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
     if (tab === "expense-add" || tab === "expense-history") setExpenseMenuOpen(true);
     setActiveTab(tab);
@@ -6750,6 +6875,10 @@ const AdminDashboard = ({ onLogout }) => {
     else setUserInitialRoleFilter("all");
     if (params.modeFilter) setUserInitialModeFilter(params.modeFilter);
     else setUserInitialModeFilter("all");
+    if (params.genderFilter) setUserInitialGenderFilter(params.genderFilter);
+    else setUserInitialGenderFilter("all");
+    if (params.viewMode) setUserInitialViewMode(params.viewMode);
+    else setUserInitialViewMode("active");
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -6949,8 +7078,8 @@ const AdminDashboard = ({ onLogout }) => {
         </header>
 
         <div className="content-scrollable">
-          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onNavigate={handleNavigate} />}
-          {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} />}
+          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} expenses={overviewExpenses} loading={overviewLoading} onNavigate={handleNavigate} />}
+          {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} />}
           {activeTab === "classes" && <ClassManagementTab />}
           {activeTab === "add-user" && <AddUserTab onRefresh={() => { fetchStats(); fetchOverviewData(); }} />}
           {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
