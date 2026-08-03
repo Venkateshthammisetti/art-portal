@@ -806,6 +806,7 @@ body {
   border-radius: 16px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  min-width: 0;
 }
 
 .overview-stat-card.stat-card-clickable {
@@ -879,6 +880,7 @@ body {
   }
 
   .content-scrollable {
+    overflow-x: hidden;
     padding: 12px 12px 80px 12px;
   }
 
@@ -934,6 +936,7 @@ body {
   /* Mini sub-tiles (Online/Offline, Actual/Pending) */
   .overview-stat-card .stat-mini-tile {
     padding: 7px 8px !important;
+    min-width: 0; /* allow flex item to shrink so ellipsis below actually works, instead of forcing page-wide overflow */
   }
 
   .overview-stat-card .stat-mini-label {
@@ -945,6 +948,9 @@ body {
 
   .overview-stat-card .stat-mini-value {
     font-size: 1rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .top-header {
     padding: 0 15px;
