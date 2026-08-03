@@ -694,6 +694,19 @@ app.put("/api/feedback/:id", upload.single("report"), async (req, res) => {
   }
 });
 
+// ✨ 5. DELETE FEEDBACK
+app.delete("/api/feedback/:id", async (req, res) => {
+  try {
+    const feedback = await Feedback.findByIdAndDelete(req.params.id);
+    if (!feedback)
+      return res.status(404).json({ message: "Feedback not found" });
+    res.json({ success: true, message: "Report deleted successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error deleting feedback" });
+  }
+});
+
 // ===========================
 //       ART GALLERY ROUTES 🎨
 // ===========================
