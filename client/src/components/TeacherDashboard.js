@@ -1362,6 +1362,21 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   };
 
+  const handleDeleteFeedback = async (id) => {
+    if (!window.confirm("Delete this report? This cannot be undone.")) return;
+    try {
+      await axios.delete(
+        `https://art-portal-7n6r.onrender.com/api/feedback/${id}`,
+      );
+      setFeedbackHistory((prev) => prev.filter((item) => item._id !== id));
+      setMsg("Report Deleted!");
+      setTimeout(() => setMsg(""), 3000);
+    } catch (err) {
+      console.error("Delete failed", err);
+      setMsg("❌ Failed to delete");
+    }
+  };
+
   const openEditModal = (item) => {
     setEditFeedbackData({
       _id: item._id,
@@ -2609,6 +2624,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 onClick={() => openEditModal(item)}
                               >
                                 ✏️ Edit
+                              </button>
+
+                              {/* ✨ DELETE BUTTON */}
+                              <button
+                                className="delete-feedback-btn"
+                                onClick={() => handleDeleteFeedback(item._id)}
+                              >
+                                🗑️ Delete
                               </button>
                             </div>
                           </div>

@@ -454,6 +454,16 @@
   color: var(--text-main) !important;
 }
 
+.teacher-container[data-theme="dark"] .delete-feedback-btn {
+  background: var(--bg-card) !important;
+  border-color: #7f1d1d !important;
+  color: #f87171 !important;
+}
+.teacher-container[data-theme="dark"] .delete-feedback-btn:hover {
+  background: #3f1d1d !important;
+  color: #fca5a5 !important;
+}
+
 /* View PDF link */
 .teacher-container[data-theme="dark"] .view-pdf-link {
   background: #1e3a5f !important;
@@ -1745,6 +1755,25 @@
   background: #f1f5f9;
   border-color: #94a3b8;
   color: #1e293b;
+}
+
+.delete-feedback-btn {
+  flex: 0 0 auto; /* Don't grow */
+  background: white;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-feedback-btn:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #b91c1c;
 }
 
 /* Edit Form Styling */
