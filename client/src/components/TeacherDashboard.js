@@ -847,6 +847,21 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <polyline points="21 15 16 10 5 21"></polyline>
     </svg>
   );
+  const IconReportMaker = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="9" y1="15" x2="15" y2="15"></line>
+      <line x1="9" y1="11" x2="15" y2="11"></line>
+    </svg>
+  );
   const IconLogout = () => (
     <svg
       width="24"
@@ -1583,6 +1598,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
             onClick={() => setActiveTab("gallery")}
           >
             <IconGallery /> <span>Gallery</span>
+          </button>
+          {/* ✨ REPORT MAKER LINK (external tool) */}
+          <button
+            onClick={() =>
+              window.open(
+                "https://thevenkyartreportmaker.netlify.app/",
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
+          >
+            <IconReportMaker /> <span>Report Maker</span>
           </button>
         </div>
         <div className="sidebar-footer">
@@ -2647,6 +2674,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
           onClick={() => handleNavClick("gallery")}
         >
           <IconGallery />
+        </button>
+        <button
+          className="nav-item"
+          onClick={() =>
+            window.open(
+              "https://thevenkyartreportmaker.netlify.app/",
+              "_blank",
+              "noopener,noreferrer"
+            )
+          }
+        >
+          <IconReportMaker />
         </button>
       </nav>
 
