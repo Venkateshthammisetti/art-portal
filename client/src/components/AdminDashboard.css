@@ -742,6 +742,12 @@ body {
   border-bottom: 1px solid #e2e8f0;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .header-title h2 {
   margin: 0;
   font-size: 1.5rem;
@@ -861,6 +867,14 @@ body {
   display: none;
 }
 
+/* --- MOBILE-ONLY ELEMENTS (Hidden by Default on Desktop) --- */
+.mobile-only {
+  display: none;
+}
+.mobile-menu-backdrop {
+  display: none;
+}
+
 /* ========================================= */
 /* 📱 MOBILE RESPONSIVE STYLES (< 768px)    */
 /* ========================================= */
@@ -965,6 +979,76 @@ body {
 
   .desktop-only {
     display: none;
+  }
+
+  .mobile-only {
+    display: inline-flex;
+  }
+
+  /* --- HAMBURGER MENU BUTTON --- */
+  .hamburger-btn {
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text, #1e293b);
+    padding: 6px;
+    margin-right: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .hamburger-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* --- BACKDROP BEHIND SLIDE-IN SIDEBAR --- */
+  .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 1999;
+    animation: fadeInBackdrop 0.2s ease;
+  }
+
+  @keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* --- SIDEBAR AS SLIDE-IN DRAWER --- */
+  .admin-sidebar.mobile-open {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 78%;
+    max-width: 300px;
+    z-index: 2000;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    animation: slideInSidebar 0.25s ease;
+  }
+
+  @keyframes slideInSidebar {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  .sidebar-close-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .sidebar-close-btn svg {
+    width: 22px;
+    height: 22px;
   }
 
   /* --- MOBILE OBJECT HEADER (User/Class detail) --- */
