@@ -7130,6 +7130,16 @@ const AdminDashboard = ({ onLogout }) => {
         >
           <IconGallery />
         </button>
+        <button
+          className={
+            activeTab === "expense-add" || activeTab === "expense-history"
+              ? "nav-item active"
+              : "nav-item"
+          }
+          onClick={() => handleNavClick("expense-add")}
+        >
+          <IconExpense />
+        </button>
       </nav>
     </div>
   );
