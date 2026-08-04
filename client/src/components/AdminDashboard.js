@@ -6680,6 +6680,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [overviewExpenses, setOverviewExpenses] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [showMobileLogout, setShowMobileLogout] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("admin_theme") === "dark",
   );
@@ -6742,6 +6743,33 @@ const AdminDashboard = ({ onLogout }) => {
     >
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+    </svg>
+  );
+  const IconMenu = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  );
+  const IconClose = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
   );
   const IconLogout = () => (
@@ -6865,6 +6893,7 @@ const AdminDashboard = ({ onLogout }) => {
     if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
     if (tab === "expense-add" || tab === "expense-history") setExpenseMenuOpen(true);
     setActiveTab(tab);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -6880,15 +6909,29 @@ const AdminDashboard = ({ onLogout }) => {
     if (params.viewMode) setUserInitialViewMode(params.viewMode);
     else setUserInitialViewMode("active");
     setActiveTab(tab);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <div className="admin-container" data-theme={darkMode ? "dark" : "light"}>
-      <aside className="admin-sidebar">
+      {mobileMenuOpen && (
+        <div
+          className="mobile-menu-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside className={`admin-sidebar${mobileMenuOpen ? " mobile-open" : ""}`}>
         <div className="sidebar-brand">
           <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
           <img src={titleImg} alt="Venky Art" className="sidebar-title-img" />
+          <button
+            className="mobile-only sidebar-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            title="Close menu"
+          >
+            <IconClose />
+          </button>
         </div>
         <nav className="sidebar-nav">
           <button
@@ -7015,7 +7058,15 @@ const AdminDashboard = ({ onLogout }) => {
 
       <main className="admin-main">
         <header className="top-header">
-          <div className="header-title">
+          <div className="header-left">
+            <button
+              className="mobile-only hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              title="Open menu"
+            >
+              <IconMenu />
+            </button>
+            <div className="header-title">
             <h2>
               {activeTab === "overview"
                 ? "Overview"
@@ -7040,6 +7091,7 @@ const AdminDashboard = ({ onLogout }) => {
                                 : "Register User"}
             </h2>
             <p>Welcome back, Admin</p>
+            </div>
           </div>
           <div className="header-actions">
             <label
