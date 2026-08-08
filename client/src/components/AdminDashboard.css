@@ -293,6 +293,23 @@
   color: var(--text) !important;
 }
 
+/* 9b. CLASS DETAIL — Enrolled Students mobile cards */
+.admin-container[data-theme="dark"] .enrolled-student-card {
+  background: #1a2535 !important;
+  border-color: #334155 !important;
+}
+.admin-container[data-theme="dark"] .enrolled-student-avatar {
+  background: #1e3a5f !important;
+  color: #60a5fa !important;
+}
+.admin-container[data-theme="dark"] .enrolled-student-name {
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .enrolled-student-parent,
+.admin-container[data-theme="dark"] .enrolled-student-meta {
+  color: var(--text-muted) !important;
+}
+
 /* 10. FEE TRACKER — summary bar mini-cards */
 .admin-container[data-theme="dark"] .table-wrapper > div[style*="f8fafc"],
 .admin-container[data-theme="dark"] div[style*="background:#f8fafc"] {
@@ -1254,8 +1271,8 @@ body {
   }
 
   .table-wrapper .filter-bar .filter-actions .filter-dropdown {
-    flex: 1 1 calc(50% - 5px);
-    min-width: 120px;
+    flex: 1 1 calc((100% - 20px) / 3);
+    min-width: 90px;
   }
 
   .filter-dropdown select {
@@ -1315,6 +1332,71 @@ body {
     min-width: 400px;
   }
 
+  /* CLASS DETAIL — swap the Enrolled Students table for stacked cards,
+     so the page never needs horizontal scrolling on mobile. */
+  .enrolled-students-table {
+    display: none;
+  }
+
+  .enrolled-students-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .enrolled-student-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .enrolled-student-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e0f2fe;
+    color: #0284c7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .enrolled-student-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .enrolled-student-name {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #1e293b;
+    word-break: break-word;
+  }
+
+  .enrolled-student-parent {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 2px;
+    word-break: break-word;
+  }
+
+  .enrolled-student-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #475569;
+  }
+
   /* --- MODAL adjustments on mobile --- */
   .modal-content {
     width: 95% !important;
@@ -1362,6 +1444,11 @@ body {
     padding: 5px 10px;
     font-size: 0.8rem;
   }
+}
+
+/* Enrolled Students mobile cards — hidden on desktop, shown at ≤768px */
+.enrolled-students-cards {
+  display: none;
 }
 
 /* --- DASHBOARD STATS CARDS --- */
@@ -1683,6 +1770,36 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   max-width: 800px;
   margin: 0 auto;
+}
+
+/* Gallery reuses .form-wrapper for its card look, but needs the full
+   content width instead of the 800px form cap so more columns fit. */
+.gallery-wrapper {
+  max-width: none;
+  margin: 0;
+}
+
+/* ---- Gallery grid — 4 columns on desktop, fewer as the viewport shrinks ---- */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+@media (max-width: 1200px) {
+  .gallery-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+@media (max-width: 480px) {
+  .gallery-grid {
+    gap: 8px;
+  }
 }
 
 .form-wrapper h3 {
@@ -3144,6 +3261,47 @@ body {
 .gal-card.gal-selected {
   outline: 3px solid #2563eb;
   outline-offset: -3px;
+}
+
+/* ---- Gallery card — 2-per-row mobile sizing ---- */
+@media (max-width: 768px) {
+  .gal-card {
+    border-radius: 12px;
+  }
+  .gal-card-img {
+    height: 170px;
+  }
+  .gal-card-overlay {
+    padding: 10px 8px 8px;
+  }
+  .gal-card-overlay-student {
+    font-size: 0.6rem;
+    letter-spacing: 0.5px;
+  }
+  .gal-card-overlay-title {
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
+  .gal-card-overlay-sub {
+    font-size: 0.65rem;
+  }
+  .gal-card-actions {
+    top: 8px;
+    right: 8px;
+    gap: 5px;
+  }
+  .gal-action-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  .gal-select-badge {
+    top: 8px;
+    left: 8px;
+    width: 22px;
+    height: 22px;
+    font-size: 0.65rem;
+  }
 }
 
 /* ---- Gallery filter bar ---- */
