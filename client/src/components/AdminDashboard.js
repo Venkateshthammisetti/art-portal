@@ -817,6 +817,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                           <div
                             style={{
                               flex: 1,
+                              minWidth: 0,
                               background: "#f1f5f9",
                               padding: "5px 8px",
                               borderRadius: "4px",
@@ -947,34 +948,65 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
               No students assigned.
             </p>
           ) : (
-            <div className="table-container">
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Parent Name</th>
-                    <th>Age</th>
-                    <th>Joining Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cls.students.map((student) => (
-                    <tr key={student._id}>
-                      <td style={{ fontWeight: "bold" }}>
-                        {student.childName}
-                      </td>
-                      <td>{student.fullName}</td>
-                      <td>{student.childAge || "-"}</td>
-                      <td>
-                        {student.joiningDate
-                          ? new Date(student.joiningDate).toLocaleDateString()
-                          : "-"}
-                      </td>
+            <>
+              {/* Desktop/tablet: table. Hidden on mobile to avoid side-scrolling. */}
+              <div className="table-container enrolled-students-table">
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Parent Name</th>
+                      <th>Age</th>
+                      <th>Joining Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {cls.students.map((student) => (
+                      <tr key={student._id}>
+                        <td style={{ fontWeight: "bold" }}>
+                          {student.childName}
+                        </td>
+                        <td>{student.fullName}</td>
+                        <td>{student.childAge || "-"}</td>
+                        <td>
+                          {student.joiningDate
+                            ? new Date(student.joiningDate).toLocaleDateString()
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile: stacked cards, no horizontal scrolling needed. */}
+              <div className="enrolled-students-cards">
+                {cls.students.map((student) => (
+                  <div key={student._id} className="enrolled-student-card">
+                    <div className="enrolled-student-avatar">
+                      {(student.childName || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="enrolled-student-info">
+                      <div className="enrolled-student-name">
+                        {student.childName}
+                      </div>
+                      <div className="enrolled-student-parent">
+                        Parent: {student.fullName}
+                      </div>
+                      <div className="enrolled-student-meta">
+                        <span>🎂 Age {student.childAge || "-"}</span>
+                        <span>
+                          📅{" "}
+                          {student.joiningDate
+                            ? new Date(student.joiningDate).toLocaleDateString()
+                            : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -2136,6 +2168,53 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
         </div>
         <div
           className="overview-stat-card stat-card-clickable"
+          onClick={() => onNavigate("expense-history")}
+          title="View expense history"
+          style={{ cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+            <div
+              style={{
+                width: "40px", height: "40px", borderRadius: "10px",
+                background: "#fef2f2", color: "#dc2626",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
+              }}
+            >
+              🧾
+            </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#dc2626", background: "#fee2e2", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
+              This Month
+            </span>
+          </div>
+          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
+            ₹{currentMonthExpenses.toLocaleString()}
+          </div>
+          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
+            Total Expenses
+          </div>
+          {topExpenseCategories.length > 0 && (
+            <div style={{ display: "flex", gap: "8px" }}>
+              {topExpenseCategories.map((t) => (
+                <div
+                  key={t.value}
+                  className="stat-mini-tile"
+                  style={{ flex: 1, background: t.bg, borderRadius: "8px", padding: "8px 10px" }}
+                  title={t.label}
+                >
+                  <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: t.color, fontWeight: "700", marginBottom: "2px" }}>
+                    {t.emoji} {t.label}
+                  </div>
+                  <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: t.color }}>
+                    ₹{t.total.toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="stat-card-nav-hint">View Expense History →</div>
+        </div>
+        <div
+          className="overview-stat-card stat-card-clickable"
           onClick={() => onNavigate("fees")}
           title="View fee tracker"
           style={{ cursor: "pointer" }}
@@ -2208,53 +2287,6 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
             </div>
           </div>
           <div className="stat-card-nav-hint">View Fee Tracker →</div>
-        </div>
-        <div
-          className="overview-stat-card stat-card-clickable"
-          onClick={() => onNavigate("expense-history")}
-          title="View expense history"
-          style={{ cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-            <div
-              style={{
-                width: "40px", height: "40px", borderRadius: "10px",
-                background: "#fef2f2", color: "#dc2626",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
-              }}
-            >
-              🧾
-            </div>
-            <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#dc2626", background: "#fee2e2", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
-              This Month
-            </span>
-          </div>
-          <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
-            ₹{currentMonthExpenses.toLocaleString()}
-          </div>
-          <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
-            Total Expenses
-          </div>
-          {topExpenseCategories.length > 0 && (
-            <div style={{ display: "flex", gap: "8px" }}>
-              {topExpenseCategories.map((t) => (
-                <div
-                  key={t.value}
-                  className="stat-mini-tile"
-                  style={{ flex: 1, background: t.bg, borderRadius: "8px", padding: "8px 10px" }}
-                  title={t.label}
-                >
-                  <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: t.color, fontWeight: "700", marginBottom: "2px" }}>
-                    {t.emoji} {t.label}
-                  </div>
-                  <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: t.color }}>
-                    ₹{t.total.toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="stat-card-nav-hint">View Expense History →</div>
         </div>
       </div>
 
@@ -5980,7 +6012,7 @@ const GalleryRepositoryTab = () => {
   const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
 
   return (
-    <div className="form-wrapper">
+    <div className="form-wrapper gallery-wrapper">
       {/* MODERN FILTER BAR */}
       <div className="gallery-filter-bar">
         <h3 className="gallery-filter-title">
@@ -6005,7 +6037,7 @@ const GalleryRepositoryTab = () => {
       </div>
 
       {/* GALLERY GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+      <div className="gallery-grid">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="gallery-skeleton-card">
