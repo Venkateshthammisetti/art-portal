@@ -759,6 +759,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [scheduleViewMode, setScheduleViewMode] = useState("grid");
   const [studentViewMode, setStudentViewMode] = useState("list");
   const [showMobileLogout, setShowMobileLogout] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("teacher_theme") === "dark",
   );
@@ -874,6 +875,33 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <polyline points="14 2 14 8 20 8"></polyline>
       <line x1="9" y1="15" x2="15" y2="15"></line>
       <line x1="9" y1="11" x2="15" y2="11"></line>
+    </svg>
+  );
+  const IconMenu = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  );
+  const IconClose = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
   );
   const IconLogout = () => (
@@ -1846,6 +1874,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   const handleNavClick = (tab) => {
     setActiveTab(tab);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -1865,59 +1894,72 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   return (
     <div className="teacher-container" data-theme={darkMode ? "dark" : "light"}>
+      {mobileMenuOpen && (
+        <div
+          className="mobile-menu-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       {/* SIDEBAR */}
-      <aside className="teacher-sidebar">
+      <aside className={`teacher-sidebar${mobileMenuOpen ? " mobile-open" : ""}`}>
         <div className="sidebar-brand">
           <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
           <img src={titleImg} alt="Venky Art" className="sidebar-title-img" />
+          <button
+            className="mobile-only sidebar-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            title="Close menu"
+          >
+            <IconClose />
+          </button>
         </div>
         <div className="t-nav">
           <button
             className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => handleNavClick("overview")}
           >
             <IconHome /> <span>Dashboard</span>
           </button>
           <button
             className={activeTab === "students" ? "active" : ""}
-            onClick={() => setActiveTab("students")}
+            onClick={() => handleNavClick("students")}
           >
             <IconStudents /> <span>Students</span>
           </button>
           <button
             className={activeTab === "schedule" ? "active" : ""}
-            onClick={() => setActiveTab("schedule")}
+            onClick={() => handleNavClick("schedule")}
           >
             <IconSchedule /> <span>My Schedule</span>
           </button>
           <button
             className={activeTab === "attendance" ? "active" : ""}
-            onClick={() => setActiveTab("attendance")}
+            onClick={() => handleNavClick("attendance")}
           >
             <IconAttendance /> <span>Attendance</span>
           </button>
           <button
             className={activeTab === "feedback" ? "active" : ""}
-            onClick={() => setActiveTab("feedback")}
+            onClick={() => handleNavClick("feedback")}
           >
             <IconFeedback /> <span>Feedback</span>
           </button>
           {/* ✨ GALLERY LINK */}
           <button
             className={activeTab === "gallery" ? "active" : ""}
-            onClick={() => setActiveTab("gallery")}
+            onClick={() => handleNavClick("gallery")}
           >
             <IconGallery /> <span>Gallery</span>
           </button>
           {/* ✨ CERTIFICATIONS LINK */}
           <button
             className={activeTab === "certifications" ? "active" : ""}
-            onClick={() => setActiveTab("certifications")}
+            onClick={() => handleNavClick("certifications")}
           >
             <IconCertificate /> <span>Certifications</span>
           </button>
           {/* ✨ REPORT MAKER (in-app) */}
-          <button onClick={openReportMaker}>
+          <button onClick={() => { setMobileMenuOpen(false); openReportMaker(); }}>
             <IconReportMaker /> <span>Report Maker</span>
           </button>
         </div>
@@ -1929,20 +1971,29 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <main className="teacher-main">
         <header className="t-header">
           <div className="t-header-left">
-            <h2>
-              {activeTab === "students"
-                ? "Student Directory"
-                : activeTab === "attendance"
-                  ? "Attendance Register"
-                  : activeTab === "schedule"
-                    ? "Class Schedule"
-                    : activeTab === "gallery"
-                      ? "Upload Artwork"
-                      : activeTab === "certifications"
-                        ? "Certifications"
-                        : "Teacher Dashboard"}
-            </h2>
-            <p>Welcome back, {currentUser.fullName}</p>
+            <button
+              className="mobile-only hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              title="Open menu"
+            >
+              <IconMenu />
+            </button>
+            <div className="t-header-title">
+              <h2>
+                {activeTab === "students"
+                  ? "Student Directory"
+                  : activeTab === "attendance"
+                    ? "Attendance Register"
+                    : activeTab === "schedule"
+                      ? "Class Schedule"
+                      : activeTab === "gallery"
+                        ? "Upload Artwork"
+                        : activeTab === "certifications"
+                          ? "Certifications"
+                          : "Teacher Dashboard"}
+              </h2>
+              <p>Welcome back, {currentUser.fullName}</p>
+            </div>
           </div>
           <div className="t-header-right">
             <BirthdayNotificationBell
@@ -3122,17 +3173,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
           onClick={() => handleNavClick("gallery")}
         >
           <IconGallery />
-        </button>
-        <button
-          className={
-            activeTab === "certifications" ? "nav-item active" : "nav-item"
-          }
-          onClick={() => handleNavClick("certifications")}
-        >
-          <IconCertificate />
-        </button>
-        <button className="nav-item" onClick={openReportMaker}>
-          <IconReportMaker />
         </button>
       </nav>
 

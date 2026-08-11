@@ -1808,8 +1808,26 @@
 .mobile-bottom-nav { display: none; }
 .mobile-logout-dropdown { display: none; }
 
+/* --- MOBILE-ONLY ELEMENTS (Hidden by Default on Desktop) --- */
+.mobile-only { display: none; }
+.t-header-left { display: flex; align-items: center; min-width: 0; }
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-main, #1e293b);
+  padding: 6px;
+  margin-right: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hamburger-btn svg { width: 24px; height: 24px; }
+.mobile-menu-backdrop { display: none; }
+
 @media (max-width: 768px) {
-  
+
   /* 1. LAYOUT RESET */
   .teacher-container {
     flex-direction: column;
@@ -1817,8 +1835,58 @@
     overflow: hidden;
   }
 
-  /* 2. HIDE SIDEBAR */
+  /* 2. SIDEBAR BECOMES A SLIDE-IN DRAWER, OPENED VIA HAMBURGER */
   .teacher-sidebar { display: none; }
+
+  .mobile-only { display: inline-flex; }
+
+  .hamburger-btn { display: inline-flex; }
+
+  /* --- BACKDROP BEHIND SLIDE-IN SIDEBAR --- */
+  .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 1999;
+    animation: fadeInTeacherBackdrop 0.2s ease;
+  }
+
+  @keyframes fadeInTeacherBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* --- SIDEBAR AS SLIDE-IN DRAWER --- */
+  .teacher-sidebar.mobile-open {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 78%;
+    max-width: 300px;
+    z-index: 2000;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    animation: slideInTeacherSidebar 0.25s ease;
+  }
+
+  @keyframes slideInTeacherSidebar {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  .sidebar-close-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .sidebar-close-btn svg { width: 22px; height: 22px; }
 
   /* 3. MAIN CONTENT ADJUSTMENT */
   .teacher-main {

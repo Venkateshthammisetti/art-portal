@@ -618,6 +618,7 @@ const ParentDashboard = ({ user, onLogout }) => {
     const hash = window.location.hash.replace("#", "");
     return hash || "overview";
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [studentProfile, setStudentProfile] = useState(null);
   const [assignedClass, setAssignedClass] = useState(null);
   const [reports, setReports] = useState([]);
@@ -1092,6 +1093,7 @@ const ParentDashboard = ({ user, onLogout }) => {
     // Also update state immediately for instant feedback
     setActiveTab(tab);
     setShowProfileMenu(false);
+    setMobileMenuOpen(false);
   };
 
   const onTouchStart = (e) => {
@@ -1153,10 +1155,23 @@ const ParentDashboard = ({ user, onLogout }) => {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      <aside className="parent-sidebar">
+      {mobileMenuOpen && (
+        <div
+          className="mobile-menu-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside className={`parent-sidebar${mobileMenuOpen ? " mobile-open" : ""}`}>
         <div className="sidebar-header">
           <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
           <img src={titleImg} alt="Title" className="sidebar-title-img" />
+          <button
+            className="mobile-only sidebar-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            title="Close menu"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
         <div className="p-nav">
           <button
@@ -1250,6 +1265,13 @@ const ParentDashboard = ({ user, onLogout }) => {
       <main className="parent-main">
         <header className="p-header">
           <div className="p-header-left">
+            <button
+              className="mobile-only hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              title="Open menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
             <h2>
               {activeTab === "overview"
                 ? "My Dashboard"
