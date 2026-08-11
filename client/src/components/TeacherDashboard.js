@@ -935,6 +935,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   });
   const [isColMenuOpen, setIsColMenuOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [mobileSelectedDay, setMobileSelectedDay] = useState(new Date());
   const [modalData, setModalData] = useState(null);
   const [editingLink, setEditingLink] = useState("");
   const [isLinkInputVisible, setIsLinkInputVisible] = useState(false);
@@ -1823,6 +1824,44 @@ const TeacherDashboard = ({ user, onLogout }) => {
     d.setDate(d.getDate() + off * 7);
     setCurrentDate(d);
   };
+
+  // --- MOBILE CALENDAR VIEW (day-strip + card list) ---
+  const getWeekDatesSunFirst = (baseDate) => {
+    const d = new Date(baseDate);
+    const sunday = new Date(d);
+    sunday.setDate(d.getDate() - d.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const t = new Date(sunday);
+      t.setDate(sunday.getDate() + i);
+      return t;
+    });
+  };
+  const changeMobileWeek = (off) => {
+    const d = new Date(mobileSelectedDay);
+    d.setDate(d.getDate() + off * 7);
+    setMobileSelectedDay(d);
+  };
+  const getClassesForDay = (date) => {
+    const dayName = dayNamesFull[date.getDay()];
+    const sessions = [];
+    classes.forEach((cls) => {
+      cls.schedule.forEach((s) => {
+        if (s.day === dayName) sessions.push({ ...cls, time: s.time });
+      });
+    });
+    return sessions.sort((a, b) => {
+      const [ah, am] = a.time.split(":").map(Number);
+      const [bh, bm] = b.time.split(":").map(Number);
+      return ah * 60 + (am || 0) - (bh * 60 + (bm || 0));
+    });
+  };
+  const formatTimeRange = (timeStr) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    const totalEnd = h * 60 + (m || 0) + 60; // assume 60-min classes (matches attendance reminder logic)
+    const endH = Math.floor(totalEnd / 60) % 24;
+    const endM = totalEnd % 60;
+    return `${formatTime12(timeStr)} - ${formatEndTime(endH, endM)}`;
+  };
   const presentCount = Object.values(attendanceStatus).filter(
     (s) => s === "Present",
   ).length;
@@ -2387,7 +2426,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       {getProcessedStudents().map((s) => (
                         <tr key={s._id}>
                           {visibleColumns.name && (
-                            <td>
+                            <td data-label="Name">
                               <div className="std-name-cell">
                                 <div className="s-avatar-sm">
                                   {s.childName.charAt(0)}
@@ -2396,15 +2435,15 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               </div>
                             </td>
                           )}
-                          {visibleColumns.id && <td>{s.username}</td>}
+                          {visibleColumns.id && <td data-label="ID">{s.username}</td>}
                           {visibleColumns.className && (
-                            <td>
+                            <td data-label="Class">
                               <span className="class-badge">{s.className}</span>
                             </td>
                           )}
-                          {visibleColumns.gender && <td>{s.gender}</td>}
+                          {visibleColumns.gender && <td data-label="Gender">{s.gender}</td>}
                           {visibleColumns.mode && (
-                            <td>
+                            <td data-label="Mode">
                               <span className={`mode-badge ${s.classMode || "online"}`}>
                                 {s.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
                               </span>
@@ -2467,7 +2506,86 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
           {/* SCHEDULE */}
           {activeTab === "schedule" && (
-            <div className="timetable-container">
+            <>
+              {/* MOBILE CALENDAR VIEW — day-strip + card list (see .mobile-cal-view CSS) */}
+              <div className="mobile-cal-view">
+                <div className="mobile-cal-header">
+                  <button
+                    className="mobile-cal-nav-btn"
+                    onClick={() => changeMobileWeek(-1)}
+                    aria-label="Previous week"
+                  >
+                    ‹
+                  </button>
+                  <div className="mobile-cal-month">
+                    {mobileSelectedDay.toLocaleDateString("en-US", { month: "long" })}
+                  </div>
+                  <button
+                    className="mobile-cal-nav-btn"
+                    onClick={() => changeMobileWeek(1)}
+                    aria-label="Next week"
+                  >
+                    ›
+                  </button>
+                </div>
+                <div className="mobile-cal-strip">
+                  {getWeekDatesSunFirst(mobileSelectedDay).map((date, i) => {
+                    const isSelected =
+                      date.toDateString() === mobileSelectedDay.toDateString();
+                    const isToday =
+                      date.toDateString() === new Date().toDateString();
+                    return (
+                      <button
+                        key={i}
+                        className={`mobile-cal-day${isSelected ? " selected" : ""}${isToday && !isSelected ? " today" : ""}`}
+                        onClick={() => setMobileSelectedDay(date)}
+                      >
+                        <span className="mcd-label">
+                          {dayNamesFull[date.getDay()].slice(0, 3).toUpperCase()}
+                        </span>
+                        <span className="mcd-num">{date.getDate()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mobile-cal-events">
+                  {getClassesForDay(mobileSelectedDay).length === 0 ? (
+                    <div className="mobile-cal-empty">
+                      <span role="img" aria-label="palette">🎨</span>
+                      <p>No classes scheduled</p>
+                    </div>
+                  ) : (
+                    getClassesForDay(mobileSelectedDay).map((cls, i) => {
+                      const studentNames = (cls.students || [])
+                        .map((s) => s.childName)
+                        .filter(Boolean)
+                        .join(" and ");
+                      return (
+                        <div
+                          key={`${cls._id}-${i}`}
+                          className={`mobile-cal-event ${getClassColor(cls.className)}`}
+                          onClick={() => handleBlockClick(cls, cls.time)}
+                        >
+                          <div className="mce-bar"></div>
+                          <div className="mce-body">
+                            <span className="mce-time">{formatTimeRange(cls.time)}</span>
+                            <h4 className="mce-title">
+                              {cls.className}
+                              {studentNames ? ` : ${studentNames}` : ""}
+                            </h4>
+                          </div>
+                          <div className="mce-avatar">
+                            {currentUser.fullName?.charAt(0) || "T"}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* DESKTOP / TABLET SCHEDULE VIEW (grid & list toggle) */}
+            <div className="timetable-container desktop-schedule-view">
               <div className="tt-toolbar">
                 {scheduleViewMode === "grid" ? (
                   <>
@@ -2594,6 +2712,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 </div>
               )}
             </div>
+            </>
           )}
 
           {/* ATTENDANCE */}
