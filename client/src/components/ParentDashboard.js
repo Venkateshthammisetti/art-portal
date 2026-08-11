@@ -490,6 +490,124 @@ const ParentGalleryTab = ({ studentId }) => {
 };
 
 // ==========================================
+// 1b. PARENT CERTIFICATIONS COMPONENT
+// ==========================================
+const ParentCertificationsTab = ({ studentId }) => {
+  const [certifications, setCertifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const baseUrl = "https://art-portal-7n6r.onrender.com";
+
+    axios
+      .get(`${baseUrl}/api/certifications/student/${studentId}`)
+      .then((res) => setCertifications(res.data))
+      .catch((err) => console.error("Certifications Error:", err))
+      .finally(() => setLoading(false));
+  }, [studentId]);
+
+  const handleDownload = async (e, fileUrl, title) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const extension = fileUrl.toLowerCase().endsWith(".pdf")
+        ? "pdf"
+        : blob.type.split("/")[1] || "jpg";
+      link.download = `${title || "certificate"}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to download. Try again.");
+    }
+  };
+
+  return (
+    <div className="form-wrapper" style={{ padding: "20px" }}>
+      <div className="gallery-filter-bar">
+        <h3 className="gallery-filter-title">
+          🏆 My Certifications
+          <span className="gallery-count-badge">{certifications.length}</span>
+        </h3>
+      </div>
+
+      <div className="cert-grid">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="gallery-skeleton-card">
+              <div className="gallery-skeleton-img" />
+              <div className="gallery-skeleton-info">
+                <div className="gallery-skeleton-line" />
+                <div className="gallery-skeleton-line short" />
+                <div className="gallery-skeleton-line xs" />
+              </div>
+            </div>
+          ))
+        ) : certifications.length === 0 ? (
+          <div className="gallery-empty-state">
+            <div className="gallery-empty-icon">🏆</div>
+            <p className="gallery-empty-title">No certifications yet</p>
+            <p className="gallery-empty-sub">
+              Your child's certificates will appear here
+            </p>
+          </div>
+        ) : (
+          certifications.map((cert) => {
+            const isPdf = cert.fileUrl.toLowerCase().endsWith(".pdf");
+            return (
+              <div key={cert._id} className="cert-card">
+                <div className="cert-card-thumb">
+                  {isPdf ? (
+                    <span className="cert-card-thumb-icon">📄</span>
+                  ) : (
+                    <img src={cert.fileUrl} alt={cert.title} />
+                  )}
+                </div>
+                <div className="cert-card-body">
+                  <strong>
+                    {cert.title || "Certificate of Achievement"}
+                  </strong>
+                  <span className="cert-card-issuer">
+                    {cert.issuer || "Thevenkyart Art Academy"}
+                  </span>
+                  <span className="cert-card-date">
+                    {new Date(cert.dateIssued).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="cert-card-actions">
+                  <a
+                    href={cert.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rc-action-btn pdf"
+                  >
+                    👁️ View
+                  </a>
+                  <button
+                    className="rc-action-btn"
+                    onClick={(e) =>
+                      handleDownload(e, cert.fileUrl, cert.title)
+                    }
+                  >
+                    ⬇ Download
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
 // 2. MAIN COMPONENT (ParentDashboard)
 // ==========================================
 const ParentDashboard = ({ user, onLogout }) => {
@@ -1077,6 +1195,13 @@ const ParentDashboard = ({ user, onLogout }) => {
             Attendance Log
           </button>
           <button
+            className={activeTab === "certifications" ? "active" : ""}
+            onClick={() => handleNavClick("certifications")}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"></circle><path d="M9 13.5 7 22l5-3 5 3-2-8.5"></path></svg>
+            Certifications
+          </button>
+          <button
             className={activeTab === "fees" ? "active" : ""}
             onClick={() => handleNavClick("fees")}
           >
@@ -1132,7 +1257,9 @@ const ParentDashboard = ({ user, onLogout }) => {
                   ? "Refer a Friend"
                   : activeTab === "gallery"
                     ? "My Art Gallery"
-                    : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                    : activeTab === "certifications"
+                      ? "My Certifications"
+                      : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
             </h2>
           </div>
           <div className="p-header-right">
@@ -1838,6 +1965,10 @@ const ParentDashboard = ({ user, onLogout }) => {
           {activeTab === "gallery" && (
             <ParentGalleryTab studentId={currentUser._id} />
           )}
+
+          {activeTab === "certifications" && (
+            <ParentCertificationsTab studentId={currentUser._id} />
+          )}
         </div>
       </main>
 
@@ -1889,6 +2020,17 @@ const ParentDashboard = ({ user, onLogout }) => {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23"></line>
             <path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5"></path>
+          </svg>
+        </button>
+        <button
+          className={
+            activeTab === "certifications" ? "nav-item active" : "nav-item"
+          }
+          onClick={() => handleNavClick("certifications")}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="6"></circle>
+            <path d="M9 13.5 7 22l5-3 5 3-2-8.5"></path>
           </svg>
         </button>
       </nav>

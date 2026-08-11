@@ -17,6 +17,7 @@ import axios from "axios";
 import "./AdminDashboard.css";
 import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
 import { FaFilter } from "react-icons/fa6";
+import BirthdayNotificationBell from "./BirthdayNotifications";
 
 // IMAGES
 import logoImg from "./new-logo.png";
@@ -7129,6 +7130,10 @@ const AdminDashboard = ({ onLogout }) => {
             </div>
           </div>
           <div className="header-actions">
+            <BirthdayNotificationBell
+              students={overviewUsers.filter((u) => u.role === "parent")}
+              storageKey="admin_bday_notif_read"
+            />
             <label
               className="theme-toggle-label"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}

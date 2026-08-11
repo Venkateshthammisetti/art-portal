@@ -13,6 +13,7 @@ const Class = require("./models/Class");
 const Attendance = require("./models/Attendance");
 const Feedback = require("./models/Feedback");
 const Artwork = require("./models/Artwork");
+const Certification = require("./models/Certification");
 const Expense = require("./models/Expense");
 const nodemailer = require("nodemailer");
 const webpush = require("web-push");
@@ -790,6 +791,90 @@ app.post("/api/gallery/bulk-delete", async (req, res) => {
     res.json({ success: true, message: `${result.deletedCount} artworks deleted` });
   } catch (err) {
     res.status(500).json({ message: "Error deleting artworks" });
+  }
+});
+
+// ===========================
+//     CERTIFICATION ROUTES 🏆
+// ===========================
+
+// 1. UPLOAD CERTIFICATION (Teacher/Admin)
+app.post("/api/certifications/upload", upload.single("file"), async (req, res) => {
+  try {
+    const { studentId, teacherId, title, issuer, dateIssued } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const newCertification = new Certification({
+      studentId,
+      teacherId,
+      fileUrl: req.file.path, // Cloudinary URL
+      title,
+      issuer,
+      dateIssued,
+    });
+
+    await newCertification.save();
+    res.json({
+      success: true,
+      message: "Certification uploaded successfully!",
+      certification: newCertification,
+    });
+  } catch (err) {
+    console.error("Certification Upload Error:", err);
+    res.status(500).json({ message: "Error uploading certification" });
+  }
+});
+
+// 2. GET ALL CERTIFICATIONS (Admin)
+app.get("/api/certifications", async (req, res) => {
+  try {
+    const certifications = await Certification.find()
+      .populate("studentId", "childName fullName")
+      .sort({ dateIssued: -1 });
+    res.json(certifications);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching certifications" });
+  }
+});
+
+// 3. GET CERTIFICATIONS FOR A SPECIFIC STUDENT (For Parents)
+app.get("/api/certifications/student/:studentId", async (req, res) => {
+  try {
+    const certifications = await Certification.find({
+      studentId: req.params.studentId,
+    }).sort({ dateIssued: -1 });
+    res.json(certifications);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching certifications" });
+  }
+});
+
+// 4. GET CERTIFICATIONS UPLOADED BY A TEACHER (Sent History)
+app.get("/api/certifications/teacher/:teacherId", async (req, res) => {
+  try {
+    const certifications = await Certification.find({
+      teacherId: req.params.teacherId,
+    })
+      .populate("studentId", "childName fullName")
+      .sort({ createdAt: -1 });
+    res.json(certifications);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching certifications" });
+  }
+});
+
+// 5. DELETE CERTIFICATION (Admin/Teacher)
+app.delete("/api/certifications/:id", async (req, res) => {
+  try {
+    await Certification.findByIdAndDelete(req.params.id);
+    // Note: This deletes from DB only; the Cloudinary asset is left in place
+    // (same tradeoff as artwork deletion).
+    res.json({ success: true, message: "Certification deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting certification" });
   }
 });
 

@@ -1,0 +1,170 @@
+/* Notification-centre bell — shared by AdminDashboard and TeacherDashboard */
+
+.bday-notif-wrap {
+  position: relative;
+  --bn-card: #ffffff;
+  --bn-text: #1e293b;
+  --bn-muted: #64748b;
+  --bn-border: #e2e8f0;
+  --bn-hover: #f1f5f9;
+  --bn-primary: #2563eb;
+  --bn-danger: #ef4444;
+  --bn-unread-bg: #eff6ff;
+}
+
+.admin-container[data-theme="dark"] .bday-notif-wrap,
+.teacher-container[data-theme="dark"] .bday-notif-wrap {
+  --bn-card: #1e293b;
+  --bn-text: #f1f5f9;
+  --bn-muted: #94a3b8;
+  --bn-border: #334155;
+  --bn-hover: #0f172a;
+  --bn-unread-bg: #1e3a5f;
+}
+
+.bday-notif-bell-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--bn-border);
+  background: var(--bn-card);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.bday-notif-bell-btn:hover {
+  background: var(--bn-hover);
+}
+
+.bday-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--bn-danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bn-card);
+}
+
+.bday-notif-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--bn-card);
+  border: 1px solid var(--bn-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 200;
+}
+
+.bday-notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--bn-border);
+  font-weight: 700;
+  color: var(--bn-text);
+  font-size: 0.9rem;
+}
+
+.bday-notif-mark-all {
+  background: none;
+  border: none;
+  color: var(--bn-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.bday-notif-list {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.bday-notif-empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--bn-muted);
+  font-size: 0.85rem;
+}
+
+.bday-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--bn-border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.bday-notif-item:last-child {
+  border-bottom: none;
+}
+
+.bday-notif-item:hover {
+  background: var(--bn-hover);
+}
+
+.bday-notif-item.unread {
+  background: var(--bn-unread-bg);
+}
+
+.bday-notif-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.bday-notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.bday-notif-title {
+  margin: 0 0 2px;
+  font-size: 0.85rem;
+  color: var(--bn-text);
+  overflow-wrap: anywhere;
+}
+
+.bday-notif-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--bn-muted);
+}
+
+.bday-notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bn-primary);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .bday-notif-dropdown {
+    position: fixed;
+    top: 64px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+}
