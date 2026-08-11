@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
+import BirthdayNotificationBell from "./BirthdayNotifications";
 
 // IMAGES (same as Admin Dashboard)
 import logoImg from "./new-logo.png";
@@ -758,6 +759,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [scheduleViewMode, setScheduleViewMode] = useState("grid");
   const [studentViewMode, setStudentViewMode] = useState("list");
   const [showMobileLogout, setShowMobileLogout] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("teacher_theme") === "dark",
   );
@@ -847,6 +849,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <polyline points="21 15 16 10 5 21"></polyline>
     </svg>
   );
+  const IconCertificate = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="8" r="6"></circle>
+      <path d="M9 13.5 7 22l5-3 5 3-2-8.5"></path>
+    </svg>
+  );
   const IconReportMaker = () => (
     <svg
       width="24"
@@ -860,6 +875,33 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <polyline points="14 2 14 8 20 8"></polyline>
       <line x1="9" y1="15" x2="15" y2="15"></line>
       <line x1="9" y1="11" x2="15" y2="11"></line>
+    </svg>
+  );
+  const IconMenu = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  );
+  const IconClose = () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
   );
   const IconLogout = () => (
@@ -924,6 +966,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [historyMonth, setHistoryMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
+
+  // --- CERTIFICATIONS ---
+  const [certStudent, setCertStudent] = useState("");
+  const [certTitle, setCertTitle] = useState("");
+  const [certIssuer, setCertIssuer] = useState("Thevenkyart Art Academy");
+  const [certDateIssued, setCertDateIssued] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [certFile, setCertFile] = useState(null);
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const [certHistory, setCertHistory] = useState([]);
+  const [loadingCertHistory, setLoadingCertHistory] = useState(false);
 
   // --- REPORT MAKER (in-app art report generator) ---
   const [showReportMaker, setShowReportMaker] = useState(false);
@@ -1072,6 +1126,25 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setFeedbackHistory(res.data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // --- FETCH CERTIFICATION HISTORY ---
+  useEffect(() => {
+    if (activeTab === "certifications") fetchCertHistory();
+  }, [activeTab, currentUser._id]);
+
+  const fetchCertHistory = async () => {
+    setLoadingCertHistory(true);
+    try {
+      const res = await axios.get(
+        `https://art-portal-7n6r.onrender.com/api/certifications/teacher/${currentUser._id}`,
+      );
+      setCertHistory(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingCertHistory(false);
     }
   };
 
@@ -1422,6 +1495,58 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   };
 
+  const uploadCertification = async (e) => {
+    e.preventDefault();
+    if (!certStudent) return alert("Please select a student.");
+    if (!certFile) return alert("Please choose a certificate file.");
+
+    setUploadingCert(true);
+    try {
+      const formData = new FormData();
+      formData.append("studentId", certStudent);
+      formData.append("teacherId", currentUser._id);
+      formData.append("title", certTitle || "Certificate of Achievement");
+      formData.append("issuer", certIssuer || "Thevenkyart Art Academy");
+      formData.append("dateIssued", certDateIssued);
+      formData.append("file", certFile);
+
+      const res = await axios.post(
+        "https://art-portal-7n6r.onrender.com/api/certifications/upload",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      setCertHistory((prev) => [res.data.certification, ...prev]);
+      setMsg("✅ Certification uploaded!");
+      setCertTitle("");
+      setCertFile(null);
+      setCertDateIssued(new Date().toISOString().split("T")[0]);
+      setTimeout(() => setMsg(""), 3000);
+    } catch (err) {
+      console.error("Certification upload failed", err);
+      setMsg("❌ Failed to upload certification");
+      setTimeout(() => setMsg(""), 3000);
+    } finally {
+      setUploadingCert(false);
+    }
+  };
+
+  const handleDeleteCertification = async (id) => {
+    if (!window.confirm("Delete this certification? This cannot be undone."))
+      return;
+    try {
+      await axios.delete(
+        `https://art-portal-7n6r.onrender.com/api/certifications/${id}`,
+      );
+      setCertHistory((prev) => prev.filter((item) => item._id !== id));
+      setMsg("Certification Deleted!");
+      setTimeout(() => setMsg(""), 3000);
+    } catch (err) {
+      console.error("Delete failed", err);
+      setMsg("❌ Failed to delete certification");
+      setTimeout(() => setMsg(""), 3000);
+    }
+  };
+
   // --- REPORT MAKER HELPERS ---
   const rmRatingFields = [
     { key: "regularity", label: "Regularity & Punctuality" },
@@ -1749,6 +1874,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   const handleNavClick = (tab) => {
     setActiveTab(tab);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -1768,52 +1894,72 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   return (
     <div className="teacher-container" data-theme={darkMode ? "dark" : "light"}>
+      {mobileMenuOpen && (
+        <div
+          className="mobile-menu-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       {/* SIDEBAR */}
-      <aside className="teacher-sidebar">
+      <aside className={`teacher-sidebar${mobileMenuOpen ? " mobile-open" : ""}`}>
         <div className="sidebar-brand">
           <img src={logoImg} alt="Logo" className="sidebar-logo-img" />
           <img src={titleImg} alt="Venky Art" className="sidebar-title-img" />
+          <button
+            className="mobile-only sidebar-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            title="Close menu"
+          >
+            <IconClose />
+          </button>
         </div>
         <div className="t-nav">
           <button
             className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => handleNavClick("overview")}
           >
             <IconHome /> <span>Dashboard</span>
           </button>
           <button
             className={activeTab === "students" ? "active" : ""}
-            onClick={() => setActiveTab("students")}
+            onClick={() => handleNavClick("students")}
           >
             <IconStudents /> <span>Students</span>
           </button>
           <button
             className={activeTab === "schedule" ? "active" : ""}
-            onClick={() => setActiveTab("schedule")}
+            onClick={() => handleNavClick("schedule")}
           >
             <IconSchedule /> <span>My Schedule</span>
           </button>
           <button
             className={activeTab === "attendance" ? "active" : ""}
-            onClick={() => setActiveTab("attendance")}
+            onClick={() => handleNavClick("attendance")}
           >
             <IconAttendance /> <span>Attendance</span>
           </button>
           <button
             className={activeTab === "feedback" ? "active" : ""}
-            onClick={() => setActiveTab("feedback")}
+            onClick={() => handleNavClick("feedback")}
           >
             <IconFeedback /> <span>Feedback</span>
           </button>
           {/* ✨ GALLERY LINK */}
           <button
             className={activeTab === "gallery" ? "active" : ""}
-            onClick={() => setActiveTab("gallery")}
+            onClick={() => handleNavClick("gallery")}
           >
             <IconGallery /> <span>Gallery</span>
           </button>
+          {/* ✨ CERTIFICATIONS LINK */}
+          <button
+            className={activeTab === "certifications" ? "active" : ""}
+            onClick={() => handleNavClick("certifications")}
+          >
+            <IconCertificate /> <span>Certifications</span>
+          </button>
           {/* ✨ REPORT MAKER (in-app) */}
-          <button onClick={openReportMaker}>
+          <button onClick={() => { setMobileMenuOpen(false); openReportMaker(); }}>
             <IconReportMaker /> <span>Report Maker</span>
           </button>
         </div>
@@ -1825,20 +1971,35 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <main className="teacher-main">
         <header className="t-header">
           <div className="t-header-left">
-            <h2>
-              {activeTab === "students"
-                ? "Student Directory"
-                : activeTab === "attendance"
-                  ? "Attendance Register"
-                  : activeTab === "schedule"
-                    ? "Class Schedule"
-                    : activeTab === "gallery"
-                      ? "Upload Artwork"
-                      : "Teacher Dashboard"}
-            </h2>
-            <p>Welcome back, {currentUser.fullName}</p>
+            <button
+              className="mobile-only hamburger-btn"
+              onClick={() => setMobileMenuOpen(true)}
+              title="Open menu"
+            >
+              <IconMenu />
+            </button>
+            <div className="t-header-title">
+              <h2>
+                {activeTab === "students"
+                  ? "Student Directory"
+                  : activeTab === "attendance"
+                    ? "Attendance Register"
+                    : activeTab === "schedule"
+                      ? "Class Schedule"
+                      : activeTab === "gallery"
+                        ? "Upload Artwork"
+                        : activeTab === "certifications"
+                          ? "Certifications"
+                          : "Teacher Dashboard"}
+              </h2>
+              <p>Welcome back, {currentUser.fullName}</p>
+            </div>
           </div>
           <div className="t-header-right">
+            <BirthdayNotificationBell
+              students={myStudents}
+              storageKey={`teacher_bday_notif_read_${currentUser._id}`}
+            />
             <label
               className="theme-toggle-label"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -2834,6 +2995,131 @@ const TeacherDashboard = ({ user, onLogout }) => {
             </div>
           )}
 
+          {/* CERTIFICATIONS (With History & Upload) */}
+          {activeTab === "certifications" && (
+            <div className="feedback-view">
+              <div className="feedback-container-grid">
+                <div className="form-card">
+                  <h3>🏆 New Certification</h3>
+                  <form onSubmit={uploadCertification}>
+                    <div className="controls-row">
+                      <div className="control-group">
+                        <label>Student</label>
+                        <select
+                          value={certStudent}
+                          onChange={(e) => setCertStudent(e.target.value)}
+                          required
+                        >
+                          <option value="">-- Choose --</option>
+                          {myStudents.map((s) => (
+                            <option key={s._id} value={s._id}>
+                              {s.childName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="control-group">
+                        <label>Date Issued</label>
+                        <input
+                          type="date"
+                          value={certDateIssued}
+                          onChange={(e) => setCertDateIssued(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="control-group">
+                      <label>Certificate Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Certificate of Excellence in Watercolor"
+                        value={certTitle}
+                        onChange={(e) => setCertTitle(e.target.value)}
+                      />
+                    </div>
+                    <div className="control-group">
+                      <label>Issuer</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Thevenkyart Art Academy"
+                        value={certIssuer}
+                        onChange={(e) => setCertIssuer(e.target.value)}
+                      />
+                    </div>
+                    <div className="control-group">
+                      <label>Upload Certificate (PDF or Image)</label>
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        onChange={(e) => setCertFile(e.target.files[0])}
+                        className="file-input"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="submit-feedback-btn"
+                      disabled={uploadingCert}
+                    >
+                      {uploadingCert ? "Uploading..." : "Upload Certification"}
+                    </button>
+                  </form>
+                </div>
+                <div className="history-card">
+                  <div className="history-header-row">
+                    <h3>Sent History</h3>
+                  </div>
+                  <div className="history-list">
+                    {loadingCertHistory ? (
+                      <div className="empty-history">Loading...</div>
+                    ) : certHistory.length === 0 ? (
+                      <div className="empty-history">
+                        No certifications uploaded yet.
+                      </div>
+                    ) : (
+                      certHistory.map((item) => (
+                        <div key={item._id} className="history-item">
+                          <div className="h-header">
+                            <span className="h-name">
+                              {item.studentId?.childName || "Unknown"}
+                            </span>
+                            <span className="h-sentiment grey">
+                              {new Date(item.dateIssued).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="h-text">
+                            "{item.title || "Certificate of Achievement"}"
+                          </p>
+                          {item.issuer && (
+                            <p className="h-text">Issued by: {item.issuer}</p>
+                          )}
+                          <div className="history-actions">
+                            <a
+                              href={item.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="view-pdf-link"
+                            >
+                              📎 View Certificate
+                            </a>
+                            <button
+                              className="delete-feedback-btn"
+                              onClick={() =>
+                                handleDeleteCertification(item._id)
+                              }
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ✨✨✨ INTEGRATED GALLERY TAB ✨✨✨ */}
           {activeTab === "gallery" && (
             <TeacherGalleryTab
@@ -2887,9 +3173,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
           onClick={() => handleNavClick("gallery")}
         >
           <IconGallery />
-        </button>
-        <button className="nav-item" onClick={openReportMaker}>
-          <IconReportMaker />
         </button>
       </nav>
 

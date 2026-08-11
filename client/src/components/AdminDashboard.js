@@ -17,6 +17,7 @@ import axios from "axios";
 import "./AdminDashboard.css";
 import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
 import { FaFilter } from "react-icons/fa6";
+import BirthdayNotificationBell from "./BirthdayNotifications";
 
 // IMAGES
 import logoImg from "./new-logo.png";
@@ -4777,6 +4778,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   // Student Pass states
   const [passModal, setPassModal] = useState({ show: false, student: null });
   const [passReason, setPassReason] = useState("");
+  const [passCustomReason, setPassCustomReason] = useState("");
   const [passHistoryModal, setPassHistoryModal] = useState({ show: false, student: null, passes: [] });
   const [passLoading, setPassLoading] = useState(false);
 
@@ -4852,7 +4854,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       const res = await axios.post("https://art-portal-7n6r.onrender.com/api/student-pass/mark", {
         userId: passModal.student._id,
         month: selectedMonth,
-        reason: passReason,
+        reason: passReason === "Other" ? passCustomReason : passReason,
         markedBy: "admin",
       });
       setAllStudents((prev) =>
@@ -4864,6 +4866,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       );
       setPassModal({ show: false, student: null });
       setPassReason("");
+      setPassCustomReason("");
     } catch (err) {
       alert(err.response?.data?.message || "Error marking pass");
     } finally {
@@ -5616,7 +5619,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                         fontSize: "0.85rem",
                                         backgroundColor: "#7c3aed",
                                       }}
-                                      onClick={() => setPassModal({ show: true, student })}
+                                      onClick={() => { setPassReason(""); setPassCustomReason(""); setPassModal({ show: true, student }); }}
                                     >
                                       Mark Pass
                                     </button>
@@ -5644,7 +5647,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
             background: "rgba(0,0,0,0.5)", display: "flex",
             alignItems: "center", justifyContent: "center", zIndex: 9999,
           }}
-          onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); }}
+          onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); setPassCustomReason(""); }}
         >
           <div
             style={{
@@ -5686,7 +5689,8 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
               <input
                 type="text"
                 placeholder="Enter custom reason..."
-                onChange={(e) => setPassReason(e.target.value)}
+                value={passCustomReason}
+                onChange={(e) => setPassCustomReason(e.target.value)}
                 style={{
                   width: "100%", padding: "10px", borderRadius: "8px",
                   border: "1px solid #cbd5e1", fontSize: "0.9rem", marginBottom: "8px",
@@ -5712,7 +5716,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                   flex: 1, padding: "10px", fontSize: "0.95rem",
                   backgroundColor: "#64748b",
                 }}
-                onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); }}
+                onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); setPassCustomReason(""); }}
               >
                 Cancel
               </button>
@@ -7126,6 +7130,10 @@ const AdminDashboard = ({ onLogout }) => {
             </div>
           </div>
           <div className="header-actions">
+            <BirthdayNotificationBell
+              students={overviewUsers.filter((u) => u.role === "parent")}
+              storageKey="admin_bday_notif_read"
+            />
             <label
               className="theme-toggle-label"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
