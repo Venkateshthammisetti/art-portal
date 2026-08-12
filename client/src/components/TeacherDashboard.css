@@ -1825,6 +1825,7 @@
 }
 .hamburger-btn svg { width: 24px; height: 24px; }
 .mobile-menu-backdrop { display: none; }
+.mobile-cal-view { display: none; }
 
 @media (max-width: 768px) {
 
@@ -2063,8 +2064,203 @@
   .tt-date-display { text-align: center; }
   .week-nav { justify-content: center; }
   
-  /* Scrollable Tables */
-  .std-table-wrapper, .sheet-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Scrollable Tables (attendance sheet keeps horizontal scroll) */
+  .sheet-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Student Directory table -> stacked cards (no side-scroll needed).
+     Name gets its own full-width row; the rest sit in a compact 2-column
+     grid (2 rows max for the 4 optional columns: ID, Class, Gender, Mode). */
+  .std-table-wrapper {
+    overflow-x: visible;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  .std-table { min-width: 0; width: 100%; }
+  .std-table thead { display: none; }
+  .std-table, .std-table tbody { display: block; width: 100%; }
+  .std-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+  }
+  .std-table td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0;
+    border: none;
+    font-size: 0.8rem;
+  }
+  .std-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  /* Name row: full width, normal size, no label, separated from the detail grid */
+  .std-table td[data-label="Name"] {
+    grid-column: 1 / -1;
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .std-table td[data-label="Name"]::before { content: none; }
+  .std-table td[data-label="Name"] .std-name-cell {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* Schedule tab: show the day-strip calendar, hide the desktop grid/list toggle */
+  .desktop-schedule-view { display: none; }
+  .mobile-cal-view { display: block; }
+}
+
+/* ========================================= */
+/* 📅 MOBILE CALENDAR VIEW (Schedule tab)   */
+/* ========================================= */
+.mobile-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 4px 0 14px;
+}
+.mobile-cal-month {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  min-width: 120px;
+  text-align: center;
+}
+.mobile-cal-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-cal-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding-bottom: 18px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-cal-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.mcd-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.mcd-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mobile-cal-day.today .mcd-num {
+  border: 1.5px solid var(--primary);
+}
+.mobile-cal-day.selected .mcd-num {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+.mobile-cal-day.selected .mcd-label { color: var(--primary); }
+
+.mobile-cal-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mobile-cal-event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.mce-bar {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--primary);
+}
+.mobile-cal-event.blue .mce-bar { background: #3b82f6; }
+.mobile-cal-event.green .mce-bar { background: #10b981; }
+.mobile-cal-event.purple .mce-bar { background: #a855f7; }
+.mobile-cal-event.orange .mce-bar { background: #f97316; }
+.mce-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mce-time { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.mce-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+.mce-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: var(--primary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.mobile-cal-empty {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--text-muted);
+}
+.mobile-cal-empty span { font-size: 2rem; display: block; margin-bottom: 10px; }
+.mobile-cal-empty p { margin: 0; font-size: 0.9rem; }
+
+.teacher-container[data-theme="dark"] .mce-avatar {
+  background: #1e3a5f;
 }
 
 /* --- LOADING ANIMATION STYLES (Add to TeacherDashboard.css) --- */
