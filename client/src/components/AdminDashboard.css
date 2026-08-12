@@ -598,6 +598,44 @@
   user-select: none;
 }
 
+/* ===== ADMIN "REFRESH APPLICATION" BUTTON ===== */
+.admin-refresh-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.15s, transform 0.2s ease;
+  color: var(--text-muted, #64748b);
+  flex-shrink: 0;
+}
+.admin-refresh-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  transform: scale(1.08);
+}
+.admin-refresh-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.admin-refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.admin-container[data-theme="dark"] .admin-refresh-btn:hover:not(:disabled) {
+  background: #334155;
+}
+.admin-refresh-btn .spin {
+  animation: admin-refresh-rotate 1s linear infinite;
+  display: inline-block;
+}
+@keyframes admin-refresh-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .joined-date {
   font-size: 0.85rem;
   color: #64748b;
@@ -1877,6 +1915,13 @@ body {
 /* Gallery reuses .form-wrapper for its card look, but needs the full
    content width instead of the 800px form cap so more columns fit. */
 .gallery-wrapper {
+  max-width: none;
+  margin: 0;
+}
+
+/* Register User reuses .form-wrapper for its card look, but should fill
+   the available content width instead of the 800px form cap. */
+.register-wrapper {
   max-width: none;
   margin: 0;
 }

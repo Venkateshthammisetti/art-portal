@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema({
   city: String, // Added recently
   zoomId: String,
   referredBy: String,
+  parentDesignation: String,
   
   // Class Mode
   classMode: { type: String, enum: ['online', 'offline'], default: 'online' },

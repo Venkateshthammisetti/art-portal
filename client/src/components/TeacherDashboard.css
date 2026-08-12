@@ -3068,6 +3068,23 @@
   100% { background-position:  800px 0; }
 }
 
+/* Gallery reuses .form-wrapper for its card look, but needs the full content
+   width instead of the 800px form cap (defined on .form-wrapper in
+   AdminDashboard.css, which bleeds in since all dashboard CSS is bundled
+   globally) so the 5/4/3/2-column grid actually fills the row. Scoped under
+   .teacher-container so its specificity beats a bare .form-wrapper rule
+   regardless of which file's CSS lands later in the bundle. */
+.teacher-container .gallery-wrapper { max-width: none; margin: 0; }
+
+/* Gallery grid — fixed columns per breakpoint: 5 desktop / 4 tablet / 3 mobile */
+.gal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; }
+@media (max-width: 1200px) {
+  .gal-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 768px) {
+  .gal-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
 /* Gallery artwork card */
 .gal-card {
   position: relative; border-radius: 12px; overflow: hidden;
@@ -3146,6 +3163,7 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 .gal-action-btn:hover  { transform: scale(1.13); }
+.gal-action-btn.date     { background: rgba(37,99,235,0.85);   color: white; }
 .gal-action-btn.download { background: rgba(255,255,255,0.88); color: #1e293b; }
 .gal-action-btn.delete   { background: rgba(239,68,68,0.85);  color: white; }
 
@@ -3509,22 +3527,20 @@
 }
 
 /* ============================================
-   ✨ REPORT MAKER MODAL
+   ✨ REPORT MAKER (normal tab, not a modal)
    ============================================ */
 
 
-.report-maker-modal {
+.report-maker-container {
   background-color: var(--bg-card, #fff);
-  width: min(1300px, 95vw);
-  max-height: 92vh;
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  animation: popIn 0.2s ease-out;
   overflow: hidden;
+  min-height: 75vh;
 }
-.report-maker-modal .modal-header { padding: 20px 25px 15px; margin-bottom: 0; flex-shrink: 0; }
 .report-maker-body { display: flex; overflow: hidden; flex: 1; }
 
 .rm-form-panel { width: 380px; flex-shrink: 0; padding: 20px 25px; overflow-y: auto; border-right: 1px solid var(--border); }
@@ -3542,6 +3558,17 @@
 .rm-portfolio-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .rm-portfolio-header h4 { margin: 0; border: none; padding: 0; }
 .rm-clear-images { background: none; border: none; color: #ef4444; font-size: 0.8rem; text-decoration: underline; cursor: pointer; }
+
+/* Gallery picker — images auto-pulled from the student's gallery for the selected month */
+.rm-gallery-pick-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.rm-gallery-pick-thumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.rm-gallery-pick-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rm-gallery-pick-remove {
+  position: absolute; top: 2px; right: 2px; width: 20px; height: 20px;
+  border-radius: 50%; border: none; background: rgba(15, 23, 42, 0.7); color: #fff;
+  font-size: 0.9rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.rm-gallery-pick-remove:hover { background: #ef4444; }
 
 .rm-actions { display: flex; gap: 10px; position: sticky; bottom: 0; background: var(--bg-card, #fff); padding-top: 10px; }
 .rm-download-btn, .rm-send-btn { flex: 1; padding: 13px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; font-size: 0.9rem; transition: opacity 0.2s; }
@@ -3589,16 +3616,15 @@
 
 .rm-ratings-list { display: flex; flex-direction: column; gap: 12px; }
 .rm-rating-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 500; color: #4b5563; }
-.rm-dots { display: flex; gap: 4px; }
-.rm-dot { height: 10px; width: 10px; border-radius: 50%; border: 1px solid #ddd; background: #e5e7eb; display: inline-block; }
-.rm-dot-gold { background: #c5a059; border-color: #c5a059; }
-.rm-dot-red { background: #ef4444; border-color: #ef4444; }
+.rm-stars { display: flex; gap: 3px; }
+.rm-star { font-size: 1.1rem; line-height: 1; color: #e5e7eb; }
+.rm-star.filled { color: #c5a059; }
 
 .rm-portfolio-section { margin-top: 20px; }
 .rm-portfolio-section h3 { font-family: 'Cinzel', serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #c5a059; border-bottom: 1px solid rgba(197, 160, 89, 0.3); padding-bottom: 6px; margin: 0 0 14px; }
-.rm-portfolio-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.rm-portfolio-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
 .rm-portfolio-thumb { cursor: pointer; }
-.rm-portfolio-thumb img { height: 96px; width: auto; object-fit: contain; border: 1px solid #e5e0d8; border-radius: 6px; background: white; padding: 4px; }
+.rm-portfolio-thumb img { width: 100%; height: 150px; object-fit: cover; border: 1px solid #e5e0d8; border-radius: 8px; background: white; }
 
 .rm-note-section { margin-top: 30px; padding-left: 16px; border-left: 2px solid #c5a059; }
 .rm-note-section h3 { font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #c5a059; margin: 0 0 8px; }
@@ -3617,4 +3643,9 @@
   .rm-report-preview { width: 100%; min-height: auto; }
   .rm-art-frame { min-height: auto; padding: 24px; }
   .rm-content-grid { grid-template-columns: 1fr; gap: 20px; }
+  .rm-portfolio-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .rm-portfolio-grid { grid-template-columns: repeat(2, 1fr); }
 }

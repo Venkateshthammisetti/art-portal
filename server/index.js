@@ -794,6 +794,50 @@ app.post("/api/gallery/bulk-delete", async (req, res) => {
   }
 });
 
+// 5. UPDATE ARTWORK DATE — SINGLE (Admin/Teacher)
+app.put("/api/gallery/:id/date", async (req, res) => {
+  try {
+    const { dateCreated } = req.body;
+    if (!dateCreated) {
+      return res.status(400).json({ message: "dateCreated is required" });
+    }
+    const updated = await Artwork.findByIdAndUpdate(
+      req.params.id,
+      { dateCreated },
+      { new: true },
+    );
+    if (!updated) {
+      return res.status(404).json({ message: "Artwork not found" });
+    }
+    res.json({ success: true, artwork: updated });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating artwork date" });
+  }
+});
+
+// 6. UPDATE ARTWORK DATE — BULK (Admin/Teacher)
+app.post("/api/gallery/bulk-update-date", async (req, res) => {
+  try {
+    const { ids, dateCreated } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "No artwork IDs provided" });
+    }
+    if (!dateCreated) {
+      return res.status(400).json({ message: "dateCreated is required" });
+    }
+    const result = await Artwork.updateMany(
+      { _id: { $in: ids } },
+      { dateCreated },
+    );
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} artworks updated`,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating artwork dates" });
+  }
+});
+
 // ===========================
 //     CERTIFICATION ROUTES 🏆
 // ===========================
