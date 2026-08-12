@@ -51,6 +51,13 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
+  // -- Edit Date States (single + bulk) --
+  const [dateEditTarget, setDateEditTarget] = useState(null); // { type: "single", id } | { type: "bulk", ids }
+  const [dateEditValue, setDateEditValue] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [savingDate, setSavingDate] = useState(false);
+
   // -- Gallery View States --
   const [artwork, setArtwork] = useState([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
@@ -272,6 +279,60 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       alert("Error deleting artworks.");
     } finally {
       setBulkDeleting(false);
+    }
+  };
+
+  // 5d. Edit Date — open (single artwork or bulk-selected)
+  const openEditDate = (e, art) => {
+    if (e) e.stopPropagation();
+    setDateEditValue(new Date(art.dateCreated).toISOString().split("T")[0]);
+    setDateEditTarget({ type: "single", id: art._id });
+  };
+
+  const openBulkEditDate = () => {
+    if (selectedIds.length === 0) return;
+    setDateEditValue(new Date().toISOString().split("T")[0]);
+    setDateEditTarget({ type: "bulk", ids: selectedIds });
+  };
+
+  const closeEditDate = () => setDateEditTarget(null);
+
+  // 5e. Edit Date — save (single PUT or bulk POST)
+  const saveEditDate = async () => {
+    if (!dateEditTarget || !dateEditValue) return;
+    const isoDate = new Date(dateEditValue).toISOString();
+    setSavingDate(true);
+    try {
+      if (dateEditTarget.type === "single") {
+        const res = await axios.put(
+          `https://art-portal-7n6r.onrender.com/api/gallery/${dateEditTarget.id}/date`,
+          { dateCreated: isoDate },
+        );
+        setArtwork((prev) =>
+          prev.map((a) =>
+            a._id === dateEditTarget.id ? res.data.artwork : a,
+          ),
+        );
+      } else {
+        await axios.post(
+          "https://art-portal-7n6r.onrender.com/api/gallery/bulk-update-date",
+          { ids: dateEditTarget.ids, dateCreated: isoDate },
+        );
+        setArtwork((prev) =>
+          prev.map((a) =>
+            dateEditTarget.ids.includes(a._id)
+              ? { ...a, dateCreated: isoDate }
+              : a,
+          ),
+        );
+        setSelectedIds([]);
+        setSelectMode(false);
+      }
+      setDateEditTarget(null);
+    } catch (err) {
+      alert("Error updating date.");
+    } finally {
+      setSavingDate(false);
     }
   };
 
@@ -624,6 +685,10 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                 <button onClick={handleSelectAll} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#2563eb" }}>
                   {selectedIds.length === filteredArtwork.length ? "Deselect All" : "Select All"}
                 </button>
+                <button onClick={openBulkEditDate} disabled={selectedIds.length === 0}
+                  style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: selectedIds.length > 0 ? "pointer" : "not-allowed", color: "#2563eb", opacity: selectedIds.length === 0 ? 0.5 : 1 }}>
+                  📅 Change Date{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
+                </button>
                 <button onClick={handleBulkDelete} disabled={selectedIds.length === 0 || bulkDeleting}
                   style={{ background: selectedIds.length > 0 ? "#ef4444" : "#fca5a5", color: "white", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: selectedIds.length > 0 ? "pointer" : "not-allowed", opacity: bulkDeleting ? 0.6 : 1 }}>
                   {bulkDeleting ? "Deleting..." : `Delete${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
@@ -683,6 +748,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               </div>
               {!selectMode && (
                 <div className="gal-card-actions">
+                  <button className="gal-action-btn date" onClick={(e) => openEditDate(e, art)} title="Change Date">📅</button>
                   <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
                   <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete">🗑</button>
                 </div>
@@ -723,6 +789,9 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
               <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
             </div>
+            <button className="lightbox-action-pill" onClick={(e) => openEditDate(e, filteredArtwork[lightboxIndex])}>
+              📅 Change Date
+            </button>
             <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
               ⬇ Download
             </button>
@@ -741,6 +810,64 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
             <span>{filteredArtwork[lightboxIndex].medium} • {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}</span>
           </div>
           <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
+        </div>
+      )}
+
+      {/* EDIT DATE MODAL — single artwork or bulk-selected */}
+      {dateEditTarget && (
+        <div className="modal-overlay" onClick={closeEditDate}>
+          <div
+            className="class-detail-modal"
+            style={{ width: "360px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>
+                {dateEditTarget.type === "bulk"
+                  ? `Change Date (${dateEditTarget.ids.length} artwork${dateEditTarget.ids.length > 1 ? "s" : ""})`
+                  : "Change Artwork Date"}
+              </h3>
+              <button className="close-btn" onClick={closeEditDate}>
+                ×
+              </button>
+            </div>
+            <div className="control-group">
+              <label>Uploaded Date</label>
+              <input
+                type="date"
+                value={dateEditValue}
+                onChange={(e) => setDateEditValue(e.target.value)}
+              />
+            </div>
+            <div
+              className="modal-actions"
+              style={{ display: "flex", gap: "10px" }}
+            >
+              <button
+                onClick={closeEditDate}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "white",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  color: "#334155",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditDate}
+                disabled={savingDate}
+                className="save-btn"
+                style={{ flex: 1, opacity: savingDate ? 0.7 : 1 }}
+              >
+                {savingDate ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

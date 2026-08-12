@@ -3146,6 +3146,7 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 .gal-action-btn:hover  { transform: scale(1.13); }
+.gal-action-btn.date     { background: rgba(37,99,235,0.85);   color: white; }
 .gal-action-btn.download { background: rgba(255,255,255,0.88); color: #1e293b; }
 .gal-action-btn.delete   { background: rgba(239,68,68,0.85);  color: white; }
 
