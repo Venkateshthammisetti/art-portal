@@ -501,7 +501,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
 
   return (
-    <div className="form-wrapper">
+    <div className="form-wrapper gallery-wrapper">
       {/* MODERN FILTER BAR */}
       <div className="gallery-filter-bar">
         <h3 className="gallery-filter-title">
@@ -703,7 +703,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       </div>
 
       {/* GALLERY GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+      <div className="gal-grid">
         {loadingGallery ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="gallery-skeleton-card">

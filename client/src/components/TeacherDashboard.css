@@ -3068,6 +3068,23 @@
   100% { background-position:  800px 0; }
 }
 
+/* Gallery reuses .form-wrapper for its card look, but needs the full content
+   width instead of the 800px form cap (defined on .form-wrapper in
+   AdminDashboard.css, which bleeds in since all dashboard CSS is bundled
+   globally) so the 5/4/3/2-column grid actually fills the row. Scoped under
+   .teacher-container so its specificity beats a bare .form-wrapper rule
+   regardless of which file's CSS lands later in the bundle. */
+.teacher-container .gallery-wrapper { max-width: none; margin: 0; }
+
+/* Gallery grid — fixed columns per breakpoint: 5 desktop / 4 tablet / 3 mobile */
+.gal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; }
+@media (max-width: 1200px) {
+  .gal-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 768px) {
+  .gal-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
 /* Gallery artwork card */
 .gal-card {
   position: relative; border-radius: 12px; overflow: hidden;
