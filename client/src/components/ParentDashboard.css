@@ -84,8 +84,8 @@ button, a, input, .clickable-heading, .mobile-menu-btn, .logout-btn, .nav-item {
 .p-header-left p { margin: 0; font-size: 0.85rem; color: var(--p-muted); }
 
 /* --- MOBILE-ONLY ELEMENTS (Hidden by Default on Desktop) --- */
-.mobile-only { display: none; }
-.hamburger-btn {
+.parent-container .mobile-only { display: none; }
+.parent-container .hamburger-btn {
   display: none;
   align-items: center;
   justify-content: center;
@@ -96,8 +96,8 @@ button, a, input, .clickable-heading, .mobile-menu-btn, .logout-btn, .nav-item {
   cursor: pointer;
   flex-shrink: 0;
 }
-.hamburger-btn svg { width: 24px; height: 24px; }
-.mobile-menu-backdrop { display: none; }
+.parent-container .hamburger-btn svg { width: 24px; height: 24px; }
+.parent-container .mobile-menu-backdrop { display: none; }
 
 .p-header-right { display: flex; align-items: center; gap: 20px; position: relative; }
 .role-badge { background: #eff6ff; color: var(--p-primary); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; border: 1px solid #dbeafe; }
@@ -363,9 +363,54 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
     grid-template-columns: 1fr;
   }
   
-  /* 4. Ensure Sidebar is Visible */
-  .parent-sidebar { display: flex !important; }
+  /* 4. NAVIGATE VIA HAMBURGER ONLY — sidebar becomes a slide-in drawer here
+        too (iPad portrait & landscape), instead of staying permanently docked. */
+  .parent-sidebar { display: none !important; }
   .mobile-bottom-nav { display: none !important; }
+  .parent-container .mobile-only { display: inline-flex; }
+  .parent-container .hamburger-btn { display: inline-flex; }
+
+  .parent-container .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 2999;
+    animation: fadeInParentBackdrop 0.2s ease;
+  }
+  @keyframes fadeInParentBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .parent-sidebar.mobile-open {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 78%;
+    max-width: 300px;
+    z-index: 3000;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    animation: slideInParentSidebar 0.25s ease;
+  }
+  @keyframes slideInParentSidebar {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  .parent-container .sidebar-close-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .parent-container .sidebar-close-btn svg { width: 22px; height: 22px; }
 }
 
 /* ========================================= */
@@ -382,11 +427,11 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
   .mobile-icon { display: flex !important; align-items: center; justify-content: center; }
 
   /* SIDEBAR BECOMES A SLIDE-IN DRAWER, OPENED VIA HAMBURGER */
-  .mobile-only { display: inline-flex; }
-  .hamburger-btn { display: inline-flex; }
+  .parent-container .mobile-only { display: inline-flex; }
+  .parent-container .hamburger-btn { display: inline-flex; }
 
   /* --- BACKDROP BEHIND SLIDE-IN SIDEBAR --- */
-  .mobile-menu-backdrop {
+  .parent-container .mobile-menu-backdrop {
     display: block;
     position: fixed;
     inset: 0;
@@ -420,7 +465,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
     to { transform: translateX(0); }
   }
 
-  .sidebar-close-btn {
+  .parent-container .sidebar-close-btn {
     margin-left: auto;
     background: transparent;
     border: none;
@@ -429,7 +474,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
     cursor: pointer;
     flex-shrink: 0;
   }
-  .sidebar-close-btn svg { width: 22px; height: 22px; }
+  .parent-container .sidebar-close-btn svg { width: 22px; height: 22px; }
 
   /* SHOW BOTTOM NAV */
   .mobile-bottom-nav {
