@@ -111,6 +111,8 @@ body.dark .role-badge { background: #1e293b; border-color: #334155; }
   transition: background 0.2s;
 }
 .header-profile:active .avatar { background: #cbd5e1; }
+body.dark .header-profile .avatar { background: #334155; color: #f1f5f9; }
+body.dark .header-profile:active .avatar { background: #475569; }
 
 /* DESKTOP LOGOUT BUTTON */
 .logout-btn {
@@ -961,6 +963,7 @@ body.dark .pending-amount-text {
 
 /* Dark Mode Support */
 body.dark .rc-action-btn.comment { background: transparent; border-color: #475569; color: #cbd5e1; }
+body.dark .rc-action-btn.pdf { background: #0c2340; border-color: #1e3a5f; color: #60a5fa; }
 body.dark .comment-input-area { background: #1e293b; border-color: #334155; }
 body.dark .rc-textarea { background: #0f172a; border-color: #334155; color: white; }
 body.dark .saved-comment-box { background: #064e3b; border-color: #065f46; }

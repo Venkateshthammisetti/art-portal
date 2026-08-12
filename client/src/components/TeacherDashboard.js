@@ -595,7 +595,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                 required
                 style={{
                   padding: "10px",
-                  background: "#fff",
+                  background: "var(--bg-card)",
                   borderRadius: "6px",
                 }}
               />
@@ -675,7 +675,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
 
       {/* PORTFOLIO HEADER + SELECT MODE */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
-        <h4 style={{ color: "#64748b", margin: 0, fontWeight: 600 }}>
+        <h4 style={{ color: "var(--text-muted)", margin: 0, fontWeight: 600 }}>
           {selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
         </h4>
         {filteredArtwork.length > 0 && (
@@ -693,10 +693,10 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   style={{ background: selectedIds.length > 0 ? "#ef4444" : "#fca5a5", color: "white", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: selectedIds.length > 0 ? "pointer" : "not-allowed", opacity: bulkDeleting ? 0.6 : 1 }}>
                   {bulkDeleting ? "Deleting..." : `Delete${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
                 </button>
-                <button onClick={exitSelectMode} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
+                <button onClick={exitSelectMode} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "var(--text-muted)" }}>Cancel</button>
               </>
             ) : (
-              <button onClick={() => setSelectMode(true)} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Select</button>
+              <button onClick={() => setSelectMode(true)} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "var(--text-muted)" }}>Select</button>
             )}
           </div>
         )}
@@ -850,10 +850,10 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   padding: "12px",
                   borderRadius: "8px",
                   border: "1px solid #cbd5e1",
-                  background: "white",
+                  background: "var(--bg-card)",
                   cursor: "pointer",
                   fontWeight: 600,
-                  color: "#334155",
+                  color: "var(--text-main)",
                 }}
               >
                 Cancel
@@ -3998,7 +3998,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         style={{
                           display: "block",
                           marginTop: "5px",
-                          color: "#64748b",
+                          color: "var(--text-muted)",
                         }}
                       >
                         Current file: Exists

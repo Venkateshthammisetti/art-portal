@@ -3099,12 +3099,87 @@ body {
 .admin-container[data-theme="dark"] .class-schedule-section label {
   color: var(--text) !important;
 }
-/* Selects and time inputs inside schedule */
+/* Selects and time/url inputs inside schedule */
 .admin-container[data-theme="dark"] .class-schedule-section select,
-.admin-container[data-theme="dark"] .class-schedule-section input[type="time"] {
+.admin-container[data-theme="dark"] .class-schedule-section input[type="time"],
+.admin-container[data-theme="dark"] .class-schedule-section input[type="url"] {
   background: #0f172a !important;
   border-color: #334155 !important;
   color: var(--text) !important;
+}
+/* Each day/time row card — was hardcoded white, glared against the dark
+   section background above */
+.admin-container[data-theme="dark"] .schedule-slot-row {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+/* Sibling registration fields box (Register User form) */
+.admin-container[data-theme="dark"] .sibling-fields-box {
+  background: var(--card-bg) !important;
+  border-color: #334155 !important;
+}
+
+/* Slot Manager — AM/PM time labels, assigned-class card text, and the
+   "available" / "No class scheduled" empty-state cards. These relied on
+   hardcoded #334155/#64748b text with no className, so they went dark-on-
+   dark and became unreadable once the surrounding page switched themes. */
+.admin-container[data-theme="dark"] .slot-time-label {
+  background: var(--card-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .slot-empty-card {
+  background: #1a2535 !important;
+  border-color: #334155 !important;
+}
+.admin-container[data-theme="dark"] .slot-empty-card span,
+.admin-container[data-theme="dark"] .slot-empty-card div {
+  color: var(--text-muted) !important;
+}
+.admin-container[data-theme="dark"] .slot-card-title {
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .slot-card-subtext {
+  color: var(--text-muted) !important;
+}
+
+/* Recharts tooltips (donut/bar/line charts) — the library always renders
+   a white content box (Recharts' own default style, on top of the inline
+   contentStyle some charts pass) unless explicitly overridden. */
+.admin-container[data-theme="dark"] .recharts-default-tooltip {
+  background: var(--card-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .recharts-tooltip-label {
+  color: var(--text) !important;
+}
+
+/* Mark Pass / Pass History modals — had zero dark-mode handling at all,
+   so they rendered as a bright white card floating over the dark app. */
+.admin-container[data-theme="dark"] .dark-modal-card {
+  background: var(--card-bg) !important;
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .dark-modal-card h3,
+.admin-container[data-theme="dark"] .dark-modal-card td:first-child {
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .dark-modal-card p,
+.admin-container[data-theme="dark"] .dark-modal-card label,
+.admin-container[data-theme="dark"] .dark-modal-card th,
+.admin-container[data-theme="dark"] .dark-modal-card td:last-child {
+  color: var(--text-muted) !important;
+}
+.admin-container[data-theme="dark"] .dark-modal-card select,
+.admin-container[data-theme="dark"] .dark-modal-card input {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .dark-modal-card tr {
+  border-bottom-color: #334155 !important;
 }
 /* Add Another Day link color */
 .admin-container[data-theme="dark"] .class-schedule-section button {
