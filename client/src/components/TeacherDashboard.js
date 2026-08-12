@@ -981,7 +981,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [loadingCertHistory, setLoadingCertHistory] = useState(false);
 
   // --- REPORT MAKER (in-app art report generator) ---
-  const [showReportMaker, setShowReportMaker] = useState(false);
   const [rmGenerating, setRmGenerating] = useState(false);
   const [rmLibReady, setRmLibReady] = useState(!!window.html2pdf);
   const [rmForm, setRmForm] = useState({
@@ -1005,6 +1004,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
     homework: 5,
   });
   const [rmImages, setRmImages] = useState([]);
+  const [rmStudentGallery, setRmStudentGallery] = useState([]);
+  const [rmGalleryLoading, setRmGalleryLoading] = useState(false);
   const rmPreviewRef = useRef(null);
   const [attendanceReminders, setAttendanceReminders] = useState([]);
   const checkedAttendanceRef = useRef({});
@@ -1559,7 +1560,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     { key: "homework", label: "Homework Completion" },
   ];
 
-  const openReportMaker = () => {
+  const resetRmForm = () => {
     setRmForm({
       studentId: "",
       month: new Date().toISOString().slice(0, 7),
@@ -1581,32 +1582,49 @@ const TeacherDashboard = ({ user, onLogout }) => {
       homework: 5,
     });
     setRmImages([]);
-    setShowReportMaker(true);
+    setRmStudentGallery([]);
   };
 
-  const closeReportMaker = () => {
-    rmImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-    setRmImages([]);
-    setShowReportMaker(false);
+  const openReportMaker = () => {
+    resetRmForm();
+    handleNavClick("report-maker");
   };
 
-  const handleRmImageUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-    const mapped = files.map((file) => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-    }));
-    setRmImages((prev) => [...prev, ...mapped]);
-    e.target.value = "";
-  };
+  // Pull the selected student's whole gallery whenever they change
+  useEffect(() => {
+    if (!rmForm.studentId) {
+      setRmStudentGallery([]);
+      return;
+    }
+    setRmGalleryLoading(true);
+    axios
+      .get(
+        `https://art-portal-7n6r.onrender.com/api/gallery/student/${rmForm.studentId}`,
+      )
+      .then((res) => setRmStudentGallery(res.data))
+      .catch((err) => {
+        console.error(err);
+        setRmStudentGallery([]);
+      })
+      .finally(() => setRmGalleryLoading(false));
+  }, [rmForm.studentId]);
+
+  // Auto-populate the portfolio with that student's gallery images for the selected month
+  useEffect(() => {
+    const monthImages = rmStudentGallery.filter(
+      (a) => (a.dateCreated || "").slice(0, 7) === rmForm.month,
+    );
+    setRmImages(
+      monthImages.map((a) => ({
+        _id: a._id,
+        imageUrl: a.imageUrl,
+        title: a.title,
+      })),
+    );
+  }, [rmStudentGallery, rmForm.month]);
 
   const removeRmImage = (index) => {
-    setRmImages((prev) => {
-      const copy = [...prev];
-      const [removed] = copy.splice(index, 1);
-      if (removed) URL.revokeObjectURL(removed.previewUrl);
-      return copy;
-    });
+    setRmImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const rmSelectedStudent = myStudents.find(
@@ -1689,8 +1707,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
       );
 
       setMsg("✅ Report generated & sent to parent!");
-      closeReportMaker();
-      if (activeTab === "feedback") fetchHistory();
+      resetRmForm();
+      fetchHistory();
       setTimeout(() => setMsg(""), 3000);
     } catch (err) {
       console.error(err);
@@ -1998,7 +2016,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <IconCertificate /> <span>Certifications</span>
           </button>
           {/* ✨ REPORT MAKER (in-app) */}
-          <button onClick={() => { setMobileMenuOpen(false); openReportMaker(); }}>
+          <button
+            className={activeTab === "report-maker" ? "active" : ""}
+            onClick={openReportMaker}
+          >
             <IconReportMaker /> <span>Report Maker</span>
           </button>
         </div>
@@ -2029,7 +2050,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         ? "Upload Artwork"
                         : activeTab === "certifications"
                           ? "Certifications"
-                          : "Teacher Dashboard"}
+                          : activeTab === "report-maker"
+                            ? "Report Maker"
+                            : "Teacher Dashboard"}
               </h2>
               <p>Welcome back, {currentUser.fullName}</p>
             </div>
@@ -3246,6 +3269,374 @@ const TeacherDashboard = ({ user, onLogout }) => {
               teacherId={currentUser._id}
             />
           )}
+
+          {/* ✨ REPORT MAKER */}
+          {activeTab === "report-maker" && (
+            <div className="report-maker-container">
+              <div className="report-maker-body">
+                {/* LEFT: FORM */}
+                <div className="rm-form-panel">
+                  <div className="rm-field-group">
+                    <h4>Student Details</h4>
+                    <div className="rm-row">
+                      <div className="control-group">
+                        <label>Student</label>
+                        <select
+                          value={rmForm.studentId}
+                          onChange={(e) =>
+                            setRmForm({ ...rmForm, studentId: e.target.value })
+                          }
+                        >
+                          <option value="">-- Choose --</option>
+                          {myStudents.map((s) => (
+                            <option key={s._id} value={s._id}>
+                              {s.childName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="control-group">
+                        <label>Month</label>
+                        <input
+                          type="month"
+                          value={rmForm.month}
+                          onChange={(e) =>
+                            setRmForm({ ...rmForm, month: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="rm-row">
+                      <div className="control-group">
+                        <label>Attendance</label>
+                        <input
+                          type="text"
+                          value={rmForm.attendance}
+                          onChange={(e) =>
+                            setRmForm({
+                              ...rmForm,
+                              attendance: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="control-group">
+                        <label>Fee</label>
+                        <select
+                          value={rmForm.fee}
+                          onChange={(e) =>
+                            setRmForm({ ...rmForm, fee: e.target.value })
+                          }
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rm-field-group">
+                    <h4>Curriculum</h4>
+                    <div className="control-group">
+                      <label>Topics Covered</label>
+                      <textarea
+                        rows="2"
+                        value={rmForm.topics}
+                        onChange={(e) =>
+                          setRmForm({ ...rmForm, topics: e.target.value })
+                        }
+                      ></textarea>
+                    </div>
+                    <div className="control-group">
+                      <label>Skills Learned</label>
+                      <textarea
+                        rows="2"
+                        value={rmForm.skills}
+                        onChange={(e) =>
+                          setRmForm({ ...rmForm, skills: e.target.value })
+                        }
+                      ></textarea>
+                    </div>
+                    <div className="control-group">
+                      <label>Homework / Assignments</label>
+                      <textarea
+                        rows="2"
+                        value={rmForm.homework}
+                        onChange={(e) =>
+                          setRmForm({ ...rmForm, homework: e.target.value })
+                        }
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <div className="rm-field-group">
+                    <h4>Evaluation (1-5)</h4>
+                    <div className="rm-ratings-grid">
+                      {rmRatingFields.map((f) => (
+                        <div key={f.key} className="control-group">
+                          <label>{f.label}</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="5"
+                            value={rmRatings[f.key]}
+                            onChange={(e) =>
+                              setRmRatings({
+                                ...rmRatings,
+                                [f.key]: Math.min(
+                                  5,
+                                  Math.max(1, Number(e.target.value) || 1),
+                                ),
+                              })
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="control-group">
+                      <label>Overall Grade</label>
+                      <select
+                        value={rmForm.overall}
+                        onChange={(e) =>
+                          setRmForm({ ...rmForm, overall: e.target.value })
+                        }
+                      >
+                        <option value="EXCELLENT">Excellent</option>
+                        <option value="VERY GOOD">Very Good</option>
+                        <option value="GOOD">Good</option>
+                        <option value="SATISFACTORY">Satisfactory</option>
+                        <option value="NEEDS IMPROVEMENT">
+                          Needs Improvement
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="rm-field-group">
+                    <h4>Teacher's Note</h4>
+                    <textarea
+                      rows="3"
+                      value={rmForm.feedback}
+                      onChange={(e) =>
+                        setRmForm({ ...rmForm, feedback: e.target.value })
+                      }
+                      placeholder="Write feedback for the parent..."
+                    ></textarea>
+                  </div>
+
+                  <div className="rm-field-group">
+                    <div className="rm-portfolio-header">
+                      <h4>Art Portfolio ({rmImages.length})</h4>
+                      {rmImages.length > 0 && (
+                        <button
+                          type="button"
+                          className="rm-clear-images"
+                          onClick={() => setRmImages([])}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    {!rmForm.studentId ? (
+                      <p className="rm-hint">
+                        Choose a student above to pull in their gallery
+                        images.
+                      </p>
+                    ) : rmGalleryLoading ? (
+                      <p className="rm-hint">Loading gallery…</p>
+                    ) : rmImages.length === 0 ? (
+                      <p className="rm-hint">
+                        No gallery images found for{" "}
+                        {rmSelectedStudent?.childName || "this student"} in{" "}
+                        {rmMonthLabel}. Upload artwork from the Gallery tab
+                        first.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="rm-gallery-pick-grid">
+                          {rmImages.map((img, i) => (
+                            <div key={img._id || i} className="rm-gallery-pick-thumb">
+                              <img
+                                src={img.imageUrl}
+                                alt={img.title || `Artwork ${i + 1}`}
+                              />
+                              <button
+                                type="button"
+                                className="rm-gallery-pick-remove"
+                                onClick={() => removeRmImage(i)}
+                                title="Leave out of report"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="rm-hint">
+                          Pulled automatically from{" "}
+                          {rmSelectedStudent?.childName}'s gallery for{" "}
+                          {rmMonthLabel}. Click × to leave one out of the
+                          report.
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="rm-actions">
+                    <button
+                      type="button"
+                      className="rm-download-btn"
+                      onClick={handleDownloadReport}
+                      disabled={!rmLibReady}
+                    >
+                      ⬇️ Download PDF
+                    </button>
+                    <button
+                      type="button"
+                      className="rm-send-btn"
+                      disabled={rmGenerating || !rmLibReady}
+                      onClick={handleGenerateReport}
+                    >
+                      {rmGenerating
+                        ? "Generating..."
+                        : "✅ Save & Send to Parent"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* RIGHT: LIVE PREVIEW (this is what gets captured to PDF) */}
+                <div className="rm-preview-panel">
+                  <div className="rm-report-preview" ref={rmPreviewRef}>
+                    <div className="rm-art-frame">
+                      <header className="rm-report-header">
+                        <img
+                          src={titleImg}
+                          alt="Venky Art"
+                          className="rm-report-logo"
+                        />
+                        <div className="rm-header-right">
+                          <h2>Art Progress Report</h2>
+                          <p>{rmMonthLabel}</p>
+                        </div>
+                      </header>
+
+                      <div className="rm-summary-row">
+                        <div>
+                          <p className="rm-summary-label">Student</p>
+                          <p className="rm-summary-value">
+                            {rmSelectedStudent?.childName || "—"}
+                          </p>
+                        </div>
+                        <div className="rm-summary-center">
+                          <p className="rm-summary-label">Attendance</p>
+                          <p className="rm-summary-value">
+                            {rmForm.attendance}
+                          </p>
+                        </div>
+                        <div className="rm-summary-right">
+                          <p className="rm-summary-label">Fee Status</p>
+                          <p
+                            className={`rm-summary-value ${
+                              rmForm.fee === "Paid"
+                                ? "rm-fee-paid"
+                                : "rm-fee-pending"
+                            }`}
+                          >
+                            {rmForm.fee}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rm-content-grid">
+                        <div>
+                          <div className="rm-section">
+                            <h3>Topics Covered</h3>
+                            <p>{rmForm.topics}</p>
+                          </div>
+                          <div className="rm-section">
+                            <h3>Skills Acquired</h3>
+                            <p>{rmForm.skills}</p>
+                          </div>
+                          <div className="rm-section">
+                            <h3>Homework</h3>
+                            <ul>
+                              {rmHomeworkItems.map((item, i) => (
+                                <li key={i}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        <div>
+                          <h3>Performance Metrics</h3>
+                          <div className="rm-ratings-list">
+                            {rmRatingFields.map((f) => (
+                              <div key={f.key} className="rm-rating-row">
+                                <span>{f.label}</span>
+                                <div className="rm-stars">
+                                  {[1, 2, 3, 4, 5].map((i) => (
+                                    <span
+                                      key={i}
+                                      className={`rm-star${
+                                        i <= rmRatings[f.key] ? " filled" : ""
+                                      }`}
+                                    >
+                                      ★
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {rmImages.length > 0 && (
+                        <div className="rm-portfolio-section">
+                          <h3>Student Portfolio</h3>
+                          <div className="rm-portfolio-grid">
+                            {rmImages.map((img, i) => (
+                              <div
+                                key={img._id || i}
+                                className="rm-portfolio-thumb"
+                                onClick={() => removeRmImage(i)}
+                                title="Click to remove"
+                              >
+                                <img
+                                  src={img.imageUrl}
+                                  alt={img.title || `Artwork ${i + 1}`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="rm-note-section">
+                        <h3>Art Teacher's Note</h3>
+                        <p>{rmForm.feedback ? `"${rmForm.feedback}"` : ""}</p>
+                      </div>
+
+                      <footer className="rm-report-footer">
+                        <div>
+                          <p className="rm-footer-label">Art Teacher</p>
+                          <p className="rm-footer-signature">
+                            {currentUser?.fullName || "Teacher"}
+                          </p>
+                        </div>
+                        <div className="rm-footer-right">
+                          <p className="rm-footer-label">
+                            Overall Performance
+                          </p>
+                          <p className="rm-footer-overall">
+                            {rmForm.overall}
+                          </p>
+                        </div>
+                      </footer>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -3492,360 +3883,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   Update Report
                 </button>
               </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✨ REPORT MAKER MODAL */}
-      {showReportMaker && (
-        <div
-          className="modal-overlay report-maker-overlay"
-          onClick={closeReportMaker}
-        >
-          <div
-            className="report-maker-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <h3>🎨 Report Maker</h3>
-              <button className="close-btn" onClick={closeReportMaker}>
-                ×
-              </button>
-            </div>
-
-            <div className="report-maker-body">
-              {/* LEFT: FORM */}
-              <div className="rm-form-panel">
-                <div className="rm-field-group">
-                  <h4>Student Details</h4>
-                  <div className="rm-row">
-                    <div className="control-group">
-                      <label>Student</label>
-                      <select
-                        value={rmForm.studentId}
-                        onChange={(e) =>
-                          setRmForm({ ...rmForm, studentId: e.target.value })
-                        }
-                      >
-                        <option value="">-- Choose --</option>
-                        {myStudents.map((s) => (
-                          <option key={s._id} value={s._id}>
-                            {s.childName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="control-group">
-                      <label>Month</label>
-                      <input
-                        type="month"
-                        value={rmForm.month}
-                        onChange={(e) =>
-                          setRmForm({ ...rmForm, month: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="rm-row">
-                    <div className="control-group">
-                      <label>Attendance</label>
-                      <input
-                        type="text"
-                        value={rmForm.attendance}
-                        onChange={(e) =>
-                          setRmForm({ ...rmForm, attendance: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="control-group">
-                      <label>Fee</label>
-                      <select
-                        value={rmForm.fee}
-                        onChange={(e) =>
-                          setRmForm({ ...rmForm, fee: e.target.value })
-                        }
-                      >
-                        <option value="Paid">Paid</option>
-                        <option value="Pending">Pending</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rm-field-group">
-                  <h4>Curriculum</h4>
-                  <div className="control-group">
-                    <label>Topics Covered</label>
-                    <textarea
-                      rows="2"
-                      value={rmForm.topics}
-                      onChange={(e) =>
-                        setRmForm({ ...rmForm, topics: e.target.value })
-                      }
-                    ></textarea>
-                  </div>
-                  <div className="control-group">
-                    <label>Skills Learned</label>
-                    <textarea
-                      rows="2"
-                      value={rmForm.skills}
-                      onChange={(e) =>
-                        setRmForm({ ...rmForm, skills: e.target.value })
-                      }
-                    ></textarea>
-                  </div>
-                  <div className="control-group">
-                    <label>Homework / Assignments</label>
-                    <textarea
-                      rows="2"
-                      value={rmForm.homework}
-                      onChange={(e) =>
-                        setRmForm({ ...rmForm, homework: e.target.value })
-                      }
-                    ></textarea>
-                  </div>
-                </div>
-
-                <div className="rm-field-group">
-                  <h4>Evaluation (1-5)</h4>
-                  <div className="rm-ratings-grid">
-                    {rmRatingFields.map((f) => (
-                      <div key={f.key} className="control-group">
-                        <label>{f.label}</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="5"
-                          value={rmRatings[f.key]}
-                          onChange={(e) =>
-                            setRmRatings({
-                              ...rmRatings,
-                              [f.key]: Math.min(
-                                5,
-                                Math.max(1, Number(e.target.value) || 1),
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="control-group">
-                    <label>Overall Grade</label>
-                    <select
-                      value={rmForm.overall}
-                      onChange={(e) =>
-                        setRmForm({ ...rmForm, overall: e.target.value })
-                      }
-                    >
-                      <option value="EXCELLENT">Excellent</option>
-                      <option value="VERY GOOD">Very Good</option>
-                      <option value="GOOD">Good</option>
-                      <option value="SATISFACTORY">Satisfactory</option>
-                      <option value="NEEDS IMPROVEMENT">
-                        Needs Improvement
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="rm-field-group">
-                  <h4>Teacher's Note</h4>
-                  <textarea
-                    rows="3"
-                    value={rmForm.feedback}
-                    onChange={(e) =>
-                      setRmForm({ ...rmForm, feedback: e.target.value })
-                    }
-                    placeholder="Write feedback for the parent..."
-                  ></textarea>
-                </div>
-
-                <div className="rm-field-group">
-                  <div className="rm-portfolio-header">
-                    <h4>Art Portfolio ({rmImages.length})</h4>
-                    {rmImages.length > 0 && (
-                      <button
-                        type="button"
-                        className="rm-clear-images"
-                        onClick={() => {
-                          rmImages.forEach((img) =>
-                            URL.revokeObjectURL(img.previewUrl),
-                          );
-                          setRmImages([]);
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleRmImageUpload}
-                    className="file-input"
-                  />
-                  <p className="rm-hint">
-                    Images appear at the bottom of the report. Click a thumbnail
-                    on the right to remove it.
-                  </p>
-                </div>
-
-                <div className="rm-actions">
-                  <button
-                    type="button"
-                    className="rm-download-btn"
-                    onClick={handleDownloadReport}
-                    disabled={!rmLibReady}
-                  >
-                    ⬇️ Download PDF
-                  </button>
-                  <button
-                    type="button"
-                    className="rm-send-btn"
-                    disabled={rmGenerating || !rmLibReady}
-                    onClick={handleGenerateReport}
-                  >
-                    {rmGenerating
-                      ? "Generating..."
-                      : "✅ Save & Send to Parent"}
-                  </button>
-                </div>
-              </div>
-
-              {/* RIGHT: LIVE PREVIEW (this is what gets captured to PDF) */}
-              <div className="rm-preview-panel">
-                <div className="rm-report-preview" ref={rmPreviewRef}>
-                  <div className="rm-art-frame">
-                    <header className="rm-report-header">
-                      <img
-                        src={titleImg}
-                        alt="Venky Art"
-                        className="rm-report-logo"
-                      />
-                      <div className="rm-header-right">
-                        <h2>Art Progress Report</h2>
-                        <p>{rmMonthLabel}</p>
-                      </div>
-                    </header>
-
-                    <div className="rm-summary-row">
-                      <div>
-                        <p className="rm-summary-label">Student</p>
-                        <p className="rm-summary-value">
-                          {rmSelectedStudent?.childName || "—"}
-                        </p>
-                      </div>
-                      <div className="rm-summary-center">
-                        <p className="rm-summary-label">Attendance</p>
-                        <p className="rm-summary-value">
-                          {rmForm.attendance}
-                        </p>
-                      </div>
-                      <div className="rm-summary-right">
-                        <p className="rm-summary-label">Fee Status</p>
-                        <p
-                          className={`rm-summary-value ${
-                            rmForm.fee === "Paid"
-                              ? "rm-fee-paid"
-                              : "rm-fee-pending"
-                          }`}
-                        >
-                          {rmForm.fee}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="rm-content-grid">
-                      <div>
-                        <div className="rm-section">
-                          <h3>Topics Covered</h3>
-                          <p>{rmForm.topics}</p>
-                        </div>
-                        <div className="rm-section">
-                          <h3>Skills Acquired</h3>
-                          <p>{rmForm.skills}</p>
-                        </div>
-                        <div className="rm-section">
-                          <h3>Homework</h3>
-                          <ul>
-                            {rmHomeworkItems.map((item, i) => (
-                              <li key={i}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                      <div>
-                        <h3>Performance Metrics</h3>
-                        <div className="rm-ratings-list">
-                          {rmRatingFields.map((f) => (
-                            <div key={f.key} className="rm-rating-row">
-                              <span>{f.label}</span>
-                              <div className="rm-dots">
-                                {[1, 2, 3, 4, 5].map((i) => (
-                                  <span
-                                    key={i}
-                                    className={`rm-dot ${
-                                      i <= rmRatings[f.key]
-                                        ? rmRatings[f.key] < 3
-                                          ? "rm-dot-red"
-                                          : "rm-dot-gold"
-                                        : ""
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {rmImages.length > 0 && (
-                      <div className="rm-portfolio-section">
-                        <h3>Student Portfolio</h3>
-                        <div className="rm-portfolio-grid">
-                          {rmImages.map((img, i) => (
-                            <div
-                              key={i}
-                              className="rm-portfolio-thumb"
-                              onClick={() => removeRmImage(i)}
-                              title="Click to remove"
-                            >
-                              <img
-                                src={img.previewUrl}
-                                alt={`Artwork ${i + 1}`}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="rm-note-section">
-                      <h3>Art Teacher's Note</h3>
-                      <p>{rmForm.feedback ? `"${rmForm.feedback}"` : ""}</p>
-                    </div>
-
-                    <footer className="rm-report-footer">
-                      <div>
-                        <p className="rm-footer-label">Art Teacher</p>
-                        <p className="rm-footer-signature">
-                          {currentUser?.fullName || "Teacher"}
-                        </p>
-                      </div>
-                      <div className="rm-footer-right">
-                        <p className="rm-footer-label">
-                          Overall Performance
-                        </p>
-                        <p className="rm-footer-overall">{rmForm.overall}</p>
-                      </div>
-                    </footer>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
