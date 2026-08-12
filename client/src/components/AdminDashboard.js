@@ -4773,7 +4773,7 @@ const SlotManagementTab = () => {
   );
 };
 
-const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly = false }) => {
+const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly = false, onRefresh }) => {
   const [allStudents, setAllStudents] = useState([]);
   const students = offlineOnly
     ? allStudents.filter((s) => s.classMode === "offline")
@@ -4854,6 +4854,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
         status: newStatus,
         amount: feeAmount,
       });
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert("Error updating payment");
       fetchStudents();
@@ -4881,6 +4882,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       setPassModal({ show: false, student: null });
       setPassReason("");
       setPassCustomReason("");
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert(err.response?.data?.message || "Error marking pass");
     } finally {
@@ -4899,6 +4901,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
           s._id === studentId ? { ...s, passes: res.data.passes } : s,
         ),
       );
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert("Error removing pass");
     }
@@ -6324,7 +6327,7 @@ const AddExpenseTab = ({ onSuccess }) => {
 };
 
 // --- EXPENSE HISTORY TAB ---
-const ExpenseHistoryTab = () => {
+const ExpenseHistoryTab = ({ onRefresh }) => {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [expenses, setExpenses] = useState([]);
   const [students, setStudents] = useState([]);
@@ -6383,6 +6386,7 @@ const ExpenseHistoryTab = () => {
       );
       setExpenses((prev) => prev.map((x) => (x._id === editingExpense._id ? res.data : x)));
       setEditingExpense(null);
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert("Failed to save changes");
     } finally {
@@ -6395,6 +6399,7 @@ const ExpenseHistoryTab = () => {
     try {
       await axios.delete(`https://art-portal-7n6r.onrender.com/api/expenses/${id}`);
       setExpenses((prev) => prev.filter((e) => e._id !== id));
+      if (onRefresh) onRefresh();
     } catch (err) {
       alert("Failed to delete expense");
     }
@@ -6934,6 +6939,29 @@ const AdminDashboard = ({ onLogout }) => {
     fetchOverviewData();
   }, []);
 
+  // Keeps the Overview tab's stats/expenses in sync the moment fees or
+  // expenses change elsewhere in the app, instead of only on first load.
+  const refreshOverview = () => {
+    fetchStats();
+    fetchOverviewData();
+  };
+
+  // Manual "refresh application" action for the header button — re-pulls
+  // Overview data and forces the currently open tab to remount so it
+  // re-fetches its own data too, without a full page reload.
+  const [appRefreshing, setAppRefreshing] = useState(false);
+  const [tabRefreshKey, setTabRefreshKey] = useState(0);
+  const handleAppRefresh = async () => {
+    if (appRefreshing) return;
+    setAppRefreshing(true);
+    try {
+      await Promise.all([fetchOverviewData(), fetchStats()]);
+    } finally {
+      setTabRefreshKey((k) => k + 1);
+      setAppRefreshing(false);
+    }
+  };
+
   const handleNavClick = (tab) => {
     setFeeInitialFilter("all");
     setUserInitialRoleFilter("all");
@@ -7144,6 +7172,14 @@ const AdminDashboard = ({ onLogout }) => {
             </div>
           </div>
           <div className="header-actions">
+            <button
+              className="admin-refresh-btn"
+              onClick={handleAppRefresh}
+              title="Refresh application"
+              disabled={appRefreshing}
+            >
+              <span className={appRefreshing ? "spin" : ""}>🔄</span>
+            </button>
             <BirthdayNotificationBell
               students={overviewUsers.filter((u) => u.role === "parent")}
               storageKey="admin_bday_notif_read"
@@ -7185,17 +7221,17 @@ const AdminDashboard = ({ onLogout }) => {
 
         <div className="content-scrollable">
           {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} expenses={overviewExpenses} loading={overviewLoading} onNavigate={handleNavigate} />}
-          {activeTab === "users" && <UserManagementTab initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} />}
-          {activeTab === "classes" && <ClassManagementTab />}
-          {activeTab === "add-user" && <AddUserTab onRefresh={() => { fetchStats(); fetchOverviewData(); }} />}
-          {activeTab === "fees" && <FeeTrackerTab initialFilter={feeInitialFilter} />}
-          {activeTab === "online-fees" && <FeeTrackerTab initialFilter="all" onlineOnly={true} />}
-          {activeTab === "offline-fees" && <FeeTrackerTab initialFilter="all" offlineOnly={true} />}
-          {activeTab === "slots" && <SlotManagementTab />}
+          {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} />}
+          {activeTab === "classes" && <ClassManagementTab key={tabRefreshKey} />}
+          {activeTab === "add-user" && <AddUserTab onRefresh={refreshOverview} />}
+          {activeTab === "fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter={feeInitialFilter} onRefresh={refreshOverview} />}
+          {activeTab === "online-fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter="all" onlineOnly={true} onRefresh={refreshOverview} />}
+          {activeTab === "offline-fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter="all" offlineOnly={true} onRefresh={refreshOverview} />}
+          {activeTab === "slots" && <SlotManagementTab key={tabRefreshKey} />}
           {/* ✨ ADDED GALLERY TAB */}
-          {activeTab === "gallery" && <GalleryRepositoryTab />}
-          {activeTab === "expense-add" && <AddExpenseTab onSuccess={() => {}} />}
-          {activeTab === "expense-history" && <ExpenseHistoryTab />}
+          {activeTab === "gallery" && <GalleryRepositoryTab key={tabRefreshKey} />}
+          {activeTab === "expense-add" && <AddExpenseTab onSuccess={refreshOverview} />}
+          {activeTab === "expense-history" && <ExpenseHistoryTab key={tabRefreshKey} onRefresh={refreshOverview} />}
         </div>
       </main>
 
