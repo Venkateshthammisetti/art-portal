@@ -3252,6 +3252,7 @@ const AddUserTab = ({ onRefresh }) => {
     city: "",
     zoomId: "",
     referredBy: "",
+    parentDesignation: "",
     childClass: "",
     monthlyFee: "",
     specialization: "",
@@ -3326,6 +3327,7 @@ const AddUserTab = ({ onRefresh }) => {
             city: res.data.city || "",
             zoomId: res.data.zoomId || "",
             referredBy: res.data.referredBy || "",
+            parentDesignation: res.data.parentDesignation || "",
           }));
           setAutoFillMsg("✅ Parent found! Details auto-filled.");
           setTimeout(() => setAutoFillMsg(""), 3000);
@@ -3397,6 +3399,7 @@ const AddUserTab = ({ onRefresh }) => {
         city: "",
         zoomId: "",
         referredBy: "",
+        parentDesignation: "",
         childClass: "",
         monthlyFee: "",
         specialization: "",
@@ -3430,7 +3433,7 @@ const AddUserTab = ({ onRefresh }) => {
   };
 
   return (
-    <div className="form-wrapper">
+    <div className="form-wrapper register-wrapper">
       <h3>Register New Profile</h3>
       <form onSubmit={handleRegister} className="admin-form">
         <div className="form-section">
@@ -3694,6 +3697,15 @@ const AddUserTab = ({ onRefresh }) => {
 
             <div className="form-row">
               <div className="form-group">
+                <label>Parent Designation</label>
+                <input
+                  name="parentDesignation"
+                  value={formData.parentDesignation}
+                  onChange={handleChange}
+                  placeholder="e.g. Father, Mother, Guardian"
+                />
+              </div>
+              <div className="form-group">
                 <label>Parent Email</label>
                 <input
                   name="email"
@@ -3701,6 +3713,9 @@ const AddUserTab = ({ onRefresh }) => {
                   onChange={handleChange}
                 />
               </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label>Zoom ID</label>
                 <input
@@ -3709,9 +3724,6 @@ const AddUserTab = ({ onRefresh }) => {
                   onChange={handleChange}
                 />
               </div>
-            </div>
-
-            <div className="form-row">
               <div className="form-group">
                 <label>Location (Area/Street)</label>
                 <input
@@ -3720,6 +3732,9 @@ const AddUserTab = ({ onRefresh }) => {
                   onChange={handleChange}
                 />
               </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label>City</label>
                 <input
@@ -3729,15 +3744,14 @@ const AddUserTab = ({ onRefresh }) => {
                   placeholder="e.g. Hyderabad"
                 />
               </div>
-            </div>
-
-            <div className="form-group">
-              <label>Referred By</label>
-              <input
-                name="referredBy"
-                value={formData.referredBy}
-                onChange={handleChange}
-              />
+              <div className="form-group">
+                <label>Referred By</label>
+                <input
+                  name="referredBy"
+                  value={formData.referredBy}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
           </div>
         )}

@@ -1881,6 +1881,13 @@ body {
   margin: 0;
 }
 
+/* Register User reuses .form-wrapper for its card look, but should fill
+   the available content width instead of the 800px form cap. */
+.register-wrapper {
+  max-width: none;
+  margin: 0;
+}
+
 /* ---- Gallery grid — 4 columns on desktop, fewer as the viewport shrinks ---- */
 .gallery-grid {
   display: grid;
