@@ -885,11 +885,113 @@ body {
 }
 
 /* --- MOBILE-ONLY ELEMENTS (Hidden by Default on Desktop) --- */
-.mobile-only {
+.admin-container .mobile-only {
   display: none;
 }
-.mobile-menu-backdrop {
+.admin-container .mobile-menu-backdrop {
   display: none;
+}
+
+/* ========================================= */
+/* 📱📟 TABLET/iPAD — NAVIGATE VIA HAMBURGER ONLY (≤ 1200px) */
+/* Sidebar becomes a hamburger-triggered slide-in drawer here too, not   */
+/* just on phones, so iPad (portrait & landscape) never shows a          */
+/* permanently-docked sidebar. Layout/grid tweaks stay in the 768px      */
+/* block below — this block only governs navigation chrome.              */
+/* ========================================= */
+@media (max-width: 1200px) {
+  .admin-sidebar {
+    display: none;
+  }
+  .desktop-only {
+    display: none;
+  }
+  .admin-container .mobile-only {
+    display: inline-flex;
+  }
+  .admin-container .hamburger-btn {
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text, #1e293b);
+    padding: 6px;
+    margin-right: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .admin-container .hamburger-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+  .admin-container .mobile-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 1999;
+    animation: fadeInBackdrop 0.2s ease;
+  }
+  @keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .admin-sidebar.mobile-open {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 78%;
+    max-width: 300px;
+    z-index: 2000;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    animation: slideInSidebar 0.25s ease;
+  }
+  @keyframes slideInSidebar {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  .admin-container .sidebar-close-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .admin-container .sidebar-close-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .admin-main {
+    width: 100%;
+    flex: 1;
+  }
+  /* Logout dropdown (profile pill tap) replaces the desktop-only icon button */
+  .mobile-logout-dropdown {
+    display: block;
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 5px;
+    z-index: 200;
+  }
+  .mobile-logout-dropdown button {
+    background: white;
+    border: none;
+    padding: 10px 20px;
+    width: 100%;
+    text-align: left;
+    color: #ef4444;
+    font-weight: 600;
+  }
 }
 
 /* ========================================= */
@@ -998,12 +1100,12 @@ body {
     display: none;
   }
 
-  .mobile-only {
+  .admin-container .mobile-only {
     display: inline-flex;
   }
 
   /* --- HAMBURGER MENU BUTTON --- */
-  .hamburger-btn {
+  .admin-container .hamburger-btn {
     align-items: center;
     justify-content: center;
     background: transparent;
@@ -1014,13 +1116,13 @@ body {
     cursor: pointer;
     flex-shrink: 0;
   }
-  .hamburger-btn svg {
+  .admin-container .hamburger-btn svg {
     width: 24px;
     height: 24px;
   }
 
   /* --- BACKDROP BEHIND SLIDE-IN SIDEBAR --- */
-  .mobile-menu-backdrop {
+  .admin-container .mobile-menu-backdrop {
     display: block;
     position: fixed;
     inset: 0;
@@ -1054,7 +1156,7 @@ body {
     to { transform: translateX(0); }
   }
 
-  .sidebar-close-btn {
+  .admin-container .sidebar-close-btn {
     margin-left: auto;
     background: transparent;
     border: none;
@@ -1063,7 +1165,7 @@ body {
     cursor: pointer;
     flex-shrink: 0;
   }
-  .sidebar-close-btn svg {
+  .admin-container .sidebar-close-btn svg {
     width: 22px;
     height: 22px;
   }
