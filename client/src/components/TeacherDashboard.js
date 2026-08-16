@@ -2190,7 +2190,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
               storageKey={`teacher_bday_notif_read_${currentUser._id}`}
             />
             <label
-              className="theme-toggle-label"
+              className="theme-toggle-label desktop-only"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               <span>{darkMode ? "☀️" : "🌙"}</span>
@@ -2223,7 +2223,23 @@ const TeacherDashboard = ({ user, onLogout }) => {
             </button>
             {showMobileLogout && (
               <div className="mobile-logout-dropdown">
-                <button onClick={onLogout}>🚪 Logout</button>
+                <button
+                  className="dropdown-action-btn"
+                  onClick={() => {
+                    const next = !darkMode;
+                    setDarkMode(next);
+                    localStorage.setItem(
+                      "teacher_theme",
+                      next ? "dark" : "light",
+                    );
+                    setShowMobileLogout(false);
+                  }}
+                >
+                  {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                </button>
+                <button className="dropdown-logout-btn" onClick={onLogout}>
+                  🚪 Logout
+                </button>
               </div>
             )}
           </div>

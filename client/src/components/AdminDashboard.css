@@ -380,7 +380,15 @@
 /* 18. MOBILE LOGOUT DROPDOWN — dark mode */
 .admin-container[data-theme="dark"] .mobile-logout-dropdown button {
   background: var(--card-bg) !important;
+}
+.admin-container[data-theme="dark"] .mobile-logout-dropdown .dropdown-logout-btn {
   color: var(--danger) !important;
+}
+.admin-container[data-theme="dark"] .mobile-logout-dropdown .dropdown-action-btn {
+  color: var(--text) !important;
+}
+.admin-container[data-theme="dark"] .mobile-logout-dropdown .dropdown-action-btn:hover {
+  background: #0f172a !important;
 }
 
 /* 19. CREDENTIAL BOX — overrides inline background:#f8fafc */
@@ -825,11 +833,19 @@ body {
   display: flex;
   align-items: center;
   min-width: 0;
+  flex: 1;
+}
+
+.header-title {
+  min-width: 0;
 }
 
 .header-title h2 {
   margin: 0;
   font-size: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .header-title p {
   margin: 0;
@@ -841,12 +857,15 @@ body {
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .user-profile-pill {
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: #f8fafc;
   padding: 6px 12px;
   border-radius: 20px;
@@ -1032,12 +1051,13 @@ body {
     width: 100%;
     flex: 1;
   }
-  /* Logout dropdown (profile pill tap) replaces the desktop-only icon button */
+  /* Options dropdown (profile pill tap) replaces the desktop-only header icons */
   .mobile-logout-dropdown {
     display: block;
     position: absolute;
     top: 60px;
     right: 20px;
+    min-width: 190px;
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
@@ -1048,11 +1068,33 @@ body {
   .mobile-logout-dropdown button {
     background: white;
     border: none;
-    padding: 10px 20px;
+    padding: 10px 12px;
     width: 100%;
     text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-weight: 500;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .mobile-logout-dropdown .dropdown-logout-btn {
     color: #ef4444;
     font-weight: 600;
+    margin-top: 3px;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0;
+    padding-top: 12px;
   }
 }
 
@@ -1387,12 +1429,13 @@ body {
     background: transparent;
   }
 
-  /* SHOW LOGOUT DROPDOWN ON MOBILE */
+  /* SHOW OPTIONS DROPDOWN ON MOBILE */
   .mobile-logout-dropdown {
     display: block;
     position: absolute;
     top: 60px;
     right: 20px;
+    min-width: 190px;
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
@@ -1403,11 +1446,33 @@ body {
   .mobile-logout-dropdown button {
     background: white;
     border: none;
-    padding: 10px 20px;
+    padding: 10px 12px;
     width: 100%;
     text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-weight: 500;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .mobile-logout-dropdown .dropdown-logout-btn {
     color: #ef4444;
     font-weight: 600;
+    margin-top: 3px;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0;
+    padding-top: 12px;
   }
 
   /* GRID ADJUSTMENTS */

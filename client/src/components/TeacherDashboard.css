@@ -517,7 +517,15 @@
 }
 .teacher-container[data-theme="dark"] .mobile-logout-dropdown button {
   background: var(--bg-card) !important;
+}
+.teacher-container[data-theme="dark"] .mobile-logout-dropdown .dropdown-logout-btn {
   color: #ef4444 !important;
+}
+.teacher-container[data-theme="dark"] .mobile-logout-dropdown .dropdown-action-btn {
+  color: var(--text-main) !important;
+}
+.teacher-container[data-theme="dark"] .mobile-logout-dropdown .dropdown-action-btn:hover {
+  background: #0f172a !important;
 }
 
 /* Loading screen dark */
@@ -845,9 +853,10 @@
 /* HEADER & CONTENT */
 .teacher-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 .t-header { height: 70px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 30px; }
-.t-header-left h2 { font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main); }
+.t-header-left { flex: 1; min-width: 0; }
+.t-header-left h2 { font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-header-left p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
-.t-header-right { display: flex; align-items: center; gap: 20px; }
+.t-header-right { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
 .header-profile .avatar { width: 38px; height: 38px; background: #dbeafe; color: var(--primary); border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
 .t-content { padding: 30px; overflow-y: auto; flex: 1; }
 
@@ -2044,13 +2053,24 @@
 
   /* 5. HEADER LOGOUT DROPDOWN */
   .mobile-logout-dropdown {
-    display: block; position: absolute; top: 60px; right: 20px;
+    display: block; position: absolute; top: 60px; right: 20px; min-width: 190px;
     background: white; border: 1px solid #e2e8f0; border-radius: 8px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 5px; z-index: 200;
   }
   .mobile-logout-dropdown button {
-    background: white; border: none; padding: 12px 20px;
-    width: 100%; text-align: left; color: #ef4444; font-weight: 600;
+    background: white; border: none; padding: 10px 12px;
+    width: 100%; text-align: left; border-radius: 6px; cursor: pointer;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn {
+    display: flex; align-items: center; gap: 8px;
+    color: #334155; font-weight: 500;
+  }
+  .mobile-logout-dropdown .dropdown-action-btn:hover {
+    background: #f1f5f9;
+  }
+  .mobile-logout-dropdown .dropdown-logout-btn {
+    color: #ef4444; font-weight: 600; margin-top: 3px;
+    border-top: 1px solid #e2e8f0; border-radius: 0; padding-top: 12px;
   }
 
   /* 6. OVERVIEW CARDS (Side-by-Side) */

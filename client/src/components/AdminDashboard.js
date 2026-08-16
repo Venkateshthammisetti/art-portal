@@ -7181,7 +7181,7 @@ const AdminDashboard = ({ onLogout }) => {
           </div>
           <div className="header-actions">
             <button
-              className="admin-refresh-btn"
+              className="admin-refresh-btn desktop-only"
               onClick={handleAppRefresh}
               title="Refresh application"
               disabled={appRefreshing}
@@ -7193,7 +7193,7 @@ const AdminDashboard = ({ onLogout }) => {
               storageKey="admin_bday_notif_read"
             />
             <label
-              className="theme-toggle-label"
+              className="theme-toggle-label desktop-only"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               <span>{darkMode ? "☀️" : "🌙"}</span>
@@ -7221,7 +7221,30 @@ const AdminDashboard = ({ onLogout }) => {
             </button>
             {showMobileLogout && (
               <div className="mobile-logout-dropdown">
-                <button onClick={onLogout}>🚪 Logout</button>
+                <button
+                  className="dropdown-action-btn"
+                  onClick={() => {
+                    handleAppRefresh();
+                    setShowMobileLogout(false);
+                  }}
+                  disabled={appRefreshing}
+                >
+                  <span className={appRefreshing ? "spin" : ""}>🔄</span> Refresh App
+                </button>
+                <button
+                  className="dropdown-action-btn"
+                  onClick={() => {
+                    const next = !darkMode;
+                    setDarkMode(next);
+                    localStorage.setItem("admin_theme", next ? "dark" : "light");
+                    setShowMobileLogout(false);
+                  }}
+                >
+                  {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                </button>
+                <button className="dropdown-logout-btn" onClick={onLogout}>
+                  🚪 Logout
+                </button>
               </div>
             )}
           </div>
