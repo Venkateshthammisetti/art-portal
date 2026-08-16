@@ -1127,6 +1127,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [historyMonth, setHistoryMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
+  const [sharingReportId, setSharingReportId] = useState(null);
 
   // --- CERTIFICATIONS ---
   const [certStudent, setCertStudent] = useState("");
@@ -1657,24 +1658,84 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   };
 
-  // Share a feedback report's PDF link via WhatsApp. WhatsApp's web/deep-link
-  // API (wa.me) only accepts a pre-filled text message — it can't attach a
-  // remote file directly — so we share the Cloudinary PDF link as text; the
-  // recipient taps it to view/download. This opens WhatsApp Web on desktop
-  // or the WhatsApp app on mobile, and works without needing contact info.
-  const shareFeedbackOnWhatsApp = (item) => {
-    if (!item.reportFile) return;
+  // Share a feedback report's actual PDF (not just a link) via WhatsApp.
+  // WhatsApp's web/deep-link API (wa.me) can only pre-fill a text message —
+  // it has no way to accept an attached file through a URL — so getting the
+  // real PDF into the chat needs the browser's native Web Share API instead,
+  // which lets the OS list WhatsApp as a share target for a File object.
+  // That's only supported on some mobile browsers though, so on desktop /
+  // unsupported browsers we do the next best thing: download the PDF to the
+  // teacher's device and open WhatsApp with the customised message, ready
+  // for them to attach the file that just landed in Downloads.
+  const shareFeedbackOnWhatsApp = async (item) => {
+    if (!item.reportFile || sharingReportId) return;
+
     const studentName = item.studentId?.childName || "your child";
     const monthLabel = item.month ? formatMonthName(item.month) : "";
-    const message =
-      `Hi! Sharing ${studentName}'s art progress report` +
-      (monthLabel ? ` for ${monthLabel}` : "") +
-      ` from Thevenkyart Art Academy:\n${item.reportFile}`;
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(message)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    const message = `Hi! Sharing ${studentName}'s art progress report${
+      monthLabel ? ` for ${monthLabel}` : ""
+    } from Thevenkyart Art Academy.`;
+    const fileName = `${studentName.replace(/\s+/g, "_")}_Report${
+      monthLabel ? `_${monthLabel.replace(/\s+/g, "_")}` : ""
+    }.pdf`;
+
+    const openWhatsAppLink = (text) => {
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(text)}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    };
+
+    setSharingReportId(item._id);
+    try {
+      // Pull the PDF bytes down so we have a real File to attach/download —
+      // just linking to item.reportFile isn't "sending the PDF" itself.
+      const res = await fetch(item.reportFile);
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], fileName, {
+        type: blob.type || "application/pdf",
+      });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Native share sheet — WhatsApp (if installed) shows up as a target
+        // and receives the actual file plus the customised message.
+        await navigator.share({
+          files: [file],
+          title: "Art Progress Report",
+          text: message,
+        });
+        return;
+      }
+
+      // No native file-share support here (typical on desktop browsers):
+      // download the PDF locally, then hand off to WhatsApp with the
+      // message pre-filled so the teacher just has to attach the file.
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+      openWhatsAppLink(
+        `${message}\n\n📎 The report PDF (${fileName}) just downloaded — attach it to this chat before sending.`,
+      );
+    } catch (err) {
+      if (err?.name === "AbortError") {
+        // User cancelled the native share sheet — nothing to do.
+        return;
+      }
+      console.error("WhatsApp share failed, falling back to link", err);
+      // Couldn't fetch/attach the file (e.g. network/CORS) — fall back to
+      // sharing the hosted link as text so the report can still reach them.
+      openWhatsAppLink(`${message}\n${item.reportFile}`);
+    } finally {
+      setSharingReportId(null);
+    }
   };
 
   const uploadCertification = async (e) => {
@@ -3351,10 +3412,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 <button
                                   className="share-whatsapp-btn"
                                   onClick={() => shareFeedbackOnWhatsApp(item)}
+                                  disabled={sharingReportId === item._id}
                                   title="Share report via WhatsApp"
                                   aria-label={`Share ${item.studentId?.childName || "student"}'s report via WhatsApp`}
                                 >
-                                  <IconWhatsApp /> Share
+                                  {sharingReportId === item._id ? (
+                                    <>
+                                      <span className="share-whatsapp-spinner" /> Preparing…
+                                    </>
+                                  ) : (
+                                    <>
+                                      <IconWhatsApp /> Share
+                                    </>
+                                  )}
                                 </button>
                               )}
 
