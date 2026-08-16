@@ -59,6 +59,7 @@ import {
   IconReceipt,
   IconMoney,
   IconEdit,
+  IconWhatsApp,
 } from "./Icons";
 
 // IMAGES
@@ -4964,6 +4965,65 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     }
   };
 
+  // wa.me needs a bare international number: digits only, country code, no "+".
+  // Parent phones are stored free-form (e.g. "9963613404", "+91 99636 13404",
+  // "091-9963613404"), so normalise before building the link. Returns null when
+  // the number can't be made sense of, so the caller can tell the admin instead
+  // of opening WhatsApp on a broken link.
+  const toWhatsAppNumber = (raw) => {
+    if (!raw) return null;
+    let d = String(raw).replace(/\D/g, "");
+    if (!d) return null;
+    d = d.replace(/^0+/, "");            // drop trunk prefix, e.g. 0 9963613404
+    if (d.length === 10) d = "91" + d;   // bare Indian mobile -> add country code
+    if (d.length === 12 && d.startsWith("91")) return d;
+    // Anything else already carries some country code; accept a plausible length.
+    return d.length >= 11 && d.length <= 15 ? d : null;
+  };
+
+  // Opens WhatsApp with a fee-reminder message personalised to this student.
+  const handleSendReminder = (student) => {
+    const number = toWhatsAppNumber(student.phone);
+    if (!number) {
+      alert(
+        `No usable WhatsApp number for ${student.childName || student.fullName}.\n\n` +
+          `Stored phone: ${student.phone || "(empty)"}\n\n` +
+          `Add a valid phone number on the student's profile first.`,
+      );
+      return;
+    }
+
+    const monthLabel = new Date(selectedMonth + "-01").toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    const childName = student.childName || "your child";
+    // Falls back to a plain "Sir/Madam" when no parent name is on record.
+    const greetName = student.fullName
+      ? `${student.fullName} Sir/Madam`
+      : "Sir/Madam";
+    const feeLine = student.monthlyFee
+      ? `\n\nPending amount: ₹${Number(student.monthlyFee).toLocaleString()}`
+      : "";
+
+    // Deliberately plain text — no emoji. Some recipient devices rendered them
+    // as "?" replacement glyphs (a missing-emoji-font issue on the viewing
+    // client, not an encoding fault), so the message is kept to characters that
+    // display reliably everywhere. The rupee sign is safe and is kept.
+    const message =
+      `Art class fee reminder\n` +
+      `Hello ${greetName}, this is Thevenkyart Art Academy.\n\n` +
+      `Just a friendly reminder that ${childName}'s art class fee for ${monthLabel} is still pending.${feeLine}\n\n` +
+      `Please pay at your convenience, and do let us know once it is done.\n\n` +
+      `Thank you for your understanding!`;
+
+    window.open(
+      `https://wa.me/${number}?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
   // Check if student has a pass for the selected month
   const hasPassForMonth = (student, month) => {
     return (student.passes || []).some((p) => p.month === (month || selectedMonth));
@@ -5675,19 +5735,39 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                   >
                                     {isPaid ? "Mark Unpaid" : "Pay This Month"}
                                   </button>
+                                  {/* Both only apply while the fee is still
+                                      outstanding for the selected month. */}
                                   {!isPaid && (
-                                    <button
-                                      className="save-btn"
-                                      style={{
-                                        width: "auto",
-                                        padding: "6px 12px",
-                                        fontSize: "0.85rem",
-                                        backgroundColor: "#7c3aed",
-                                      }}
-                                      onClick={() => { setPassReason(""); setPassCustomReason(""); setPassModal({ show: true, student }); }}
-                                    >
-                                      Mark Pass
-                                    </button>
+                                    <>
+                                      <button
+                                        className="save-btn"
+                                        style={{
+                                          width: "auto",
+                                          padding: "6px 12px",
+                                          fontSize: "0.85rem",
+                                          backgroundColor: "#7c3aed",
+                                        }}
+                                        onClick={() => { setPassReason(""); setPassCustomReason(""); setPassModal({ show: true, student }); }}
+                                      >
+                                        Mark Pass
+                                      </button>
+                                      <button
+                                        className="save-btn fee-reminder-btn"
+                                        style={{
+                                          width: "auto",
+                                          padding: "6px 12px",
+                                          fontSize: "0.85rem",
+                                          backgroundColor: "#25D366",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                        }}
+                                        title={`Send ${student.childName || "student"}'s fee reminder on WhatsApp`}
+                                        onClick={() => handleSendReminder(student)}
+                                      >
+                                        <IconWhatsApp /> Reminder
+                                      </button>
+                                    </>
                                   )}
                                 </>
                               )}

@@ -2096,6 +2096,13 @@ body {
   background-color: #1d4ed8;
 }
 
+/* Fee-tracker "Reminder" button (opens WhatsApp).
+   The row buttons set their colour via an inline style, which beats a plain
+   class rule — hence !important here so the hover state can still apply. */
+.fee-reminder-btn:hover {
+  background-color: #1da851 !important;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
