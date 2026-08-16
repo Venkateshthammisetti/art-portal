@@ -1045,6 +1045,39 @@ const TeacherDashboard = ({ user, onLogout }) => {
       <line x1="21" y1="12" x2="9" y2="12"></line>
     </svg>
   );
+  // Overview stat-card icons — same stroke language as the sidebar icons above,
+  // used in place of emoji so the stat row doesn't mix icon styles.
+  const IconClasses = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+    </svg>
+  );
+  const IconGlobe = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="2" y1="12" x2="22" y2="12"></line>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+    </svg>
+  );
+  const IconBuilding = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="2" width="16" height="20" rx="1"></rect>
+      <rect x="8" y="6" width="2.5" height="2.5"></rect>
+      <rect x="13.5" y="6" width="2.5" height="2.5"></rect>
+      <rect x="8" y="11" width="2.5" height="2.5"></rect>
+      <rect x="13.5" y="11" width="2.5" height="2.5"></rect>
+      <path d="M9 22v-4h6v4"></path>
+    </svg>
+  );
+  // Brand mark (fixed shape, not the outline nav language) so a "share to
+  // WhatsApp" affordance stays instantly recognizable next to Edit/Delete.
+  const IconWhatsApp = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.47 14.38c-.29-.15-1.71-.84-1.98-.94-.27-.1-.46-.15-.66.15-.19.29-.75.94-.92 1.13-.17.19-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.43-.86-.76-1.44-1.71-1.6-2-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.15-.66-1.59-.9-2.18-.24-.57-.48-.5-.66-.5-.17-.01-.36-.01-.56-.01-.19 0-.51.07-.78.36-.27.29-1.02 1-1.02 2.43 0 1.43 1.04 2.82 1.19 3.01.15.19 2.04 3.11 4.94 4.36.69.3 1.23.48 1.65.61.69.22 1.32.19 1.82.11.55-.08 1.71-.7 1.95-1.37.24-.68.24-1.26.17-1.38-.07-.12-.26-.19-.55-.34z"></path>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.87.51 3.62 1.4 5.12L2 22l5.13-1.5a9.86 9.86 0 0 0 4.9 1.32h.01c5.46 0 9.9-4.45 9.9-9.91C21.94 6.45 17.5 2 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.11.91.92-3.02-.2-.31a8.17 8.17 0 0 1-1.26-4.37c0-4.52 3.68-8.2 8.21-8.2 2.19 0 4.25.85 5.8 2.4a8.15 8.15 0 0 1 2.4 5.81c0 4.52-3.68 8.21-8.26 8.21z"></path>
+    </svg>
+  );
   const [searchText, setSearchText] = useState("");
   const [studentModeFilter, setStudentModeFilter] = useState("all");
   const [studentClassFilter, setStudentClassFilter] = useState("all");
@@ -1624,6 +1657,26 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   };
 
+  // Share a feedback report's PDF link via WhatsApp. WhatsApp's web/deep-link
+  // API (wa.me) only accepts a pre-filled text message — it can't attach a
+  // remote file directly — so we share the Cloudinary PDF link as text; the
+  // recipient taps it to view/download. This opens WhatsApp Web on desktop
+  // or the WhatsApp app on mobile, and works without needing contact info.
+  const shareFeedbackOnWhatsApp = (item) => {
+    if (!item.reportFile) return;
+    const studentName = item.studentId?.childName || "your child";
+    const monthLabel = item.month ? formatMonthName(item.month) : "";
+    const message =
+      `Hi! Sharing ${studentName}'s art progress report` +
+      (monthLabel ? ` for ${monthLabel}` : "") +
+      ` from Thevenkyart Art Academy:\n${item.reportFile}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
   const uploadCertification = async (e) => {
     e.preventDefault();
     if (!certStudent) return alert("Please select a student.");
@@ -2193,9 +2246,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
               className="theme-toggle-label desktop-only"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <span>{darkMode ? "☀️" : "🌙"}</span>
+              <span aria-hidden="true">{darkMode ? "☀️" : "🌙"}</span>
               <button
                 className="theme-toggle-btn"
+                role="switch"
+                aria-checked={darkMode}
+                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
                 onClick={() => {
                   const next = !darkMode;
                   setDarkMode(next);
@@ -2208,7 +2264,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
             </label>
             <div
               className="header-profile"
+              role="button"
+              tabIndex={0}
+              aria-haspopup="true"
+              aria-expanded={showMobileLogout}
+              aria-label="Account menu"
               onClick={() => setShowMobileLogout(!showMobileLogout)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowMobileLogout(!showMobileLogout);
+                }
+              }}
             >
               <div className="avatar">
                 {currentUser.fullName?.charAt(0) || "T"}
@@ -2276,6 +2343,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   <button
                     className="att-reminder-dismiss"
                     title="Dismiss"
+                    aria-label={`Dismiss attendance reminder for ${r.className}`}
                     onClick={() => {
                       const todayStr = new Date().toISOString().slice(0, 10);
                       checkedAttendanceRef.current[`${r.classId}_${todayStr}`] = true;
@@ -2305,29 +2373,45 @@ const TeacherDashboard = ({ user, onLogout }) => {
               </div>
               <div className="stats-grid">
                 <div
-                  className="stat-card"
+                  className="stat-card stat-card-clickable"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Total students: ${myStudents.length}. View student directory.`}
                   onClick={() => setActiveTab("students")}
-                  style={{ cursor: "pointer" }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActiveTab("students");
+                    }
+                  }}
                 >
-                  <div className="icon-circle blue">🎓</div>
+                  <div className="icon-circle blue"><IconStudents /></div>
                   <div>
                     <div className="stat-value">{myStudents.length}</div>
                     <div className="stat-label">Total Students</div>
                   </div>
                 </div>
                 <div className="stat-card">
-                  <div className="icon-circle green">📚</div>
+                  <div className="icon-circle green"><IconClasses /></div>
                   <div>
                     <div className="stat-value">{classes.length}</div>
                     <div className="stat-label">My Classes</div>
                   </div>
                 </div>
                 <div
-                  className="stat-card"
+                  className="stat-card stat-card-clickable"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Online students: ${myStudents.filter((s) => (s.classMode || "online") === "online").length}. View student directory filtered to online.`}
                   onClick={() => { setStudentModeFilter("online"); setStudentClassFilter("all"); setActiveTab("students"); }}
-                  style={{ cursor: "pointer" }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setStudentModeFilter("online"); setStudentClassFilter("all"); setActiveTab("students");
+                    }
+                  }}
                 >
-                  <div className="icon-circle" style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>🌐</div>
+                  <div className="icon-circle violet"><IconGlobe /></div>
                   <div>
                     <div className="stat-value">
                       {myStudents.filter((s) => (s.classMode || "online") === "online").length}
@@ -2336,11 +2420,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   </div>
                 </div>
                 <div
-                  className="stat-card"
+                  className="stat-card stat-card-clickable"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Offline students: ${myStudents.filter((s) => s.classMode === "offline").length}. View student directory filtered to offline.`}
                   onClick={() => { setStudentModeFilter("offline"); setStudentClassFilter("all"); setActiveTab("students"); }}
-                  style={{ cursor: "pointer" }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setStudentModeFilter("offline"); setStudentClassFilter("all"); setActiveTab("students");
+                    }
+                  }}
                 >
-                  <div className="icon-circle" style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>🏫</div>
+                  <div className="icon-circle amber"><IconBuilding /></div>
                   <div>
                     <div className="stat-value">
                       {myStudents.filter((s) => s.classMode === "offline").length}
@@ -3252,6 +3344,18 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 >
                                   📎 View PDF
                                 </a>
+                              )}
+
+                              {/* ✨ SHARE VIA WHATSAPP */}
+                              {item.reportFile && (
+                                <button
+                                  className="share-whatsapp-btn"
+                                  onClick={() => shareFeedbackOnWhatsApp(item)}
+                                  title="Share report via WhatsApp"
+                                  aria-label={`Share ${item.studentId?.childName || "student"}'s report via WhatsApp`}
+                                >
+                                  <IconWhatsApp /> Share
+                                </button>
                               )}
 
                               {/* ✨ EDIT BUTTON */}
