@@ -4,6 +4,36 @@ import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 
+import {
+  IconGallery as IconGalleryShared,
+  IconLogout as IconLogoutShared,
+  IconUpload,
+  IconCalendar,
+  IconArt,
+  IconDownload,
+  IconTrash,
+  IconSun,
+  IconMoon,
+  IconBell,
+  IconSearch,
+  IconSettings,
+  IconClipboard,
+  IconChart,
+  IconOnlineClass,
+  IconOfflineClass,
+  IconSave,
+  IconNote,
+  IconInbox,
+  IconAttach,
+  IconEdit,
+  IconTrophy,
+  IconCheck,
+  IconLaunch,
+  IconStar,
+  IconGreeting,
+  IconSchedule as IconScheduleShared,
+} from "./Icons";
+
 // IMAGES (same as Admin Dashboard)
 import logoImg from "./new-logo.png";
 import titleImg from "./logo-title-copy.png";
@@ -505,12 +535,12 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       {/* MODERN FILTER BAR */}
       <div className="gallery-filter-bar">
         <h3 className="gallery-filter-title">
-          🖼️ Gallery Manager
+          <IconGalleryShared /> Gallery Manager
           <span className="gallery-count-badge">{filteredArtwork.length}</span>
         </h3>
         <div className="gallery-filter-controls">
           <select className="gallery-filter-select" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ minWidth: "150px" }}>
-            <option value="all">🌍 All Students</option>
+            <option value="all">All Students</option>
             <option disabled>──────────</option>
             {students.map((s) => (<option key={s._id} value={s._id}>{s.childName}</option>))}
           </select>
@@ -537,7 +567,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
             border: "1px border #bfdbfe",
           }}
         >
-          <h4 style={{ marginTop: 0, color: "#1e40af" }}>📤 Batch Upload</h4>
+          <h4 style={{ marginTop: 0, color: "#1e40af" }}><IconUpload /> Batch Upload</h4>
           <div
             style={{
               display: "grid",
@@ -687,7 +717,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                 </button>
                 <button onClick={openBulkEditDate} disabled={selectedIds.length === 0}
                   style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: selectedIds.length > 0 ? "pointer" : "not-allowed", color: "#2563eb", opacity: selectedIds.length === 0 ? 0.5 : 1 }}>
-                  📅 Change Date{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
+                  <IconCalendar /> Change Date{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
                 </button>
                 <button onClick={handleBulkDelete} disabled={selectedIds.length === 0 || bulkDeleting}
                   style={{ background: selectedIds.length > 0 ? "#ef4444" : "#fca5a5", color: "white", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: selectedIds.length > 0 ? "pointer" : "not-allowed", opacity: bulkDeleting ? 0.6 : 1 }}>
@@ -717,7 +747,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
           ))
         ) : filteredArtwork.length === 0 ? (
           <div className="gallery-empty-state">
-            <div className="gallery-empty-icon">🎨</div>
+            <div className="gallery-empty-icon"><IconArt size={40} /></div>
             <p className="gallery-empty-title">No artwork found</p>
             <p className="gallery-empty-sub">Upload some artwork or adjust filters</p>
           </div>
@@ -748,9 +778,9 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               </div>
               {!selectMode && (
                 <div className="gal-card-actions">
-                  <button className="gal-action-btn date" onClick={(e) => openEditDate(e, art)} title="Change Date">📅</button>
-                  <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
-                  <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete">🗑</button>
+                  <button className="gal-action-btn date" onClick={(e) => openEditDate(e, art)} title="Change Date"><IconCalendar /></button>
+                  <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download"><IconDownload /></button>
+                  <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete"><IconTrash /></button>
                 </div>
               )}
             </div>
@@ -790,13 +820,13 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
             </div>
             <button className="lightbox-action-pill" onClick={(e) => openEditDate(e, filteredArtwork[lightboxIndex])}>
-              📅 Change Date
+              <IconCalendar /> Change Date
             </button>
             <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              ⬇ Download
+              <IconDownload /> Download
             </button>
             <button className="lightbox-action-pill danger" onClick={(e) => handleDelete(e, filteredArtwork[lightboxIndex]._id)}>
-              🗑 Delete
+              <IconTrash /> Delete
             </button>
           </div>
 
@@ -2307,7 +2337,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
               className="theme-toggle-label desktop-only"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <span aria-hidden="true">{darkMode ? "☀️" : "🌙"}</span>
+              <span aria-hidden="true">{darkMode ? <IconSun /> : <IconMoon />}</span>
               <button
                 className="theme-toggle-btn"
                 role="switch"
@@ -2363,10 +2393,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     setShowMobileLogout(false);
                   }}
                 >
-                  {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                  {darkMode ? <><IconSun /> Light Mode</> : <><IconMoon /> Dark Mode</>}
                 </button>
                 <button className="dropdown-logout-btn" onClick={onLogout}>
-                  🚪 Logout
+                  <IconLogoutShared /> Logout
                 </button>
               </div>
             )}
@@ -2381,7 +2411,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <div className="att-reminder-bar">
               {attendanceReminders.map((r) => (
                 <div key={r.classId} className="att-reminder-card">
-                  <span className="att-reminder-bell">🔔</span>
+                  <span className="att-reminder-bell"><IconBell /></span>
                   <div className="att-reminder-text">
                     <strong>Don't forget attendance!</strong>
                     <span>
@@ -2428,7 +2458,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   <p className="hero-date">
                     {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                   </p>
-                  <h1>Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 17 ? "Afternoon" : "Evening"}, {currentUser.fullName?.split(" ")[0]} 👋</h1>
+                  <h1>Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 17 ? "Afternoon" : "Evening"}, {currentUser.fullName?.split(" ")[0]} <IconGreeting /></h1>
                   <p>Here is what's happening in your classes today.</p>
                 </div>
               </div>
@@ -2564,7 +2594,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           className="icon-btn-sm"
                           onClick={() => setActiveTab("schedule")}
                         >
-                          🗓️
+                          <IconScheduleShared />
                         </button>
                       </div>
                     </div>
@@ -2579,7 +2609,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <div className="students-view">
               <div className="std-toolbar">
                 <div className="std-search">
-                  <span className="search-icon">🔍</span>
+                  <span className="search-icon"><IconSearch /></span>
                   <input
                     type="text"
                     placeholder="Search..."
@@ -2594,8 +2624,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     onChange={(e) => setStudentModeFilter(e.target.value)}
                   >
                     <option value="all">All Modes</option>
-                    <option value="online">🌐 Online</option>
-                    <option value="offline">🏫 Offline</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
                   </select>
                   <select
                     className="std-filter-select"
@@ -2617,7 +2647,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       className="personalize-btn"
                       onClick={() => setIsColMenuOpen(!isColMenuOpen)}
                     >
-                      ⚙️ Columns
+                      <IconSettings /> Columns
                     </button>
                     {isColMenuOpen && (
                       <div className="col-dropdown">
@@ -2707,7 +2737,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       className={studentViewMode === "list" ? "active" : ""}
                       onClick={() => setStudentViewMode("list")}
                     >
-                      📋 List
+                      <IconClipboard /> List
                     </button>
                     <button
                       className={
@@ -2715,7 +2745,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       }
                       onClick={() => setStudentViewMode("analytics")}
                     >
-                      📊 Analytics
+                      <IconChart /> Analytics
                     </button>
                   </div>
                 </div>
@@ -2764,7 +2794,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           {visibleColumns.mode && (
                             <td data-label="Mode">
                               <span className={`mode-badge ${s.classMode || "online"}`}>
-                                {s.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                                {s.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                               </span>
                             </td>
                           )}
@@ -2870,7 +2900,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 <div className="mobile-cal-events">
                   {getClassesForDay(mobileSelectedDay).length === 0 ? (
                     <div className="mobile-cal-empty">
-                      <span role="img" aria-label="palette">🎨</span>
+                      <IconArt />
                       <p>No classes scheduled</p>
                     </div>
                   ) : (
@@ -2938,8 +2968,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   }
                 >
                   {scheduleViewMode === "grid"
-                    ? "📜 List View"
-                    : "📅 Grid View"}
+                    ? <><IconClipboard /> List View</>
+                    : <><IconCalendar /> Grid View</>}
                 </button>
               </div>
               {scheduleViewMode === "grid" ? (
@@ -3114,7 +3144,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   {attendanceView === "daily" &&
                     (!isClassScheduled && !forceExtraSession ? (
                       <div className="schedule-warning-box animate-fade-in">
-                        <div className="warning-icon">📅</div>
+                        <div className="warning-icon"><IconCalendar size={34} /></div>
                         <h3>No Class Scheduled</h3>
                         <p>Selected classes not scheduled for today.</p>
                         <button
@@ -3207,7 +3237,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           className="save-attendance-btn"
                           onClick={submitAttendance}
                         >
-                          💾 Save Daily Log
+                          <IconSave /> Save Daily Log
                         </button>
                       </div>
                     ))}
@@ -3288,7 +3318,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <div className="feedback-view">
               <div className="feedback-container-grid">
                 <div className="form-card">
-                  <h3>📝 New Report</h3>
+                  <h3><IconNote /> New Report</h3>
                   <form onSubmit={sendFeedback}>
                     <div className="controls-row">
                       <div className="control-group">
@@ -3336,7 +3366,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               color: star <= rating ? "#f59e0b" : "#e2e8f0",
                             }}
                           >
-                            ★
+                            <IconStar fill="currentColor" />
                           </span>
                         ))}
                       </div>
@@ -3383,15 +3413,15 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               </span>
                             </div>
                             <div className="h-rating">
-                              {"★".repeat(item.rating)}
+                              {Array.from({ length: item.rating }, (_, i) => <IconStar key={i} fill="currentColor" />)}
                               <span className="grey">
-                                {"★".repeat(5 - item.rating)}
+                                {Array.from({ length: 5 - item.rating }, (_, i) => <IconStar key={i} fill="currentColor" />)}
                               </span>
                             </div>
                             <p className="h-text">"{item.feedbackText}"</p>
                             {item.parentComment && (
                               <div className="teacher-reply-view">
-                                <strong>📩 Parent Reply:</strong>
+                                <strong><IconInbox /> Parent Reply:</strong>
                                 <p>{item.parentComment}</p>
                               </div>
                             )}
@@ -3403,7 +3433,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                   rel="noreferrer"
                                   className="view-pdf-link"
                                 >
-                                  📎 View PDF
+                                  <IconAttach /> View PDF
                                 </a>
                               )}
 
@@ -3433,7 +3463,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 className="edit-feedback-btn"
                                 onClick={() => openEditModal(item)}
                               >
-                                ✏️ Edit
+                                <IconEdit /> Edit
                               </button>
 
                               {/* ✨ DELETE BUTTON */}
@@ -3441,7 +3471,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 className="delete-feedback-btn"
                                 onClick={() => handleDeleteFeedback(item._id)}
                               >
-                                🗑️ Delete
+                                <IconTrash /> Delete
                               </button>
                             </div>
                           </div>
@@ -3459,7 +3489,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <div className="feedback-view">
               <div className="feedback-container-grid">
                 <div className="form-card">
-                  <h3>🏆 New Certification</h3>
+                  <h3><IconTrophy /> New Certification</h3>
                   <form onSubmit={uploadCertification}>
                     <div className="controls-row">
                       <div className="control-group">
@@ -3559,7 +3589,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               rel="noreferrer"
                               className="view-pdf-link"
                             >
-                              📎 View Certificate
+                              <IconAttach /> View Certificate
                             </a>
                             <button
                               className="delete-feedback-btn"
@@ -3567,7 +3597,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                 handleDeleteCertification(item._id)
                               }
                             >
-                              🗑️ Delete
+                              <IconTrash /> Delete
                             </button>
                           </div>
                         </div>
@@ -3805,7 +3835,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       onClick={handleDownloadReport}
                       disabled={!rmLibReady}
                     >
-                      ⬇️ Download PDF
+                      <IconDownload /> Download PDF
                     </button>
                     <button
                       type="button"
@@ -3815,7 +3845,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     >
                       {rmGenerating
                         ? "Generating..."
-                        : "✅ Save & Send to Parent"}
+                        : <><IconCheck /> Save & Send to Parent</>}
                     </button>
                   </div>
                 </div>
@@ -3896,7 +3926,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                         i <= rmRatings[f.key] ? " filled" : ""
                                       }`}
                                     >
-                                      ★
+                                      <IconStar fill="currentColor" />
                                     </span>
                                   ))}
                                 </div>
@@ -4035,13 +4065,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         rel="noreferrer"
                         className="launch-btn"
                       >
-                        🚀 Launch Class
+                        <IconLaunch /> Launch Class
                       </a>
                       <button
                         className="edit-link-icon"
                         onClick={() => setIsLinkInputVisible(true)}
                       >
-                        ✏️
+                        <IconEdit />
                       </button>
                     </div>
                   ) : (
@@ -4082,7 +4112,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     setAttendanceDate(new Date().toISOString().slice(0, 10));
                   }}
                 >
-                  📝 Mark Attendance
+                  <IconNote /> Mark Attendance
                 </button>
               </div>
             </div>
@@ -4163,7 +4193,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               : "#e2e8f0",
                         }}
                       >
-                        ★
+                        <IconStar fill="currentColor" />
                       </span>
                     ))}
                   </div>
@@ -4225,7 +4255,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
           <div className="man-accent-bar" />
           <div className="man-header">
             <div className="man-app-identity">
-              <span className="man-app-icon">🎨</span>
+              <span className="man-app-icon"><IconArt /></span>
               <span className="man-app-name">Art Portal</span>
               <span className="man-dot">•</span>
               <span className="man-timestamp">now</span>

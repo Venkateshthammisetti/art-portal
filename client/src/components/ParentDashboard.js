@@ -13,6 +13,41 @@ import qrCodeImg from "./qrcode.jpeg";
 
 import { FaShareFromSquare } from "react-icons/fa6";
 
+import {
+  IconGreeting,
+  IconHome,
+  IconSchedule,
+  IconTrendingUp,
+  IconExpense,
+  IconArt,
+  IconDownload,
+  IconShare,
+  IconTrophy,
+  IconPdf,
+  IconEye,
+  IconBell,
+  IconHelp,
+  IconRefresh,
+  IconSun,
+  IconMoon,
+  IconAnnounce,
+  IconCalendar,
+  IconNote,
+  IconStar,
+  IconLaunch,
+  IconFee,
+  IconUser,
+  IconOnlineClass,
+  IconOfflineClass,
+  IconCheck,
+  IconMessage,
+  IconMail,
+  IconPhone,
+  IconLocation,
+  IconClipboard,
+  IconGlobe,
+} from "./Icons";
+
 // --- ZONE 1: HELPER FUNCTIONS (Outside Component) ---
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -29,18 +64,18 @@ function urlBase64ToUint8Array(base64String) {
 const TUTORIAL_STEPS = [
   {
     id: 1,
-    title: "Welcome to Thevenkyart! 🎨",
+    title: "Welcome to Thevenkyart!",
     desc: (
       <span>
         Welcome to your new <b>Parent Dashboard!</b> This is your central hub to
         track your child's artistic journey, attendance, and growth.
       </span>
     ),
-    icon: "👋",
+    icon: <IconGreeting />,
   },
   {
     id: 2,
-    title: "Quick Overview 📊",
+    title: "Quick Overview",
     desc: (
       <span>
         The <b>'Overview'</b> tab gives you a snapshot. See upcoming classes,
@@ -48,40 +83,40 @@ const TUTORIAL_STEPS = [
         next class schedule, Basic details of the student
       </span>
     ),
-    icon: "🏠",
+    icon: <IconHome />,
   },
   {
     id: 3,
-    title: "Join Classes 🚀",
+    title: "Join Classes",
     desc: (
       <span>
         Go to the <b>'Class Schedule'</b> tab to find your child's timetable.
         The Zoom links for classes will appear there automatically.
       </span>
     ),
-    icon: "🗓️",
+    icon: <IconSchedule />,
   },
   {
     id: 4,
-    title: "Track Progress 📝",
+    title: "Track Progress",
     desc: (
       <span>
         Check <b>'Academic Reports'</b> to view detailed feedback from teachers,
         download report cards, and reply with your own comments.
       </span>
     ),
-    icon: "📈",
+    icon: <IconTrendingUp />,
   },
   {
     id: 5,
-    title: "Manage Fees 💳",
+    title: "Manage Fees",
     desc: (
       <span>
         Visit <b>'Fee Status'</b> to check for pending dues. You can view
         payment history and get UPI details to pay securely.
       </span>
     ),
-    icon: "💸",
+    icon: <IconExpense />,
   },
 ];
 
@@ -378,11 +413,14 @@ const ParentGalleryTab = ({ studentId }) => {
   const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
 
   return (
-    <div className="form-wrapper" style={{ padding: "20px" }}>
+    // `gallery-wrapper` lifts the 800px cap that .form-wrapper otherwise
+    // applies, so the gallery fills the content area exactly like the Admin
+    // and Teacher galleries do.
+    <div className="form-wrapper gallery-wrapper" style={{ padding: "20px" }}>
       {/* MODERN FILTER BAR */}
       <div className="gallery-filter-bar">
         <h3 className="gallery-filter-title">
-          🎨 My Art Gallery
+          <IconArt /> My Art Gallery
           <span className="gallery-count-badge">{filteredArtwork.length}</span>
         </h3>
         <div className="gallery-filter-controls">
@@ -397,8 +435,9 @@ const ParentGalleryTab = ({ studentId }) => {
         </div>
       </div>
 
-      {/* GALLERY GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+      {/* GALLERY GRID — same class (and so the same column breakpoints) as the
+          Teacher gallery, which uses these identical .gal-card children. */}
+      <div className="gal-grid">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="gallery-skeleton-card">
@@ -412,7 +451,7 @@ const ParentGalleryTab = ({ studentId }) => {
           ))
         ) : filteredArtwork.length === 0 ? (
           <div className="gallery-empty-state">
-            <div className="gallery-empty-icon">🎨</div>
+            <div className="gallery-empty-icon"><IconArt size={40} /></div>
             <p className="gallery-empty-title">No artwork yet</p>
             <p className="gallery-empty-sub">Your child's artwork will appear here</p>
           </div>
@@ -425,9 +464,9 @@ const ParentGalleryTab = ({ studentId }) => {
                 <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
               </div>
               <div className="gal-card-actions">
-                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
+                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download"><IconDownload /></button>
                 <button className="gal-action-btn share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={shareLoading} title="Share on WhatsApp">
-                  {shareLoading ? "…" : "📤"}
+                  {shareLoading ? "…" : <IconShare />}
                 </button>
               </div>
             </div>
@@ -467,14 +506,14 @@ const ParentGalleryTab = ({ studentId }) => {
               <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
             </div>
             <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              ⬇ Download
+              <IconDownload /> Download
             </button>
             <button
               className="lightbox-action-pill share"
               onClick={(e) => handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])}
               disabled={shareLoading}
             >
-              {shareLoading ? "Processing…" : "📤 Share"}
+              {shareLoading ? "Processing…" : <><IconShare /> Share</>}
             </button>
           </div>
 
@@ -532,7 +571,7 @@ const ParentCertificationsTab = ({ studentId }) => {
     <div className="form-wrapper" style={{ padding: "20px" }}>
       <div className="gallery-filter-bar">
         <h3 className="gallery-filter-title">
-          🏆 My Certifications
+          <IconTrophy /> My Certifications
           <span className="gallery-count-badge">{certifications.length}</span>
         </h3>
       </div>
@@ -551,7 +590,7 @@ const ParentCertificationsTab = ({ studentId }) => {
           ))
         ) : certifications.length === 0 ? (
           <div className="gallery-empty-state">
-            <div className="gallery-empty-icon">🏆</div>
+            <div className="gallery-empty-icon"><IconTrophy size={40} /></div>
             <p className="gallery-empty-title">No certifications yet</p>
             <p className="gallery-empty-sub">
               Your child's certificates will appear here
@@ -564,7 +603,7 @@ const ParentCertificationsTab = ({ studentId }) => {
               <div key={cert._id} className="cert-card">
                 <div className="cert-card-thumb">
                   {isPdf ? (
-                    <span className="cert-card-thumb-icon">📄</span>
+                    <span className="cert-card-thumb-icon"><IconPdf size={22} /></span>
                   ) : (
                     <img src={cert.fileUrl} alt={cert.title} />
                   )}
@@ -587,7 +626,7 @@ const ParentCertificationsTab = ({ studentId }) => {
                     rel="noreferrer"
                     className="rc-action-btn pdf"
                   >
-                    👁️ View
+                    <IconEye /> View
                   </a>
                   <button
                     className="rc-action-btn"
@@ -595,7 +634,7 @@ const ParentCertificationsTab = ({ studentId }) => {
                       handleDownload(e, cert.fileUrl, cert.title)
                     }
                   >
-                    ⬇ Download
+                    <IconDownload /> Download
                   </button>
                 </div>
               </div>
@@ -1247,14 +1286,14 @@ const ParentDashboard = ({ user, onLogout }) => {
               gap: '8px'
             }}
           >
-            🔔 Enable Alerts
+            <IconBell /> Enable Alerts
           </button> */}
 
           <button
             onClick={() => setShowTutorial(true)}
             style={{ marginTop: "10px", color: "#2563eb" }}
           >
-            <span>💡</span> App Tutorial
+            <IconHelp /> App Tutorial
           </button>
         </div>
         <div className="sidebar-footer">
@@ -1291,7 +1330,7 @@ const ParentDashboard = ({ user, onLogout }) => {
               title="Refresh Data"
               disabled={loading}
             >
-              <span className={loading ? "spin" : ""}>🔄</span>
+              <span className={loading ? "spin" : ""}><IconRefresh /></span>
             </button>
             <span className="role-badge desktop-only">Parent</span>
             <div
@@ -1314,19 +1353,19 @@ const ParentDashboard = ({ user, onLogout }) => {
                   className="pd-menu-btn theme-toggle"
                   onClick={toggleTheme}
                 >
-                  {theme === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}
+                  {theme === "light" ? <><IconMoon /> Dark Mode</> : <><IconSun /> Light Mode</>}
                 </button>
                 <button
                   className="pd-menu-btn"
                   onClick={() => setShowTutorial(true)}
                 >
-                  💡 App Tutorial
+                  <IconHelp /> App Tutorial
                 </button>
                 <button
                   className="pd-menu-btn"
                   onClick={() => handleNavClick("refer")}
                 >
-                  📣 Refer & Support
+                  <IconAnnounce /> Refer & Support
                 </button>
                 {/* ✨ NEW: Enable Alerts Button for Mobile Menu */}
                 <button
@@ -1337,7 +1376,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   }}
                   style={{ fontWeight: "bold" }}
                 >
-                  🔔 Enable Alerts
+                  <IconBell /> Enable Alerts
                 </button>
                 <button
                   className="pd-menu-btn logout"
@@ -1384,7 +1423,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   onClick={() => handleNavClick("attendance")}
                   className="clickable-heading"
                 >
-                  📅 Attendance
+                  <IconCalendar /> Attendance
                 </h3>
                 <div
                   style={{
@@ -1457,7 +1496,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   onClick={() => handleNavClick("reports")}
                   className="clickable-heading"
                 >
-                  📝 Latest Report
+                  <IconNote /> Latest Report
                 </h3>
                 {reports.length > 0 ? (
                   <div className="latest-report-box">
@@ -1466,7 +1505,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                         {formatFullMonthDate(reports[0].month)} Report
                       </span>
                       <span className="lrb-rating">
-                        {"★".repeat(reports[0].rating)}
+                        {Array.from({ length: reports[0].rating }, (_, i) => <IconStar key={i} fill="currentColor" />)}
                       </span>
                     </div>
                     <p className="lrb-text">
@@ -1479,7 +1518,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                         rel="noreferrer"
                         className="mini-link-btn"
                       >
-                        📄 View PDF
+                        <IconPdf /> View PDF
                       </a>
                     ) : (
                       <button
@@ -1499,7 +1538,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   onClick={() => handleNavClick("schedule")}
                   className="clickable-heading"
                 >
-                  🚀 Next Class (Local Time)
+                  <IconLaunch /> Next Class (Local Time)
                 </h3>
                 {assignedClass ? (
                   <div className="nc-details">
@@ -1542,7 +1581,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   onClick={() => handleNavClick("fees")}
                   className="clickable-heading"
                 >
-                  💳 Fee Status
+                  <IconFee /> Fee Status
                 </h3>
                 <div
                   className={`fee-status-badge ${getPaymentStatus().color}`}
@@ -1563,7 +1602,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                 </p>
               </div>
               <div className="info-card profile-card">
-                <h3>👤 Student Details</h3>
+                <h3><IconUser /> Student Details</h3>
                 <div className="detail-row">
                   <span className="lbl">Student ID:</span>
                   <span className="val">{currentUser.username}</span>
@@ -1608,7 +1647,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <span className="lbl">Class Mode:</span>
                   <span className="val">
                     <span className={`mode-badge ${studentProfile?.classMode || "online"}`}>
-                      {studentProfile?.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                      {studentProfile?.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                     </span>
                   </span>
                 </div>
@@ -1694,7 +1733,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                           {formatFullMonthDate(rep.month)} Report
                         </span>
                         <div className="rc-rating">
-                          {"★".repeat(rep.rating)}
+                          {Array.from({ length: rep.rating }, (_, i) => <IconStar key={i} fill="currentColor" />)}
                         </div>
                       </div>
                       <div className="rc-body">
@@ -1703,7 +1742,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
                       {rep.parentComment && (
                         <div className="saved-comment-box">
-                          <span className="sc-icon">✅</span>
+                          <span className="sc-icon"><IconCheck /></span>
                           <div className="sc-content">
                             <strong>Your Feedback:</strong>
                             <p>{rep.parentComment}</p>
@@ -1751,7 +1790,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                                 )
                               }
                             >
-                              💬 Comment
+                              <IconMessage /> Comment
                             </button>
                           )}
                           {rep.reportFile && (
@@ -1761,7 +1800,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                               rel="noreferrer"
                               className="rc-action-btn pdf"
                             >
-                              📄 View PDF
+                              <IconPdf /> View PDF
                             </a>
                           )}
                         </div>
@@ -1929,7 +1968,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     </p>
                     <div className="inst-details">
                       <div className="id-row">
-                        <span>🌐</span>{" "}
+                        <IconGlobe />{" "}
                         <a
                           href="https://thevenkyart.com"
                           target="_blank"
@@ -1939,13 +1978,13 @@ const ParentDashboard = ({ user, onLogout }) => {
                         </a>
                       </div>
                       <div className="id-row">
-                        <span>📧</span> <span>thevenkyart@gmail.com</span>
+                        <IconMail /> <span>thevenkyart@gmail.com</span>
                       </div>
                       <div className="id-row">
-                        <span>📞</span> <span>+91 9963613404</span>
+                        <IconPhone /> <span>+91 9963613404</span>
                       </div>
                       <div className="id-row">
-                        <span>📍</span> <span>Hyderabad, Telangana</span>
+                        <IconLocation /> <span>Hyderabad, Telangana</span>
                       </div>
                     </div>
                     <div className="inst-desc">
@@ -1969,13 +2008,13 @@ const ParentDashboard = ({ user, onLogout }) => {
                       className="share-btn whatsapp"
                       onClick={() => handleShare("whatsapp")}
                     >
-                      <span>💬</span> Share via WhatsApp
+                      <IconMessage /> Share via WhatsApp
                     </button>
                     <button
                       className="share-btn copy"
                       onClick={() => handleShare("copy")}
                     >
-                      <span>📋</span> {copyFeedback}
+                      <IconClipboard /> {copyFeedback}
                     </button>
                   </div>
                 </div>
@@ -2152,7 +2191,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                 className="copy-details-btn"
                 onClick={handleCopyPaymentDetails}
               >
-                📋 Copy Details to Share
+                <IconClipboard /> Copy Details to Share
               </button>
             </div>
           </div>

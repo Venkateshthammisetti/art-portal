@@ -19,6 +19,48 @@ import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
 import { FaFilter } from "react-icons/fa6";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 
+import {
+  IconGallery as IconGalleryShared,
+  IconLogout as IconLogoutShared,
+  IconFee as IconFeeShared,
+  IconClock as IconClockShared,
+  IconUsers as IconUsersShared,
+  IconOnlineClass,
+  IconOfflineClass,
+  IconTeacher,
+  IconStudent,
+  IconUser,
+  IconCheck,
+  IconSuccess,
+  IconError,
+  IconWarning,
+  IconBlocked,
+  IconClipboard,
+  IconEye,
+  IconEyeOff,
+  IconBirthday,
+  IconCalendar,
+  IconInactive,
+  IconChart,
+  IconTrendingUp,
+  IconPdf,
+  IconSun,
+  IconMoon,
+  IconArt,
+  IconDownload,
+  IconShare,
+  IconTrash,
+  IconTool,
+  IconUtilities,
+  IconPackage,
+  IconPlus,
+  IconRefresh,
+  IconBook,
+  IconReceipt,
+  IconMoney,
+  IconEdit,
+} from "./Icons";
+
 // IMAGES
 import logoImg from "./new-logo.png";
 import titleImg from "./logo-title-copy.png";
@@ -284,7 +326,7 @@ const ClassModal = ({
               className="error-msg"
               style={{ marginTop: "-10px", marginBottom: "15px" }}
             >
-              ⛔ {duplicateError}
+              <IconBlocked /> {duplicateError}
             </div>
           )}
           <div className="form-group">
@@ -294,8 +336,8 @@ const ClassModal = ({
               onChange={(e) => setFormData(prev => ({ ...prev, classMode: e.target.value }))}
               style={{ fontWeight: "bold" }}
             >
-              <option value="online">🌐 Online</option>
-              <option value="offline">🏫 Offline</option>
+              <option value="online">Online</option>
+              <option value="offline">Offline</option>
             </select>
           </div>
           <div className="form-row">
@@ -351,7 +393,7 @@ const ClassModal = ({
               </label>
               {formData.classMode === "offline" && (
                 <span style={{ fontSize: "0.75rem", color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "8px", fontWeight: "600" }}>
-                  🏫 Offline — no meeting links
+                  <IconOfflineClass /> Offline — no meeting links
                 </span>
               )}
             </div>
@@ -740,7 +782,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
             className="header-avatar"
             style={{ background: "#06b6d4", fontSize: "1.5rem" }}
           >
-            📚
+            <IconBook />
           </div>
           <div>
             <h1>{cls.className}</h1>
@@ -760,7 +802,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                 </span>
               )}
               <span className={`mode-badge ${cls.classMode || "online"}`} style={{ fontSize: "0.85rem" }}>
-                {cls.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                {cls.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
               </span>
             </div>
           </div>
@@ -845,7 +887,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {copiedIdx === i ? "Copied ✅" : "Copy"}
+                            {copiedIdx === i ? <><IconCheck /> Copied</> : "Copy"}
                           </button>
                         </div>
                       )}
@@ -892,7 +934,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                     transition: "background-color 0.2s",
                   }}
                 >
-                  {copiedIdx === -1 ? "Copied ✅" : "Copy Meeting Link 📋"}
+                  {copiedIdx === -1 ? <><IconCheck /> Copied</> : <><IconClipboard /> Copy Meeting Link</>}
                 </button>
               </div>
             ) : null}
@@ -904,7 +946,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
               <label>Mode:</label>
               <span>
                 <span className={`mode-badge ${cls.classMode || "online"}`}>
-                  {cls.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                  {cls.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                 </span>
               </span>
             </div>
@@ -996,9 +1038,9 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                         Parent: {student.fullName}
                       </div>
                       <div className="enrolled-student-meta">
-                        <span>🎂 Age {student.childAge || "-"}</span>
+                        <span><IconBirthday /> Age {student.childAge || "-"}</span>
                         <span>
-                          📅{" "}
+                          <IconCalendar />{" "}
                           {student.joiningDate
                             ? new Date(student.joiningDate).toLocaleDateString()
                             : "-"}
@@ -1210,8 +1252,8 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                     onChange={handleChange}
                     style={{ fontWeight: "bold" }}
                   >
-                    <option value="online">🌐 Online</option>
-                    <option value="offline">🏫 Offline</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
                   </select>
                 </div>
               </div>
@@ -1378,9 +1420,9 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
   const [activeSection, setActiveSection] = useState("overview");
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: "👤" },
-    { id: "details", label: user.role === "parent" ? "Student Details" : "Professional Details", icon: user.role === "parent" ? "🎓" : "💼" },
-    ...(user.role === "parent" ? [{ id: "fees", label: "Fee History", icon: "💳" }] : []),
+    { id: "overview", label: "Overview", icon: <IconUser /> },
+    { id: "details", label: user.role === "parent" ? "Student Details" : "Professional Details", icon: user.role === "parent" ? <IconStudent /> : <IconTeacher /> },
+    ...(user.role === "parent" ? [{ id: "fees", label: "Fee History", icon: <IconFeeShared /> }] : []),
   ];
 
   const tabBarStyle = {
@@ -1536,7 +1578,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                     </strong>
                   </div>
                   <button onClick={() => handleCopy(user.username)} className="icon-btn" title="Copy Username">
-                    📋
+                    <IconClipboard />
                   </button>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1556,11 +1598,11 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                   </div>
                   <div style={{ display: "flex", gap: "5px" }}>
                     <button onClick={handleToggleCredentials} className="icon-btn" style={{ color: "#0284c7" }}>
-                      {showPassword ? "👁️‍🗨️" : "👁️"}
+                      {showPassword ? <IconEyeOff /> : <IconEye />}
                     </button>
                     {showPassword && credentials && (
                       <button onClick={() => handleCopy(credentials.password)} className="icon-btn" title="Copy Password">
-                        📋
+                        <IconClipboard />
                       </button>
                     )}
                   </div>
@@ -1580,7 +1622,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                   <label>Class Mode:</label>
                   <span>
                     <span className={`mode-badge ${user.classMode || "online"}`}>
-                      {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                      {user.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                     </span>
                   </span>
                 </div>
@@ -1713,7 +1755,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                           <td style={{ fontWeight: "700", color: amountColor }}>{amountLabel}</td>
                           <td>
                             <div>
-                              <span style={statusBadgeStyle(status)}>{status === "Inactive" ? "💤 Inactive" : status}</span>
+                              <span style={statusBadgeStyle(status)}>{status === "Inactive" ? <><IconInactive /> Inactive</> : status}</span>
                               {reason && <div style={{ fontSize: "0.72rem", color: "#7c3aed", marginTop: "3px" }}>{reason}</div>}
                             </div>
                           </td>
@@ -2117,7 +2159,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
               }}
             >
-              🎓
+              <IconStudent />
             </div>
             <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#16a34a", background: "#dcfce7", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
               + Active
@@ -2136,7 +2178,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
               style={{ flex: 1, background: "#ecfdf5", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
               title="View online students"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#059669", fontWeight: "700", marginBottom: "2px" }}>🌐 Online</div>
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#059669", fontWeight: "700", marginBottom: "2px" }}><IconOnlineClass /> Online</div>
               <div className="stat-mini-value" style={{ fontSize: "1.2rem", fontWeight: "800", color: "#065f46" }}>
                 {(stats.students || 0) - (stats.offlineStudents || 0)}
               </div>
@@ -2147,7 +2189,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
               style={{ flex: 1, background: "#fef3c7", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
               title="View offline students"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: "700", marginBottom: "2px" }}>🏫 Offline</div>
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: "700", marginBottom: "2px" }}><IconOfflineClass /> Offline</div>
               <div className="stat-mini-value" style={{ fontSize: "1.2rem", fontWeight: "800", color: "#92400e" }}>
                 {stats.offlineStudents ?? 0}
               </div>
@@ -2160,7 +2202,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
             title="View teachers"
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px"}}>
-              <span className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#16a34a", fontWeight: "700"}}>👨‍🏫 Expert Teachers</span>
+              <span className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#16a34a", fontWeight: "700"}}><IconTeacher /> Expert Teachers</span>
               <span className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#166534" }}>
                 {stats.teachers}
               </span>
@@ -2182,7 +2224,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
               }}
             >
-              🧾
+              <IconReceipt />
             </div>
             <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#dc2626", background: "#fee2e2", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
               This Month
@@ -2204,7 +2246,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                   title={t.label}
                 >
                   <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: t.color, fontWeight: "700", marginBottom: "2px" }}>
-                    {t.emoji} {t.label}
+                    <t.Icon /> {t.label}
                   </div>
                   <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: t.color }}>
                     ₹{t.total.toLocaleString()}
@@ -2229,7 +2271,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem",
               }}
             >
-              💰
+              <IconMoney />
             </div>
             <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#7c3aed", background: "#ede9fe", padding: "2px 8px", borderRadius: "10px", height: "fit-content" }}>
               This Month
@@ -2247,7 +2289,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
               style={{ flex: 1, background: "#f0fdf4", borderRadius: "8px", padding: "8px 10px" }}
               title="Total estimated monthly revenue (excl. arrears)"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#15803d", fontWeight: "700", marginBottom: "2px" }}>📊 Monthly Est.</div>
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#15803d", fontWeight: "700", marginBottom: "2px" }}><IconChart /> Monthly Est.</div>
               <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#166534" }}>
                 ₹{(actualRevenue + pendingAmount).toLocaleString()}
               </div>
@@ -2258,7 +2300,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
               style={{ flex: 1, background: "#fef2f2", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
               title="View pending payments this month"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#991b1b", fontWeight: "700", marginBottom: "2px" }}>⚠️ Pending</div>
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#991b1b", fontWeight: "700", marginBottom: "2px" }}><IconWarning /> Pending</div>
               <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#dc2626" }}>
                 ₹{pendingAmount.toLocaleString()}
               </div>
@@ -2271,7 +2313,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
               style={{ flex: 1, background: "#eff6ff", borderRadius: "8px", padding: "8px 10px" }}
               title="Collected + total outstanding (all months)"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#1d4ed8", fontWeight: "700", marginBottom: "2px" }}>💼 Total Est.</div>
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#1d4ed8", fontWeight: "700", marginBottom: "2px" }}><IconTeacher /> Total Est.</div>
               <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#1d4ed8" }}>
                 ₹{(actualRevenue + totalAllPending).toLocaleString()}
               </div>
@@ -2282,7 +2324,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
               style={{ flex: 1, background: "#fff7ed", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
               title="Total pending across all months"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#c2410c", fontWeight: "700", marginBottom: "2px" }}>🕐 Arrears</div>
+              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#c2410c", fontWeight: "700", marginBottom: "2px" }}><IconClockShared /> Arrears</div>
               <div className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#ea580c" }}>
                 ₹{totalAllPending.toLocaleString()}
               </div>
@@ -2484,7 +2526,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
         marginTop: "20px",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
-          <h3 className="overview-chart-title" style={{ margin: 0, fontSize: "1rem" }}>📋 Attendance Overview</h3>
+          <h3 className="overview-chart-title" style={{ margin: 0, fontSize: "1rem" }}><IconClipboard /> Attendance Overview</h3>
           <div className="admin-att-controls">
             <select
               value={attSelectedClass}
@@ -2507,7 +2549,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 className={`att-analytics-btn ${attShowAnalytics ? "active" : ""}`}
                 onClick={() => setAttShowAnalytics(!attShowAnalytics)}
               >
-                {attShowAnalytics ? "📋 Sheet View" : "📊 Analytics"}
+                {attShowAnalytics ? <><IconClipboard /> Sheet View</> : <><IconChart /> Analytics</>}
               </button>
             )}
           </div>
@@ -2515,7 +2557,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
 
         {!attSelectedClass ? (
           <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
-            <div style={{ fontSize: "2rem", marginBottom: "10px" }}>📊</div>
+            <div style={{ marginBottom: "10px" }}><IconChart size={32} /></div>
             <p style={{ margin: 0, fontWeight: 500 }}>Select a class to view attendance details</p>
           </div>
         ) : attLoading ? (
@@ -2525,22 +2567,22 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
             {/* Summary Stats */}
             <div className="admin-att-stats">
               <div className="att-stat-badge">
-                <div className="att-stat-icon" style={{ background: "#eff6ff", color: "#3b82f6" }}>👥</div>
+                <div className="att-stat-icon" style={{ background: "#eff6ff", color: "#3b82f6" }}><IconUsersShared /></div>
                 <div className="att-stat-value">{attStudents.length}</div>
                 <div className="att-stat-label">Total Students</div>
               </div>
               <div className="att-stat-badge">
-                <div className="att-stat-icon" style={{ background: "#f0fdf4", color: "#16a34a" }}>✅</div>
+                <div className="att-stat-icon" style={{ background: "#f0fdf4", color: "#16a34a" }}><IconCheck /></div>
                 <div className="att-stat-value" style={{ color: "#16a34a" }}>{attTotalPresent}</div>
                 <div className="att-stat-label">Present</div>
               </div>
               <div className="att-stat-badge">
-                <div className="att-stat-icon" style={{ background: "#fef2f2", color: "#dc2626" }}>❌</div>
+                <div className="att-stat-icon" style={{ background: "#fef2f2", color: "#dc2626" }}><IconError /></div>
                 <div className="att-stat-value" style={{ color: "#dc2626" }}>{attTotalAbsent}</div>
                 <div className="att-stat-label">Absent</div>
               </div>
               <div className="att-stat-badge">
-                <div className="att-stat-icon" style={{ background: "#fefce8", color: "#ca8a04" }}>📈</div>
+                <div className="att-stat-icon" style={{ background: "#fefce8", color: "#ca8a04" }}><IconTrendingUp /></div>
                 <div className="att-stat-value" style={{ color: attPercentage >= 75 ? "#16a34a" : "#dc2626" }}>{attPercentage}%</div>
                 <div className="att-stat-label">Attendance Rate</div>
               </div>
@@ -2872,7 +2914,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
   return (
     <>
       <div className={`toast-notification ${toast.type} ${toast.show ? "show" : ""}`}>
-        {toast.type === "success" ? "✅" : "❌"} {toast.message}
+        {toast.type === "success" ? <IconSuccess /> : <IconError />} {toast.message}
       </div>
 
       {selectedUser ? (
@@ -2933,8 +2975,8 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                 <label>Mode:</label>
                 <select value={modeFilter} onChange={(e) => setModeFilter(e.target.value)}>
                   <option value="all">All Modes</option>
-                  <option value="online">🌐 Online</option>
-                  <option value="offline">🏫 Offline</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
                 </select>
               </div>
               {roleFilter === "parent" && (
@@ -3042,7 +3084,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                           <td>
                             {user.role === "parent" ? (
                               <span className={`mode-badge ${user.classMode || "online"}`}>
-                                {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                                {user.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                               </span>
                             ) : (
                               <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
@@ -3107,7 +3149,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
             <div style={{ padding: "20px" }}>
               {sortedInactive.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
-                  <div style={{ fontSize: "3.5rem", marginBottom: "12px" }}>✅</div>
+                  <div style={{ marginBottom: "12px" }}><IconSuccess size={56} /></div>
                   <p style={{ fontWeight: "700", fontSize: "1.1rem", color: "#334155", marginBottom: "4px" }}>No inactive students</p>
                   <p style={{ fontSize: "0.85rem" }}>All filtered students are currently active.</p>
                 </div>
@@ -3142,7 +3184,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                                   Parent: {user.fullName}
                                   {user.classMode && (
                                     <span className={`mode-badge ${user.classMode}`} style={{ marginLeft: "8px", fontSize: "0.72rem" }}>
-                                      {user.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                                      {user.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                                     </span>
                                   )}
                                 </div>
@@ -3187,7 +3229,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                           {/* Fee pause notice */}
                           {user.role === "parent" && (user.monthlyFee || 0) > 0 && (
                             <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "#ede9fe", color: "#5b21b6", padding: "4px 12px", borderRadius: "20px", fontSize: "0.78rem", fontWeight: "600" }}>
-                              💤 Fee paused: ₹{user.monthlyFee}/mo from {fromLabel}
+                              <IconInactive /> Fee paused: ₹{user.monthlyFee}/mo from {fromLabel}
                             </div>
                           )}
                         </div>
@@ -3624,8 +3666,8 @@ const AddUserTab = ({ onRefresh }) => {
                 onChange={handleChange}
                 style={{ fontWeight: "bold" }}
               >
-                <option value="online">🌐 Online</option>
-                <option value="offline">🏫 Offline</option>
+                <option value="online">Online</option>
+                <option value="offline">Offline</option>
               </select>
             </div>
 
@@ -4169,7 +4211,7 @@ const ClassManagementTab = () => {
       <div
         className={`toast-notification ${toast.type} ${toast.show ? "show" : ""}`}
       >
-        {toast.type === "success" ? "✅" : "❌"} {toast.message}
+        {toast.type === "success" ? <IconSuccess /> : <IconError />} {toast.message}
       </div>
 
       {selectedClass ? (
@@ -4216,8 +4258,8 @@ const ClassManagementTab = () => {
                   onChange={(e) => setClassModeFilter(e.target.value)}
                 >
                   <option value="all">All Modes</option>
-                  <option value="online">🌐 Online</option>
-                  <option value="offline">🏫 Offline</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
                 </select>
               </div>
               <div className="filter-dropdown">
@@ -4287,7 +4329,7 @@ const ClassManagementTab = () => {
                       </td>
                       <td>
                         <span className={`mode-badge ${cls.classMode || "online"}`}>
-                          {cls.classMode === "offline" ? "🏫 Offline" : "🌐 Online"}
+                          {cls.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                         </span>
                       </td>
                       <td>
@@ -4684,7 +4726,7 @@ const SlotManagementTab = () => {
                 fontSize: "1rem",
               }}
             >
-              ☀️ Morning Slots (IST)
+              <IconSun /> Morning Slots (IST)
             </h3>
             <div
               style={{
@@ -4730,7 +4772,7 @@ const SlotManagementTab = () => {
                 fontSize: "1rem",
               }}
             >
-              🌙 Evening Slots (IST)
+              <IconMoon /> Evening Slots (IST)
             </h3>
             <div
               style={{
@@ -5138,7 +5180,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
             ? "0 4px 12px rgba(217, 119, 6, 0.3)"
             : "0 4px 12px rgba(2, 132, 199, 0.3)",
         }}>
-          <span style={{ fontSize: "1.5rem" }}>{offlineOnly ? "🏫" : "🌐"}</span>
+          <span style={{ fontSize: "1.5rem" }}>{offlineOnly ? <IconOfflineClass /> : <IconOnlineClass />}</span>
           <div>
             <div style={{ fontWeight: "700", fontSize: "1rem" }}>
               {offlineOnly ? "Offline Fee Tracker" : "Online Fee Tracker"}
@@ -5212,7 +5254,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
               backgroundColor: showAnalytics ? "#334155" : "#0284c7",
             }}
           >
-            {showAnalytics ? "📄 View List" : "📊 View Analytics"}
+            {showAnalytics ? <><IconPdf /> View List</> : <><IconChart /> View Analytics</>}
           </button>
 
           {!showAnalytics && (
@@ -5521,7 +5563,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                               </span>
                             ) : isInactive ? (
                               <span className="role-badge" style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" }}>
-                                💤 Inactive
+                                <IconInactive /> Inactive
                               </span>
                             ) : isPass ? (
                               <div>
@@ -6045,12 +6087,12 @@ const GalleryRepositoryTab = () => {
       {/* MODERN FILTER BAR */}
       <div className="gallery-filter-bar">
         <h3 className="gallery-filter-title">
-          🖼️ Gallery Manager
+          <IconGalleryShared /> Gallery Manager
           <span className="gallery-count-badge">{filteredArtwork.length}</span>
         </h3>
         <div className="gallery-filter-controls">
           <select className="gallery-filter-select" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ minWidth: "160px" }}>
-            <option value="all">🌍 All Students</option>
+            <option value="all">All Students</option>
             <option disabled>──────────</option>
             {students.map((s) => (<option key={s._id} value={s._id}>{s.childName}</option>))}
           </select>
@@ -6080,7 +6122,7 @@ const GalleryRepositoryTab = () => {
           ))
         ) : filteredArtwork.length === 0 ? (
           <div className="gallery-empty-state">
-            <div className="gallery-empty-icon">🎨</div>
+            <div className="gallery-empty-icon"><IconArt size={40} /></div>
             <p className="gallery-empty-title">No artwork found</p>
             <p className="gallery-empty-sub">Try adjusting the filters above</p>
           </div>
@@ -6096,9 +6138,9 @@ const GalleryRepositoryTab = () => {
                 <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
               </div>
               <div className="gal-card-actions">
-                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download">⬇</button>
-                <button className="gal-action-btn share" onClick={(e) => handleShare(e, art.imageUrl, art.title)} title="Share">📤</button>
-                <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete">🗑</button>
+                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download"><IconDownload /></button>
+                <button className="gal-action-btn share" onClick={(e) => handleShare(e, art.imageUrl, art.title)} title="Share"><IconShare /></button>
+                <button className="gal-action-btn delete" onClick={(e) => handleDelete(e, art._id)} title="Delete"><IconTrash /></button>
               </div>
             </div>
           ))
@@ -6142,13 +6184,13 @@ const GalleryRepositoryTab = () => {
               <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
             </div>
             <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              ⬇ Download
+              <IconDownload /> Download
             </button>
             <button className="lightbox-action-pill share" onClick={(e) => handleShare(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              📤 Share
+              <IconShare /> Share
             </button>
             <button className="lightbox-action-pill danger" onClick={(e) => handleDelete(e, filteredArtwork[lightboxIndex]._id)}>
-              🗑 Delete
+              <IconTrash /> Delete
             </button>
           </div>
 
@@ -6175,12 +6217,12 @@ const GalleryRepositoryTab = () => {
 // ==========================================
 
 const EXPENSE_TYPES = [
-  { value: "academy_expense", label: "Academy Expense",     emoji: "🏫", color: "#2563eb", bg: "#eff6ff" },
-  { value: "teacher_salary",  label: "Teacher Salary",      emoji: "👨‍🏫", color: "#9333ea", bg: "#f3e8ff" },
-  { value: "maintenance",     label: "Maintenance",          emoji: "🔧", color: "#f59e0b", bg: "#fef3c7" },
-  { value: "supplies",        label: "Supplies & Materials", emoji: "🎨", color: "#10b981", bg: "#dcfce7" },
-  { value: "utilities",       label: "Utilities",            emoji: "💡", color: "#06b6d4", bg: "#ecfeff" },
-  { value: "other",           label: "Other",                emoji: "📦", color: "#64748b", bg: "#f1f5f9" },
+  { value: "academy_expense", label: "Academy Expense",     Icon: IconOfflineClass, color: "#2563eb", bg: "#eff6ff" },
+  { value: "teacher_salary",  label: "Teacher Salary",      Icon: IconTeacher, color: "#9333ea", bg: "#f3e8ff" },
+  { value: "maintenance",     label: "Maintenance",          Icon: IconTool, color: "#f59e0b", bg: "#fef3c7" },
+  { value: "supplies",        label: "Supplies & Materials", Icon: IconArt, color: "#10b981", bg: "#dcfce7" },
+  { value: "utilities",       label: "Utilities",            Icon: IconUtilities, color: "#06b6d4", bg: "#ecfeff" },
+  { value: "other",           label: "Other",                Icon: IconPackage, color: "#64748b", bg: "#f1f5f9" },
 ];
 
 const getExpenseTypeInfo = (type) =>
@@ -6247,7 +6289,7 @@ const AddExpenseTab = ({ onSuccess }) => {
             <select name="type" required value={formData.type} onChange={handleChange} style={{ fontWeight: "600" }}>
               {EXPENSE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
-                  {t.emoji} {t.label}
+                  {t.label}
                 </option>
               ))}
             </select>
@@ -6309,7 +6351,7 @@ const AddExpenseTab = ({ onSuccess }) => {
                     fontWeight: "600",
                   }}
                 >
-                  {info.emoji} {info.label}
+                  <info.Icon /> {info.label}
                   {formData.amount ? ` — ₹${Number(formData.amount).toLocaleString()}` : ""}
                 </span>
               );
@@ -6318,7 +6360,7 @@ const AddExpenseTab = ({ onSuccess }) => {
         )}
 
         <button type="submit" className="save-btn" disabled={saving} style={{ marginTop: "5px" }}>
-          {saving ? "Saving..." : "➕ Add Expense"}
+          {saving ? "Saving..." : <><IconPlus /> Add Expense</>}
         </button>
       </form>
 
@@ -6327,7 +6369,7 @@ const AddExpenseTab = ({ onSuccess }) => {
           className={`toast-notification ${toast.type} show`}
           style={{ position: "fixed", top: "20px", right: "20px", zIndex: 2000 }}
         >
-          {toast.type === "success" ? "✅" : "❌"} {toast.message}
+          {toast.type === "success" ? <IconSuccess /> : <IconError />} {toast.message}
         </div>
       )}
     </div>
@@ -6469,7 +6511,7 @@ const ExpenseHistoryTab = ({ onRefresh }) => {
                   >
                     {EXPENSE_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
-                        {t.emoji} {t.label}
+                        {t.label}
                       </option>
                     ))}
                   </select>
@@ -6587,7 +6629,7 @@ const ExpenseHistoryTab = ({ onRefresh }) => {
             className="expense-summary-card"
           >
             <div style={{ fontSize: "0.72rem", fontWeight: "700", color: t.color, marginBottom: "6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-              {t.emoji} {t.label}
+              <t.Icon /> {t.label}
             </div>
             <div style={{ fontSize: "1.4rem", fontWeight: "800", color: t.color, lineHeight: 1 }}>
               ₹{t.total.toLocaleString()}
@@ -6612,7 +6654,7 @@ const ExpenseHistoryTab = ({ onRefresh }) => {
               <option value="all">All Types</option>
               {EXPENSE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
-                  {t.emoji} {t.label}
+                  {t.label}
                 </option>
               ))}
             </select>
@@ -6690,7 +6732,7 @@ const ExpenseHistoryTab = ({ onRefresh }) => {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {info.emoji} {info.label}
+                          <info.Icon /> {info.label}
                         </span>
                       </td>
                       <td style={{ fontWeight: "700", color: "#dc2626" }}>
@@ -6708,14 +6750,14 @@ const ExpenseHistoryTab = ({ onRefresh }) => {
                           onClick={() => openEdit(expense)}
                           title="Edit expense"
                         >
-                          ✏️
+                          <IconEdit />
                         </button>
                         <button
                           className="delete-btn"
                           onClick={() => handleDelete(expense._id)}
                           title="Delete expense"
                         >
-                          🗑
+                          <IconTrash />
                         </button>
                       </td>
                     </tr>
@@ -7186,7 +7228,7 @@ const AdminDashboard = ({ onLogout }) => {
               title="Refresh application"
               disabled={appRefreshing}
             >
-              <span className={appRefreshing ? "spin" : ""}>🔄</span>
+              <span className={appRefreshing ? "spin" : ""}><IconRefresh /></span>
             </button>
             <BirthdayNotificationBell
               students={overviewUsers.filter((u) => u.role === "parent")}
@@ -7196,7 +7238,7 @@ const AdminDashboard = ({ onLogout }) => {
               className="theme-toggle-label desktop-only"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <span>{darkMode ? "☀️" : "🌙"}</span>
+              <span>{darkMode ? <IconSun /> : <IconMoon />}</span>
               <button
                 className="theme-toggle-btn"
                 onClick={() => {
@@ -7229,7 +7271,7 @@ const AdminDashboard = ({ onLogout }) => {
                   }}
                   disabled={appRefreshing}
                 >
-                  <span className={appRefreshing ? "spin" : ""}>🔄</span> Refresh App
+                  <span className={appRefreshing ? "spin" : ""}><IconRefresh /></span> Refresh App
                 </button>
                 <button
                   className="dropdown-action-btn"
@@ -7240,10 +7282,10 @@ const AdminDashboard = ({ onLogout }) => {
                     setShowMobileLogout(false);
                   }}
                 >
-                  {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                  {darkMode ? <><IconSun /> Light Mode</> : <><IconMoon /> Dark Mode</>}
                 </button>
                 <button className="dropdown-logout-btn" onClick={onLogout}>
-                  🚪 Logout
+                  <IconLogoutShared /> Logout
                 </button>
               </div>
             )}
