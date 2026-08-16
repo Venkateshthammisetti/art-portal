@@ -691,6 +691,7 @@ body {
 /* --- SIDEBAR --- */
 .admin-sidebar {
   width: 260px;
+  height: 100vh;
   background-color: var(--secondary);
   color: var(--white);
   display: flex;
@@ -698,6 +699,7 @@ body {
   padding: 20px;
   flex-shrink: 0;
   transition: width 0.3s;
+  overflow: hidden;
 }
 
 .sidebar-brand {
@@ -707,6 +709,26 @@ body {
   margin-bottom: 40px;
   padding-bottom: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Slim, unobtrusive scrollbar for the nav list */
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .sidebar-logo-img {
@@ -775,9 +797,11 @@ body {
 
 .sidebar-footer {
   margin-top: auto;
+  padding-top: 12px;
   font-size: 0.8rem;
   color: #64748b;
   text-align: center;
+  flex-shrink: 0;
 }
 
 /* --- MAIN CONTENT AREA --- */
