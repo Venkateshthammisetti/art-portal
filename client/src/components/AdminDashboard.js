@@ -358,6 +358,7 @@ const ClassModal = ({
             {formData.schedule.map((slot, index) => (
               <div
                 key={index}
+                className="schedule-slot-row"
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -3799,7 +3800,7 @@ const AddUserTab = ({ onRefresh }) => {
               Student 2 Details (Sibling)
             </h4>
             <div
-              className="form-row"
+              className="form-row sibling-fields-box"
               style={{
                 background: "#fff",
                 padding: "10px",
@@ -4523,7 +4524,7 @@ const SlotManagementTab = () => {
             marginBottom: "5px",
           }}
         >
-          <span style={{ fontWeight: "bold", color: "#334155", fontSize: "0.9rem" }}>
+          <span className="slot-card-title" style={{ fontWeight: "bold", color: "#334155", fontSize: "0.9rem" }}>
             {assignedClass.className}
           </span>
           <span
@@ -4541,6 +4542,7 @@ const SlotManagementTab = () => {
           </span>
         </div>
         <div
+          className="slot-card-subtext"
           style={{
             fontSize: "0.78rem",
             color: "#64748b",
@@ -4567,7 +4569,7 @@ const SlotManagementTab = () => {
             }}
           ></div>
         </div>
-        <div style={{ fontSize: "0.75rem", color: "#334155" }}>
+        <div className="slot-card-title" style={{ fontSize: "0.75rem", color: "#334155" }}>
           Teacher:{" "}
           <strong>
             {assignedClass.teacher ? assignedClass.teacher.fullName : "N/A"}
@@ -4584,6 +4586,7 @@ const SlotManagementTab = () => {
       return (
         <div
           key={slot.id}
+          className="slot-empty-card"
           style={{
             background: "#f1f5f9",
             border: "1px dashed #cbd5e1",
@@ -4622,6 +4625,7 @@ const SlotManagementTab = () => {
     return (
       <div
         key={slot.id}
+        className="slot-empty-card"
         style={{
           background: "#f8fafc",
           border: "1px dashed #cbd5e1",
@@ -4693,6 +4697,7 @@ const SlotManagementTab = () => {
               {TIME_SLOTS.morning.map((slot) => (
                 <React.Fragment key={slot.id}>
                   <div
+                    className="slot-time-label"
                     style={{
                       padding: "15px",
                       background: "#fff",
@@ -4738,6 +4743,7 @@ const SlotManagementTab = () => {
               {TIME_SLOTS.evening.map((slot) => (
                 <React.Fragment key={slot.id}>
                   <div
+                    className="slot-time-label"
                     style={{
                       padding: "15px",
                       background: "#fff",
@@ -5667,6 +5673,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
           onClick={() => { setPassModal({ show: false, student: null }); setPassReason(""); setPassCustomReason(""); }}
         >
           <div
+            className="dark-modal-card"
             style={{
               background: "#fff", borderRadius: "16px", padding: "30px",
               width: "90%", maxWidth: "420px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
@@ -5753,6 +5760,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
           onClick={() => setPassHistoryModal({ show: false, student: null, passes: [] })}
         >
           <div
+            className="dark-modal-card"
             style={{
               background: "#fff", borderRadius: "16px", padding: "30px",
               width: "90%", maxWidth: "500px", maxHeight: "70vh", overflowY: "auto",
@@ -7173,7 +7181,7 @@ const AdminDashboard = ({ onLogout }) => {
           </div>
           <div className="header-actions">
             <button
-              className="admin-refresh-btn"
+              className="admin-refresh-btn desktop-only"
               onClick={handleAppRefresh}
               title="Refresh application"
               disabled={appRefreshing}
@@ -7185,7 +7193,7 @@ const AdminDashboard = ({ onLogout }) => {
               storageKey="admin_bday_notif_read"
             />
             <label
-              className="theme-toggle-label"
+              className="theme-toggle-label desktop-only"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               <span>{darkMode ? "☀️" : "🌙"}</span>
@@ -7213,7 +7221,30 @@ const AdminDashboard = ({ onLogout }) => {
             </button>
             {showMobileLogout && (
               <div className="mobile-logout-dropdown">
-                <button onClick={onLogout}>🚪 Logout</button>
+                <button
+                  className="dropdown-action-btn"
+                  onClick={() => {
+                    handleAppRefresh();
+                    setShowMobileLogout(false);
+                  }}
+                  disabled={appRefreshing}
+                >
+                  <span className={appRefreshing ? "spin" : ""}>🔄</span> Refresh App
+                </button>
+                <button
+                  className="dropdown-action-btn"
+                  onClick={() => {
+                    const next = !darkMode;
+                    setDarkMode(next);
+                    localStorage.setItem("admin_theme", next ? "dark" : "light");
+                    setShowMobileLogout(false);
+                  }}
+                >
+                  {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                </button>
+                <button className="dropdown-logout-btn" onClick={onLogout}>
+                  🚪 Logout
+                </button>
               </div>
             )}
           </div>
