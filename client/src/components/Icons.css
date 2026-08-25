@@ -1,0 +1,32 @@
+/* Shared behaviour for every icon rendered by ./Icons.js
+   Imported by Icons.js so it always ships wherever the icons are used. */
+
+.ui-icon {
+  /* Inline SVG sits on the text baseline, which leaves it looking a couple of
+     pixels low next to a label. Nudging it down shifts the box up optically so
+     the icon centres on the text x-height. */
+  vertical-align: -0.125em;
+
+  /* Icons default to size="1em", so they scale with the surrounding font-size.
+     flex-shrink guards against them being squashed inside flex rows (buttons,
+     table cells, badges) when space gets tight on mobile. */
+  flex-shrink: 0;
+}
+
+/* When an icon is the only child of a flex container (icon-only buttons,
+   stat-card icon circles), centre it rather than leaving it baseline-aligned. */
+.gal-action-btn .ui-icon,
+.icon-btn .ui-icon,
+.icon-btn-sm .ui-icon,
+.att-stat-icon .ui-icon,
+.gallery-empty-icon .ui-icon,
+.bday-notif-icon .ui-icon,
+.bday-notif-bell-btn .ui-icon,
+.header-avatar .ui-icon,
+.warning-icon .ui-icon,
+.man-app-icon .ui-icon,
+.search-icon .ui-icon,
+.tm-icon .ui-icon,
+.cert-card-thumb-icon .ui-icon {
+  vertical-align: middle;
+}

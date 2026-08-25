@@ -2,6 +2,7 @@
 // Surfaces student birthday reminders: 1 week before, 3 days before, and on the day.
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import "./BirthdayNotifications.css";
+import { IconBell, IconBirthday } from "./Icons";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REMINDER_OFFSETS = [0, 3, 7]; // days before (0 = today)
@@ -28,10 +29,12 @@ const getNextBirthdayInfo = (dobStr, today) => {
   return { daysUntil, year };
 };
 
+// Plain text — the row already shows a birthday icon beside it, so repeating
+// the meaning as an emoji here would just be read out twice by a screen reader.
 const labelForOffset = (daysUntil) => {
-  if (daysUntil === 0) return "🎉 Birthday is today!";
-  if (daysUntil === 3) return "🎂 Birthday in 3 days";
-  return "🎈 Birthday in 1 week";
+  if (daysUntil === 0) return "Birthday is today!";
+  if (daysUntil === 3) return "Birthday in 3 days";
+  return "Birthday in 1 week";
 };
 
 // Exported for reuse/testing — turns a list of student user docs into upcoming birthday reminders.
@@ -114,7 +117,7 @@ const BirthdayNotificationBell = ({ students, storageKey }) => {
         onClick={() => setOpen((o) => !o)}
         title="Notifications"
       >
-        <span aria-hidden="true">🔔</span>
+        <IconBell size={18} />
         {unreadCount > 0 && (
           <span className="bday-notif-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
         )}
@@ -131,7 +134,7 @@ const BirthdayNotificationBell = ({ students, storageKey }) => {
           </div>
           <div className="bday-notif-list">
             {notifications.length === 0 ? (
-              <div className="bday-notif-empty">No upcoming birthdays 🎈</div>
+              <div className="bday-notif-empty">No upcoming birthdays</div>
             ) : (
               notifications.map((n) => (
                 <div
@@ -139,7 +142,7 @@ const BirthdayNotificationBell = ({ students, storageKey }) => {
                   className={`bday-notif-item${readIds.includes(n.id) ? "" : " unread"}`}
                   onClick={() => markRead(n.id)}
                 >
-                  <div className="bday-notif-icon">🎂</div>
+                  <div className="bday-notif-icon"><IconBirthday size={20} /></div>
                   <div className="bday-notif-body">
                     <p className="bday-notif-title">
                       <strong>{n.name}</strong>&apos;s birthday
