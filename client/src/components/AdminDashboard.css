@@ -1676,8 +1676,10 @@ body {
 }
 
 /* Enrolled Students mobile cards — hidden on desktop, shown at ≤768px */
-.enrolled-students-cards {
-  display: none;
+@media (min-width: 769px) {
+  .enrolled-students-cards {
+    display: none;
+  }
 }
 
 /* --- DASHBOARD STATS CARDS --- */
