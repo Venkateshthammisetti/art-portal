@@ -142,7 +142,127 @@ const checkTeacherReminders = async () => {
 };
 
 // ==========================================
-// 3. ATTENDANCE REMINDERS (Teachers — every minute)
+// 3. BIRTHDAY REMINDERS (Admins & Teachers) + BIRTHDAY WISH (Parents)
+// ==========================================
+const BDAY_REMINDER_OFFSETS = [0, 3, 7]; // days before birthday (0 = today)
+const BDAY_MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Mirrors the UTC day math in client/src/components/BirthdayNotifications.js —
+// childDob is a plain "YYYY-MM-DD" string (parsed as UTC midnight), so we stay
+// in UTC throughout to avoid the server's local timezone shifting the day-of-month.
+const daysUntilNextBirthday = (dobStr, today) => {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return null;
+
+  const month = dob.getUTCMonth();
+  const day = dob.getUTCDate();
+  const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+  let next = Date.UTC(today.getFullYear(), month, day);
+  if (next < todayUTC) {
+    next = Date.UTC(today.getFullYear() + 1, month, day);
+  }
+  return Math.round((next - todayUTC) / BDAY_MS_PER_DAY);
+};
+
+const bdayLabel = (daysUntil) => {
+  if (daysUntil === 0) return "is today";
+  if (daysUntil === 3) return "is in 3 days";
+  return "is in 1 week";
+};
+
+// Sends one push and self-heals a dead subscription (410/404) — same pattern as
+// the other reminder jobs above.
+const sendPushTo = async (user, payload) => {
+  if (!user || !user.pushSubscription) return;
+  try {
+    await webpush.sendNotification(user.pushSubscription, JSON.stringify(payload));
+  } catch (error) {
+    if (error.statusCode === 410 || error.statusCode === 404) {
+      user.pushSubscription = null;
+      await user.save();
+    } else {
+      console.error(`   ❌ Push Error for ${user.username}:`, error.message);
+    }
+  }
+};
+
+const checkBirthdayReminders = async () => {
+  if (!setupVapid()) return;
+
+  const today = new Date();
+  console.log(`⏳ Running Birthday Reminder Check for ${today.toDateString()}...`);
+
+  try {
+    const students = await User.find({
+      role: "parent",
+      isActive: { $ne: false },
+      childDob: { $exists: true, $ne: "" },
+    }).populate({
+      path: "assignedClass",
+      select: "className teacher",
+      populate: { path: "teacher", select: "pushSubscription fullName username" },
+    });
+
+    const adminNotifs = [];
+    const teacherNotifs = new Map(); // teacherId -> { teacher, items: [] }
+
+    for (const student of students) {
+      const daysUntil = daysUntilNextBirthday(student.childDob, today);
+      if (daysUntil === null || !BDAY_REMINDER_OFFSETS.includes(daysUntil)) continue;
+
+      const entry = {
+        name: student.childName || student.fullName || "A student",
+        className: student.assignedClass?.className || "",
+        daysUntil,
+      };
+      adminNotifs.push(entry);
+
+      const teacher = student.assignedClass?.teacher;
+      if (teacher) {
+        const key = String(teacher._id);
+        if (!teacherNotifs.has(key)) teacherNotifs.set(key, { teacher, items: [] });
+        teacherNotifs.get(key).items.push(entry);
+      }
+
+      // Birthday wish — straight to the parent/student, only on the day itself
+      if (daysUntil === 0) {
+        await sendPushTo(student, {
+          title: `🎉 Happy Birthday, ${student.childName || "Champ"}!`,
+          body: `Wishing ${student.childName || "your little artist"} a wonderful birthday from all of us at Art Portal! 🎂🎨`,
+          url: "https://art-portal.netlify.app",
+        });
+      }
+    }
+
+    // Admins get one summary push covering every student due today/soon
+    if (adminNotifs.length > 0) {
+      const admins = await User.find({ role: "admin" });
+      const body = adminNotifs
+        .map((n) => `${n.name}${n.className ? ` (${n.className})` : ""} — birthday ${bdayLabel(n.daysUntil)}`)
+        .join("\n");
+      const title = adminNotifs.length === 1 ? "🎂 Birthday Reminder" : `🎂 ${adminNotifs.length} Birthday Reminders`;
+      for (const admin of admins) {
+        await sendPushTo(admin, { title, body, url: "https://art-portal.netlify.app" });
+      }
+    }
+
+    // Teachers only get reminders for their own assigned-class students
+    for (const { teacher, items } of teacherNotifs.values()) {
+      const body = items.map((n) => `${n.name} — birthday ${bdayLabel(n.daysUntil)}`).join("\n");
+      const title = items.length === 1 ? "🎂 Birthday Reminder" : `🎂 ${items.length} Birthday Reminders`;
+      await sendPushTo(teacher, { title, body, url: "https://art-portal.netlify.app" });
+    }
+
+    console.log(`✅ Birthday Check Complete. ${adminNotifs.length} student(s) flagged.`);
+  } catch (err) {
+    console.error("❌ Birthday Scheduler Error:", err);
+  }
+};
+
+// ==========================================
+// 4. ATTENDANCE REMINDERS (Teachers — every minute)
 // ==========================================
 
 // In-memory dedup: prevents re-sending the same notification within the same
@@ -261,6 +381,9 @@ const startScheduler = () => {
   // Teacher month-end reminders: daily at 9:00 AM (only fires on reminder days)
   cron.schedule('0 9 * * *', checkTeacherReminders);
 
+  // Birthday reminders (admins/teachers) + birthday wish (parents): daily at 8:00 AM
+  cron.schedule('0 8 * * *', checkBirthdayReminders);
+
   // Attendance reminders: every minute — sends push when class ends without attendance
   cron.schedule('* * * * *', checkAttendanceReminders);
 
@@ -269,6 +392,7 @@ const startScheduler = () => {
 
   console.log('⏰ Fee Scheduler started (Checks daily at 10:00 AM)');
   console.log('⏰ Teacher Reminder Scheduler started (Checks daily at 9:00 AM)');
+  console.log('⏰ Birthday Reminder Scheduler started (Checks daily at 8:00 AM)');
   console.log('⏰ Attendance Reminder Scheduler started (Checks every minute)');
 };
 
