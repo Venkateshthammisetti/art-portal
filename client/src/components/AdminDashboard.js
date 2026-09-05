@@ -6174,7 +6174,20 @@ const GalleryRepositoryTab = () => {
           <select className="gallery-filter-select" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ minWidth: "160px" }}>
             <option value="all">All Students</option>
             <option disabled>──────────</option>
-            {students.map((s) => (<option key={s._id} value={s._id}>{s.childName}</option>))}
+            {/* Active and inactive students both get artwork surfaced here — grouped
+                so an inactive student's gallery stays easy to find, not just present. */}
+            <optgroup label="Active">
+              {students.filter((s) => s.isActive !== false).sort((a, b) => (a.childName || "").localeCompare(b.childName || "")).map((s) => (
+                <option key={s._id} value={s._id}>{s.childName}</option>
+              ))}
+            </optgroup>
+            {students.some((s) => s.isActive === false) && (
+              <optgroup label="Inactive">
+                {students.filter((s) => s.isActive === false).sort((a, b) => (a.childName || "").localeCompare(b.childName || "")).map((s) => (
+                  <option key={s._id} value={s._id}>{s.childName}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <select className="gallery-filter-select" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
             <option value="all">All Years</option>
