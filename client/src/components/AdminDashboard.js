@@ -110,8 +110,14 @@ const isStudentInactiveForMonth = (user, monthStr) => {
 // Returns the fee that was in effect for a given month, using feeChangeHistory when available.
 // Falls back to user.monthlyFee if no history exists (backwards compatible).
 // Returns 0 for months where the student was inactive.
+// A feeOverrides entry for the exact month wins over everything else — it's a
+// one-off custom amount for that single still-unpaid month (see Edit Fee in
+// FeeTrackerTab), separate from feeChangeHistory's permanent from-here-onward changes.
 const getFeeForMonth = (user, monthStr) => {
   if (isStudentInactiveForMonth(user, monthStr)) return 0;
+  const override = (user.feeOverrides || []).find((o) => o.month === monthStr);
+  if (override) return Number(override.amount) || 0;
+
   const history = user.feeChangeHistory || [];
   if (history.length === 0) return Number(user.monthlyFee) || 0;
 
@@ -4845,6 +4851,11 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   const [passHistoryModal, setPassHistoryModal] = useState({ show: false, student: null, passes: [] });
   const [passLoading, setPassLoading] = useState(false);
 
+  // Edit Fee (per-month override) states
+  const [editFeeModal, setEditFeeModal] = useState({ show: false, student: null });
+  const [editFeeAmount, setEditFeeAmount] = useState("");
+  const [editFeeSaving, setEditFeeSaving] = useState(false);
+
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -4907,6 +4918,73 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     } catch (err) {
       alert("Error updating payment");
       fetchStudents();
+    }
+  };
+
+  // --- Edit Fee (per-month override) handlers ---
+  // Opens the modal, pre-filled with whatever amount is already recorded/effective
+  // for this student in the currently selected month.
+  const openEditFeeModal = (student) => {
+    const existing = (student.payments || []).find((p) => p.month === selectedMonth);
+    const prefill = existing?.amount ?? getFeeForMonth(student, selectedMonth);
+    setEditFeeAmount(String(prefill ?? ""));
+    setEditFeeModal({ show: true, student, wasPaid: !!existing });
+  };
+
+  // Editing the fee must never flip payment status on its own:
+  //  - Month already Paid → correct that payment's stored amount, still Paid.
+  //  - Month still Pending → save a feeOverrides entry instead (a one-off custom
+  //    amount for just this month); the payment stays untouched, so it stays Pending.
+  const handleSaveFeeAmount = async () => {
+    const student = editFeeModal.student;
+    if (!student) return;
+    const newAmount = Number(editFeeAmount);
+    if (!Number.isFinite(newAmount) || newAmount < 0) {
+      alert("Enter a valid fee amount.");
+      return;
+    }
+    setEditFeeSaving(true);
+    try {
+      if (editFeeModal.wasPaid) {
+        await axios.post("https://art-portal-7n6r.onrender.com/api/fees/update", {
+          userId: student._id,
+          month: selectedMonth,
+          status: "Paid",
+          amount: newAmount,
+        });
+        setAllStudents((prev) =>
+          prev.map((s) => {
+            if (s._id !== student._id) return s;
+            const payments = (s.payments || []).map((p) =>
+              p.month === selectedMonth ? { ...p, amount: newAmount } : p,
+            );
+            return { ...s, payments };
+          }),
+        );
+      } else {
+        await axios.post("https://art-portal-7n6r.onrender.com/api/fees/override", {
+          userId: student._id,
+          month: selectedMonth,
+          amount: newAmount,
+        });
+        setAllStudents((prev) =>
+          prev.map((s) => {
+            if (s._id !== student._id) return s;
+            const feeOverrides = [...(s.feeOverrides || [])];
+            const idx = feeOverrides.findIndex((o) => o.month === selectedMonth);
+            if (idx > -1) feeOverrides[idx] = { ...feeOverrides[idx], amount: newAmount };
+            else feeOverrides.push({ month: selectedMonth, amount: newAmount });
+            return { ...s, feeOverrides };
+          }),
+        );
+      }
+      setEditFeeModal({ show: false, student: null });
+      setEditFeeAmount("");
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert("Error updating fee amount");
+    } finally {
+      setEditFeeSaving(false);
     }
   };
 
@@ -5606,15 +5684,35 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                             )}
                           </td>
                           <td style={{ fontWeight: "bold" }}>
-                            {isPass ? (
-                              <span style={{ color: "#7c3aed" }}>₹0 (Pass)</span>
-                            ) : isInactive ? (
-                              <span style={{ color: "#94a3b8" }}>₹0 (Inactive)</span>
-                            ) : isPaid ? (
-                              <>₹{(student.payments || []).find(p => p.month === selectedMonth)?.amount ?? student.monthlyFee}</>
-                            ) : (
-                              <>₹{student.monthlyFee}</>
-                            )}
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              {isPass ? (
+                                <span style={{ color: "#7c3aed" }}>₹0 (Pass)</span>
+                              ) : isInactive ? (
+                                <span style={{ color: "#94a3b8" }}>₹0 (Inactive)</span>
+                              ) : isPaid ? (
+                                <>₹{(student.payments || []).find(p => p.month === selectedMonth)?.amount ?? student.monthlyFee}</>
+                              ) : (
+                                <>₹{getFeeForMonth(student, selectedMonth)}</>
+                              )}
+                              {!isPass && !isInactive && !isNotJoined && (
+                                <button
+                                  type="button"
+                                  onClick={() => openEditFeeModal(student)}
+                                  title={`Edit fee for ${new Date(selectedMonth + "-01").toLocaleString("default", { month: "long", year: "numeric" })}`}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: "2px",
+                                    color: "#94a3b8",
+                                    display: "inline-flex",
+                                    lineHeight: 0,
+                                  }}
+                                >
+                                  <IconEdit size={13} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td>
                             {isNotJoined ? (
@@ -5729,7 +5827,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                       handleTogglePayment(
                                         student._id,
                                         status,
-                                        student.monthlyFee,
+                                        getFeeForMonth(student, selectedMonth),
                                       )
                                     }
                                   >
@@ -5936,6 +6034,79 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== EDIT FEE (PER-MONTH) MODAL ===== */}
+      {editFeeModal.show && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+          onClick={() => { setEditFeeModal({ show: false, student: null }); setEditFeeAmount(""); }}
+        >
+          <div
+            className="dark-modal-card"
+            style={{
+              background: "#fff", borderRadius: "16px", padding: "30px",
+              width: "90%", maxWidth: "380px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 6px 0", color: "#334155" }}>Edit Fee</h3>
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 20px 0" }}>
+              Set a custom fee for <strong>{editFeeModal.student?.childName}</strong> for{" "}
+              <strong>
+                {new Date(selectedMonth + "-01").toLocaleString("default", {
+                  month: "long", year: "numeric",
+                })}
+              </strong>{" "}
+              only — other months are unaffected.
+              {editFeeModal.wasPaid
+                ? " This corrects the amount already paid; the month stays Paid."
+                : " The month stays Pending — this just changes the amount due."}
+            </p>
+            <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#334155", display: "block", marginBottom: "6px" }}>
+              Fee Amount (₹)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={editFeeAmount}
+              onChange={(e) => setEditFeeAmount(e.target.value)}
+              autoFocus
+              style={{
+                width: "100%", padding: "10px", borderRadius: "8px",
+                border: "1px solid #cbd5e1", fontSize: "0.9rem",
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+              <button
+                className="save-btn"
+                disabled={editFeeSaving}
+                style={{
+                  flex: 1, padding: "10px", fontSize: "0.95rem",
+                  backgroundColor: "#2563eb", opacity: editFeeSaving ? 0.7 : 1,
+                }}
+                onClick={handleSaveFeeAmount}
+              >
+                {editFeeSaving ? "Saving..." : "Save"}
+              </button>
+              <button
+                className="save-btn"
+                style={{
+                  flex: 1, padding: "10px", fontSize: "0.95rem",
+                  backgroundColor: "#64748b",
+                }}
+                onClick={() => { setEditFeeModal({ show: false, student: null }); setEditFeeAmount(""); }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

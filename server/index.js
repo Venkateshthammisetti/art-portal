@@ -474,6 +474,27 @@ app.post("/api/fees/update", async (req, res) => {
   }
 });
 
+// Sets a one-off custom fee for a single still-unpaid month, without touching
+// payment status — used by the Admin "Edit Fee" action so correcting/discounting
+// a month's amount doesn't mark it Paid. See User.feeOverrides.
+app.post("/api/fees/override", async (req, res) => {
+  try {
+    const { userId, month, amount } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Student not found" });
+
+    if (!user.feeOverrides) user.feeOverrides = [];
+    const idx = user.feeOverrides.findIndex((o) => o.month === month);
+    if (idx > -1) user.feeOverrides[idx].amount = amount;
+    else user.feeOverrides.push({ month, amount });
+
+    await user.save();
+    res.json({ success: true, feeOverrides: user.feeOverrides });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating fee override" });
+  }
+});
+
 // ===========================
 //      STUDENT PASS
 // ===========================

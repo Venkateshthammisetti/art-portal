@@ -62,6 +62,15 @@ const UserSchema = new mongoose.Schema({
     fee: Number
   }],
 
+  // Per-Month Fee Overrides — a one-off custom fee for a single still-unpaid month
+  // (e.g. a discount or partial month), without affecting any other month or
+  // creating a payment record. Once that month is actually paid, the amount lives
+  // on the payments[] entry instead and this override is no longer consulted for it.
+  feeOverrides: [{
+    month: String, // Format: "YYYY-MM"
+    amount: Number
+  }],
+
   // Student Pass History (months where fee is waived)
   passes: [{
     month: String, // Format: "YYYY-MM"
