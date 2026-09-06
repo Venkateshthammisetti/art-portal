@@ -1867,12 +1867,19 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     .slice(0, 3);
 
   const activeStudents = students.filter((s) => s.isActive !== false);
-  const maleCount = activeStudents.filter((s) => s.gender === "Male").length;
-  const femaleCount = activeStudents.filter((s) => s.gender === "Female").length;
+  const maleCount = students.filter((s) => s.gender === "Male").length;
+  const femaleCount = students.filter((s) => s.gender === "Female").length;
+  const otherGenderCount = students.filter(
+    (s) => s.gender && s.gender !== "Male" && s.gender !== "Female",
+  ).length;
   const inactiveCount = students.filter((s) => s.isActive === false).length;
   const genderData = [
     { name: "Male", value: maleCount, color: "#3b82f6" },
     { name: "Female", value: femaleCount, color: "#ec4899" },
+    { name: "Other", value: otherGenderCount, color: "#a855f7" },
+  ].filter((d) => d.value > 0);
+  const statusData = [
+    { name: "Active", value: activeStudents.length, color: "#22c55e" },
     { name: "Inactive", value: inactiveCount, color: "#94a3b8" },
   ].filter((d) => d.value > 0);
 
@@ -1948,17 +1955,18 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  const getLast6Months = () => {
+  const revenueTrendYear = new Date().getFullYear();
+
+  const getCurrentYearMonths = () => {
+    const currentMonth = new Date().getMonth(); // 0-based
     const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      months.push(d.toISOString().slice(0, 7));
+    for (let m = 0; m <= currentMonth; m++) {
+      months.push(`${revenueTrendYear}-${String(m + 1).padStart(2, "0")}`);
     }
     return months;
   };
 
-  const revenueTrendData = getLast6Months().map((monthStr) => {
+  const revenueTrendData = getCurrentYearMonths().map((monthStr) => {
     const totalForMonth = students.reduce((acc, student) => {
       const payment = (student.payments || []).find(
         (p) => p.month === monthStr && p.status === "Paid",
@@ -2342,106 +2350,146 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
       </div>
 
       <div
+        className="overview-chart-card"
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-          gap: "20px",
+          borderRadius: "16px",
+          padding: "25px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          width: "100%",
+          marginBottom: "20px",
+        }}
+      >
+        <h3
+          className="overview-chart-title"
+          style={{ margin: "0 0 20px 0", fontSize: "1rem" }}
+        >
+          Revenue Trend ({revenueTrendYear})
+        </h3>
+        <div style={{ width: "100%", height: 240, fontSize: "0.75rem" }}>
+          <ResponsiveContainer>
+            <AreaChart
+              data={revenueTrendData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#f1f5f9"
+              />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={10}
+                tick={{ fill: "#94a3b8", fontSize: 11 }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                width={48}
+                tick={{ fill: "#94a3b8", fontSize: 11 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "8px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                }}
+                formatter={(value) => [
+                  `₹${value.toLocaleString()}`,
+                  "Revenue",
+                ]}
+              />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#10b981"
+                strokeWidth={3}
+                fillOpacity={1}
+                fill="url(#colorRev)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div
+        className="overview-chart-card"
+        style={{
+          borderRadius: "16px",
+          padding: "25px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          width: "100%",
           marginBottom: "30px",
         }}
       >
+        <h3
+          className="overview-chart-title"
+          style={{ margin: "0 0 20px 0", fontSize: "1rem" }}
+        >
+          Student Demographics
+        </h3>
         <div
-          className="overview-chart-card"
           style={{
-            borderRadius: "16px",
-            padding: "25px",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-            gridColumn: "span 1",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "24px",
           }}
         >
-          <h3
-            className="overview-chart-title"
-            style={{ margin: "0 0 20px 0", fontSize: "1rem" }}
-          >
-            Revenue Trend (Last 6 Months)
-          </h3>
-          <div style={{ width: "100%", height: 200, fontSize: "0.75rem" }}>
-            <ResponsiveContainer>
-              <AreaChart
-                data={revenueTrendData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#f1f5f9"
-                />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#94a3b8" }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#94a3b8" }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "none",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                  }}
-                  formatter={(value) => [
-                    `₹${value.toLocaleString()}`,
-                    "Revenue",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorRev)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div
-          className="overview-chart-card"
-          style={{
-            borderRadius: "16px",
-            padding: "25px",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h3
-            className="overview-chart-title"
-            style={{ margin: "0 0 20px 0", fontSize: "1rem" }}
-          >
-            Student Demographics
-          </h3>
-          <ProfessionalDonut
-            data={genderData}
-            totalLabel="Students"
-            onSliceClick={(name) => {
-              if (name === "Inactive") {
-                onNavigate("users", { roleFilter: "parent", viewMode: "inactive" });
-              } else {
+          <div>
+            <h4
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "0.8rem",
+                fontWeight: "700",
+                color: "#64748b",
+                textTransform: "uppercase",
+                letterSpacing: "0.03em",
+              }}
+            >
+              By Gender
+            </h4>
+            <ProfessionalDonut
+              data={genderData}
+              totalLabel="Students"
+              onSliceClick={(name) => {
                 onNavigate("users", { roleFilter: "parent", genderFilter: name });
-              }
-            }}
-          />
+              }}
+            />
+          </div>
+          <div>
+            <h4
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "0.8rem",
+                fontWeight: "700",
+                color: "#64748b",
+                textTransform: "uppercase",
+                letterSpacing: "0.03em",
+              }}
+            >
+              By Status
+            </h4>
+            <ProfessionalDonut
+              data={statusData}
+              totalLabel="Students"
+              onSliceClick={(name) => {
+                onNavigate("users", {
+                  roleFilter: "parent",
+                  viewMode: name === "Inactive" ? "inactive" : "active",
+                });
+              }}
+            />
+          </div>
         </div>
       </div>
 
