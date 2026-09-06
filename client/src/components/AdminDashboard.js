@@ -1844,6 +1844,61 @@ const RevenueChartTooltip = ({ active, payload, label }) => {
   );
 };
 
+// Tooltip for the "New Joins per Month" chart — lists the students who
+// joined that month (name · class · date) on hover.
+const NewJoinsTooltip = ({ active, payload }) => {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload || {};
+  const list = row.joinedList || [];
+  const dateShort = (d) => {
+    if (!d) return "";
+    const x = new Date(d);
+    return isNaN(x) ? "" : x.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+  return (
+    <div
+      style={{
+        background: "var(--card-bg, #fff)",
+        border: "1px solid var(--border, #e2e8f0)",
+        borderRadius: "8px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        padding: "10px 12px",
+        fontSize: "0.78rem",
+        maxWidth: "260px",
+      }}
+    >
+      <div style={{ fontWeight: 700, color: "var(--text, #1e293b)", marginBottom: "4px" }}>
+        {row.nameLong} — {row.joined || 0} {row.joined === 1 ? "new join" : "new joins"}
+      </div>
+      {list.length === 0 ? (
+        <div style={{ color: "var(--text-muted, #94a3b8)" }}>No students joined this month.</div>
+      ) : (
+        <ol
+          style={{
+            margin: 0,
+            paddingLeft: "18px",
+            color: "var(--text-muted, #475569)",
+            lineHeight: 1.5,
+          }}
+        >
+          {list.slice(0, 10).map((j) => (
+            <li key={j.id}>
+              <span style={{ color: "var(--text, #1e293b)", fontWeight: 600 }}>{j.name}</span>
+              {j.cls && j.cls !== "—" ? ` · ${j.cls}` : ""}
+              {dateShort(j.date) ? ` · ${dateShort(j.date)}` : ""}
+            </li>
+          ))}
+          {list.length > 10 && (
+            <li style={{ listStyle: "none", marginLeft: "-18px", fontWeight: 600 }}>
+              +{list.length - 10} more
+            </li>
+          )}
+        </ol>
+      )}
+    </div>
+  );
+};
+
 // ==========================================
 // REVENUE ANALYTICS — full drill-down page opened from the Overview
 // "Revenue Trend" card. Multiple chart views over the same monthly data
@@ -1948,11 +2003,6 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
   const bestJoinMonth = monthly.reduce((b, r) => (!b || r.joined > b.joined ? r : b), null);
 
   const fmt = (n) => `₹${Number(n || 0).toLocaleString()}`;
-  const fmtDate = (d) => {
-    if (!d) return "—";
-    const x = new Date(d);
-    return isNaN(x) ? "—" : x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  };
 
   const kpis = [
     { label: "Collected", value: fmt(totalCollected), Icon: IconMoney, color: "#16a34a", bg: "#f0fdf4" },
@@ -1985,8 +2035,6 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
       <Area key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2.5} fillOpacity={1} fill={`url(#${s.grad})`} />
     );
   };
-
-  const monthsWithJoins = monthly.filter((r) => r.joined > 0);
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}>
@@ -2130,18 +2178,19 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={8} tick={{ fill: "#94a3b8", fontSize: 11 }} />
                     <YAxis axisLine={false} tickLine={false} width={30} allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                    <Tooltip content={<RevenueChartTooltip />} />
+                    <Tooltip content={<NewJoinsTooltip />} wrapperStyle={{ zIndex: 20 }} />
                     <Bar dataKey="joined" name="New Joins" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={34} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              {bestJoinMonth && bestJoinMonth.joined > 0 && (
-                <p style={{ margin: "8px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
-                  Best month: <strong>{bestJoinMonth.name}</strong> with{" "}
-                  <strong>{bestJoinMonth.joined}</strong> new{" "}
-                  {bestJoinMonth.joined === 1 ? "student" : "students"}.
-                </p>
-              )}
+              <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
+                Hover a bar to see the students who joined that month.
+                {bestJoinMonth && bestJoinMonth.joined > 0 && (
+                  <>
+                    {" "}Best: <strong style={{ color: "#64748b" }}>{bestJoinMonth.name}</strong> ({bestJoinMonth.joined}).
+                  </>
+                )}
+              </p>
             </div>
 
             <div className="att-chart-card">
@@ -2160,43 +2209,6 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
             </div>
           </div>
 
-          {/* NEW JOINS — grouped by month, responsive card grid */}
-          <div className="att-chart-card" style={{ marginBottom: "20px" }}>
-            <h3 className="att-chart-title">
-              New Joins in {year} ({totalJoins})
-            </h3>
-            {monthsWithJoins.length === 0 ? (
-              <p style={{ color: "#94a3b8", fontSize: "0.9rem", margin: 0 }}>No new students joined in {year}.</p>
-            ) : (
-              <div className="rev-joins-grid">
-                {monthsWithJoins.map((r) => (
-                  <div key={r.monthStr} className="rev-joins-card">
-                    <div className="rev-joins-card-head">
-                      <span className="rev-joins-month-name">{r.nameLong}</span>
-                      <span className="rev-joins-count">
-                        {r.joined} {r.joined === 1 ? "join" : "joins"}
-                      </span>
-                    </div>
-                    <ul className="rev-joins-list">
-                      {r.joinedList.map((j) => (
-                        <li key={j.id} className="rev-joins-row">
-                          <span className="rev-joins-avatar" aria-hidden="true">
-                            {(j.name.trim()[0] || "?").toUpperCase()}
-                          </span>
-                          <span className="rev-joins-info">
-                            <span className="rev-join-name">{j.name}</span>
-                            <span className="rev-join-meta">
-                              {j.cls} · {fmtDate(j.date)}
-                            </span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* MONTHLY BREAKDOWN TABLE */}
           <div className="table-wrapper">
