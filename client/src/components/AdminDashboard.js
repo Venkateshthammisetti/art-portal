@@ -10,8 +10,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
   Area,
+  AreaChart,
+  ComposedChart,
+  Line,
+  Legend,
 } from "recharts";
 import axios from "axios";
 import "./AdminDashboard.css";
@@ -95,6 +98,27 @@ const isRegisteredInOrBefore = (regDate, currentMonth) => {
   if (!regDate) return true; // Fallback for old users
   const regYM = regDate.slice(0, 7);
   return regYM <= currentMonth;
+};
+
+// Student's first billable month "YYYY-MM": registeredDate, else joiningDate,
+// else createdAt. A record with no date at all is treated as starting the
+// current month. This mirrors FeeTrackerTab.getStudentStartMonth exactly so
+// the Revenue Analytics figures line up with the Fee Tracker summary.
+const getStudentStartMonth = (user) => {
+  const dateStr = user.registeredDate || user.joiningDate || user.createdAt;
+  if (!dateStr) return new Date().toISOString().slice(0, 7);
+  if (typeof dateStr === "string") return dateStr.slice(0, 7);
+  return new Date(dateStr).toISOString().slice(0, 7);
+};
+
+// Month-level payment status for a student, matching FeeTrackerTab.getPaymentStatus
+// (any payment entry for the month counts as Paid — Pending entries are deleted,
+// not stored). Returns "NotJoined" | "Inactive" | "Pass" | "Paid" | "Pending".
+const getMonthPaymentStatus = (user, monthStr) => {
+  if (monthStr < getStudentStartMonth(user)) return "NotJoined";
+  if (isStudentInactiveForMonth(user, monthStr)) return "Inactive";
+  if ((user.passes || []).some((p) => p.month === monthStr)) return "Pass";
+  return (user.payments || []).some((p) => p.month === monthStr) ? "Paid" : "Pending";
 };
 
 // Returns true if a student's inactiveHistory covers the given month (fee should be ₹0).
@@ -1788,6 +1812,445 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
 // 3. TAB COMPONENTS (Dependent on Modals/Helpers)
 // ==========================================
 
+// Shared tooltip for the revenue charts — formats ₹ for money keys and
+// plain counts for everything else. Money keys are anything containing
+// "revenue", "collected" or "expected".
+const RevenueChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+  const isMoney = (key = "") => /revenue|collected|expected/i.test(key);
+  return (
+    <div
+      style={{
+        background: "var(--card-bg, #fff)",
+        border: "1px solid var(--border, #e2e8f0)",
+        borderRadius: "8px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        padding: "9px 12px",
+        fontSize: "0.78rem",
+      }}
+    >
+      <div style={{ fontWeight: 700, color: "var(--text, #1e293b)", marginBottom: "5px" }}>
+        {label}
+      </div>
+      {payload.map((entry) => (
+        <div key={entry.dataKey} style={{ color: entry.color, fontWeight: 600 }}>
+          {entry.name}:{" "}
+          {isMoney(entry.dataKey)
+            ? `₹${Number(entry.value || 0).toLocaleString()}`
+            : entry.value}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ==========================================
+// REVENUE ANALYTICS — full drill-down page opened from the Overview
+// "Revenue Trend" card. Multiple chart views over the same monthly data
+// plus the month-by-month new-joins list and a breakdown table.
+// ==========================================
+const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
+  const students = users.filter((u) => u.role === "parent");
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthIdx = now.getMonth();
+
+  const years = (() => {
+    const set = new Set([currentYear]);
+    students.forEach((s) => {
+      (s.payments || []).forEach((p) => {
+        if (p && p.month) set.add(Number(p.month.slice(0, 4)));
+      });
+      const jr = s.joiningDate || s.registeredDate || s.createdAt;
+      if (jr) set.add(new Date(jr).getFullYear());
+    });
+    return [...set]
+      .filter((y) => y >= 2015 && y <= currentYear + 1)
+      .sort((a, b) => b - a);
+  })();
+
+  const [year, setYear] = useState(currentYear);
+  const [chartType, setChartType] = useState("area");
+
+  const classNameFor = (student) => {
+    const ac = student.assignedClass;
+    if (ac) {
+      if (typeof ac === "object" && ac.className) return ac.className;
+      const c = classes.find((x) => x._id === (ac._id || ac));
+      if (c) return c.className;
+    }
+    const c = classes.find((x) => (x.students || []).some((st) => (st._id || st) === student._id));
+    return c ? c.className : "—";
+  };
+
+  const monthsCount = year === currentYear ? currentMonthIdx + 1 : 12;
+
+  const monthly = [];
+  let cumRevenue = 0;
+  for (let m = 0; m < monthsCount; m++) {
+    const monthStr = `${year}-${String(m + 1).padStart(2, "0")}`;
+    let collected = 0;
+    let paidCount = 0;
+    let expected = 0;
+    const joinedList = [];
+    students.forEach((s) => {
+      // "New join" is driven purely by the student's joining date
+      // (falling back to registered/created only when joiningDate is absent).
+      const jr = s.joiningDate || s.registeredDate || s.createdAt;
+      if (jr) {
+        const jm = String(typeof jr === "string" ? jr : new Date(jr).toISOString()).slice(0, 7);
+        if (jm === monthStr) joinedList.push(s);
+      }
+
+      // Expected / collected — identical rules to the Fee Tracker summary:
+      // skip students that hadn't joined, are inactive, or hold a pass.
+      const status = getMonthPaymentStatus(s, monthStr);
+      if (status === "NotJoined" || status === "Inactive" || status === "Pass") return;
+      if (status === "Paid") {
+        const pmt = (s.payments || []).find((p) => p.month === monthStr);
+        collected += pmt?.amount ?? s.monthlyFee ?? 0;
+        expected += pmt?.amount ?? getFeeForMonth(s, monthStr) ?? 0;
+        paidCount += 1;
+      } else {
+        // Pending
+        expected += getFeeForMonth(s, monthStr);
+      }
+    });
+    cumRevenue += collected;
+    const d = new Date(monthStr + "-01");
+    monthly.push({
+      monthStr,
+      name: d.toLocaleString("default", { month: "short" }),
+      nameLong: `${d.toLocaleString("default", { month: "long" })} ${year}`,
+      collected,
+      expected,
+      paidCount,
+      rate: expected > 0 ? Math.round((collected / expected) * 100) : 0,
+      joined: joinedList.length,
+      joinedList: joinedList
+        .map((s) => ({
+          id: s._id,
+          name: s.childName || s.fullName || s.username || "Unknown",
+          date: s.joiningDate || s.registeredDate || s.createdAt,
+          cls: classNameFor(s),
+        }))
+        .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)),
+      cumRevenue,
+    });
+  }
+
+  const totalCollected = monthly.reduce((a, r) => a + r.collected, 0);
+  const totalExpected = monthly.reduce((a, r) => a + r.expected, 0);
+  const totalJoins = monthly.reduce((a, r) => a + r.joined, 0);
+  const avgMonthly = monthly.length ? Math.round(totalCollected / monthly.length) : 0;
+  const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
+  const bestRevMonth = monthly.reduce((b, r) => (!b || r.collected > b.collected ? r : b), null);
+  const bestJoinMonth = monthly.reduce((b, r) => (!b || r.joined > b.joined ? r : b), null);
+
+  const fmt = (n) => `₹${Number(n || 0).toLocaleString()}`;
+  const fmtDate = (d) => {
+    if (!d) return "—";
+    const x = new Date(d);
+    return isNaN(x) ? "—" : x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const kpis = [
+    { label: "Collected", value: fmt(totalCollected), Icon: IconMoney, color: "#16a34a", bg: "#f0fdf4" },
+    { label: "Expected", value: fmt(totalExpected), Icon: IconReceipt, color: "#2563eb", bg: "#eff6ff" },
+    { label: "Collection Rate", value: `${collectionRate}%`, Icon: IconTrendingUp, color: "#0f766e", bg: "#f0fdfa" },
+    { label: "New Joins", value: totalJoins, Icon: FaUserPlus, color: "#d97706", bg: "#fffbeb" },
+    { label: "Avg / Month", value: fmt(avgMonthly), Icon: IconChart, color: "#6366f1", bg: "#eef2ff" },
+    {
+      label: "Top Month",
+      value: bestRevMonth && bestRevMonth.collected > 0 ? bestRevMonth.name : "—",
+      sub: bestRevMonth && bestRevMonth.collected > 0 ? fmt(bestRevMonth.collected) : "",
+      Icon: IconCalendar,
+      color: "#db2777",
+      bg: "#fdf2f8",
+    },
+  ];
+
+  const chartMark = (s) => {
+    if (chartType === "bar") {
+      return (
+        <Bar key={s.key} yAxisId={s.axis} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={26} />
+      );
+    }
+    if (chartType === "line") {
+      return (
+        <Line key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2.5} dot={{ r: 3, fill: s.color }} activeDot={{ r: 5 }} />
+      );
+    }
+    return (
+      <Area key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2.5} fillOpacity={1} fill={`url(#${s.grad})`} />
+    );
+  };
+
+  const monthsWithJoins = monthly.filter((r) => r.joined > 0);
+
+  return (
+    <div style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}>
+      <div className="rev-analytics-header">
+        <button type="button" className="rev-back-btn" onClick={onBack}>
+          ← Back
+        </button>
+        <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, flex: 1 }}>
+          Revenue Analytics
+        </h2>
+        <select
+          className="admin-att-select"
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading && students.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>Loading revenue data…</div>
+      ) : students.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>No student data available.</div>
+      ) : (
+        <>
+          {/* KPI ROW */}
+          <div className="rev-kpi-grid">
+            {kpis.map((k) => (
+              <div key={k.label} className="rev-kpi-card">
+                <div className="rev-kpi-icon" style={{ background: k.bg, color: k.color }}>
+                  <k.Icon />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="rev-kpi-label">{k.label}</div>
+                  <div className="rev-kpi-value">{k.value}</div>
+                  {k.sub ? <div className="rev-kpi-sub">{k.sub}</div> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* MAIN CHART with type toggle */}
+          <div className="att-chart-card" style={{ marginBottom: "20px" }}>
+            <div className="overview-chart-head">
+              <h3 className="att-chart-title" style={{ margin: 0 }}>
+                Revenue · Students Paid · New Joins
+              </h3>
+              <div className="chart-type-toggle" role="group" aria-label="Chart type">
+                {["area", "bar", "line"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={chartType === t ? "active" : ""}
+                    onClick={() => setChartType(t)}
+                  >
+                    {t[0].toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 300, fontSize: "0.75rem" }}>
+              <ResponsiveContainer>
+                <ComposedChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                  <defs>
+                    {[
+                      { id: "raColorRev", c: "#10b981" },
+                      { id: "raColorPaid", c: "#6366f1" },
+                      { id: "raColorJoin", c: "#f59e0b" },
+                    ].map((g) => (
+                      <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={g.c} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={g.c} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={8} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis yAxisId="money" axisLine={false} tickLine={false} width={52} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis yAxisId="count" orientation="right" axisLine={false} tickLine={false} width={30} allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <Tooltip content={<RevenueChartTooltip />} />
+                  <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "0.75rem" }} />
+                  {[
+                    { key: "collected", name: "Revenue", color: "#10b981", axis: "money", grad: "raColorRev" },
+                    { key: "paidCount", name: "Students Paid", color: "#6366f1", axis: "count", grad: "raColorPaid" },
+                    { key: "joined", name: "New Joins", color: "#f59e0b", axis: "count", grad: "raColorJoin" },
+                  ].map(chartMark)}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* SECONDARY CHARTS */}
+          <div className="att-analytics-grid" style={{ marginBottom: "20px" }}>
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Collected vs Expected</h3>
+              <div style={{ width: "100%", height: 240, fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <ComposedChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={8} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis yAxisId="money" axisLine={false} tickLine={false} width={52} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis yAxisId="pct" orientation="right" axisLine={false} tickLine={false} width={34} unit="%" domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <Tooltip content={<RevenueChartTooltip />} />
+                    <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "0.75rem" }} />
+                    <Bar yAxisId="money" dataKey="expected" name="Expected" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                    <Bar yAxisId="money" dataKey="collected" name="Collected" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                    <Line yAxisId="pct" type="monotone" dataKey="rate" name="Rate %" stroke="#0f766e" strokeWidth={2} dot={{ r: 3, fill: "#0f766e" }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Cumulative Revenue</h3>
+              <div style={{ width: "100%", height: 240, fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <AreaChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="raCumRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={8} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} width={60} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <Tooltip content={<RevenueChartTooltip />} />
+                    <Area type="monotone" dataKey="cumRevenue" name="Revenue (cumulative)" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#raCumRev)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">New Joins per Month</h3>
+              <div style={{ width: "100%", height: 240, fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <BarChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={8} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} width={30} allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <Tooltip content={<RevenueChartTooltip />} />
+                    <Bar dataKey="joined" name="New Joins" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={34} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {bestJoinMonth && bestJoinMonth.joined > 0 && (
+                <p style={{ margin: "8px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+                  Best month: <strong>{bestJoinMonth.name}</strong> with{" "}
+                  <strong>{bestJoinMonth.joined}</strong> new{" "}
+                  {bestJoinMonth.joined === 1 ? "student" : "students"}.
+                </p>
+              )}
+            </div>
+
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Students Paid per Month</h3>
+              <div style={{ width: "100%", height: 240, fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <BarChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={8} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} width={30} allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <Tooltip content={<RevenueChartTooltip />} />
+                    <Bar dataKey="paidCount" name="Students Paid" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={34} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* NEW JOINS — grouped by month, responsive card grid */}
+          <div className="att-chart-card" style={{ marginBottom: "20px" }}>
+            <h3 className="att-chart-title">
+              New Joins in {year} ({totalJoins})
+            </h3>
+            {monthsWithJoins.length === 0 ? (
+              <p style={{ color: "#94a3b8", fontSize: "0.9rem", margin: 0 }}>No new students joined in {year}.</p>
+            ) : (
+              <div className="rev-joins-grid">
+                {monthsWithJoins.map((r) => (
+                  <div key={r.monthStr} className="rev-joins-card">
+                    <div className="rev-joins-card-head">
+                      <span className="rev-joins-month-name">{r.nameLong}</span>
+                      <span className="rev-joins-count">
+                        {r.joined} {r.joined === 1 ? "join" : "joins"}
+                      </span>
+                    </div>
+                    <ul className="rev-joins-list">
+                      {r.joinedList.map((j) => (
+                        <li key={j.id} className="rev-joins-row">
+                          <span className="rev-joins-avatar" aria-hidden="true">
+                            {(j.name.trim()[0] || "?").toUpperCase()}
+                          </span>
+                          <span className="rev-joins-info">
+                            <span className="rev-join-name">{j.name}</span>
+                            <span className="rev-join-meta">
+                              {j.cls} · {fmtDate(j.date)}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* MONTHLY BREAKDOWN TABLE */}
+          <div className="table-wrapper">
+            <div className="table-container">
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Collected</th>
+                    <th>Expected</th>
+                    <th>Rate</th>
+                    <th>Students Paid</th>
+                    <th>New Joins</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthly.map((r) => (
+                    <tr key={r.monthStr}>
+                      <td style={{ fontWeight: 700 }}>{r.name}</td>
+                      <td>{fmt(r.collected)}</td>
+                      <td style={{ color: "#94a3b8" }}>{fmt(r.expected)}</td>
+                      <td style={{ fontWeight: 700, color: r.rate >= 80 ? "#16a34a" : r.rate >= 50 ? "#d97706" : "#dc2626" }}>
+                        {r.expected > 0 ? `${r.rate}%` : "—"}
+                      </td>
+                      <td>{r.paidCount}</td>
+                      <td>
+                        {r.joined > 0 ? (
+                          <span title={r.joinedList.map((j) => j.name).join(", ")} style={{ fontWeight: 700, color: "#d97706" }}>
+                            {r.joined}
+                          </span>
+                        ) : (
+                          "0"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr style={{ fontWeight: 800 }}>
+                    <td>Total</td>
+                    <td>{fmt(totalCollected)}</td>
+                    <td style={{ color: "#94a3b8" }}>{fmt(totalExpected)}</td>
+                    <td>{collectionRate}%</td>
+                    <td>—</td>
+                    <td style={{ color: "#d97706" }}>{totalJoins}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate }) => {
   // ===== ATTENDANCE WIDGET STATE =====
   const [attSelectedClass, setAttSelectedClass] = useState("");
@@ -1967,15 +2430,26 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
   };
 
   const revenueTrendData = getCurrentYearMonths().map((monthStr) => {
-    const totalForMonth = students.reduce((acc, student) => {
+    let totalForMonth = 0;
+    let paidStudents = 0;
+    let joinedCount = 0;
+    students.forEach((student) => {
       const payment = (student.payments || []).find(
         (p) => p.month === monthStr && p.status === "Paid",
       );
-      return acc + (payment ? payment.amount || student.monthlyFee : 0);
-    }, 0);
+      if (payment) {
+        totalForMonth += payment.amount || student.monthlyFee || 0;
+        paidStudents += 1;
+      }
+      const jr = student.joiningDate || student.registeredDate || student.createdAt;
+      if (jr) {
+        const jm = String(typeof jr === "string" ? jr : new Date(jr).toISOString()).slice(0, 7);
+        if (jm === monthStr) joinedCount += 1;
+      }
+    });
     const dateObj = new Date(monthStr + "-01");
     const label = dateObj.toLocaleString("default", { month: "short" });
-    return { name: label, revenue: totalForMonth };
+    return { name: label, revenue: totalForMonth, students: paidStudents, joined: joinedCount };
   });
 
   const teacherLoadData = teachers
@@ -2350,7 +2824,9 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
       </div>
 
       <div
-        className="overview-chart-card"
+        className="overview-chart-card stat-card-clickable"
+        onClick={() => onNavigate("revenue-analytics")}
+        title="Open Revenue Analytics"
         style={{
           borderRadius: "16px",
           padding: "25px",
@@ -2358,19 +2834,25 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
           boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           width: "100%",
           marginBottom: "20px",
+          cursor: "pointer",
         }}
       >
-        <h3
-          className="overview-chart-title"
-          style={{ margin: "0 0 20px 0", fontSize: "1rem" }}
-        >
-          Revenue Trend ({revenueTrendYear})
-        </h3>
+        <div className="overview-chart-head">
+          <h3
+            className="overview-chart-title"
+            style={{ margin: 0, fontSize: "1rem" }}
+          >
+            Revenue Trend ({revenueTrendYear})
+          </h3>
+          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#0f766e", whiteSpace: "nowrap" }}>
+            View Analytics →
+          </span>
+        </div>
         <div style={{ width: "100%", height: 240, fontSize: "0.75rem" }}>
           <ResponsiveContainer>
-            <AreaChart
+            <ComposedChart
               data={revenueTrendData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              margin={{ top: 10, right: 6, left: 0, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -2392,31 +2874,48 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 tick={{ fill: "#94a3b8", fontSize: 11 }}
               />
               <YAxis
+                yAxisId="revenue"
                 axisLine={false}
                 tickLine={false}
                 width={48}
                 tick={{ fill: "#94a3b8", fontSize: 11 }}
               />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "none",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                }}
-                formatter={(value) => [
-                  `₹${value.toLocaleString()}`,
-                  "Revenue",
-                ]}
+              <YAxis
+                yAxisId="joined"
+                orientation="right"
+                axisLine={false}
+                tickLine={false}
+                width={28}
+                allowDecimals={false}
+                tick={{ fill: "#94a3b8", fontSize: 11 }}
+              />
+              <Tooltip content={<RevenueChartTooltip />} />
+              <Legend
+                verticalAlign="top"
+                height={28}
+                wrapperStyle={{ fontSize: "0.75rem" }}
               />
               <Area
+                yAxisId="revenue"
                 type="monotone"
                 dataKey="revenue"
+                name="Revenue"
                 stroke="#10b981"
-                strokeWidth={3}
+                strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#colorRev)"
               />
-            </AreaChart>
+              <Line
+                yAxisId="joined"
+                type="monotone"
+                dataKey="joined"
+                name="New Joins"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                dot={{ r: 3, fill: "#f59e0b" }}
+                activeDot={{ r: 5 }}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -7524,6 +8023,8 @@ const AdminDashboard = ({ onLogout }) => {
                           ? "Slot Manager"
                           : activeTab === "gallery"
                             ? "Art Gallery"
+                            : activeTab === "revenue-analytics"
+                              ? "Revenue Analytics"
                             : activeTab === "expense-add"
                               ? "Add Expense"
                               : activeTab === "expense-history"
@@ -7606,6 +8107,7 @@ const AdminDashboard = ({ onLogout }) => {
 
         <div className="content-scrollable">
           {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} expenses={overviewExpenses} loading={overviewLoading} onNavigate={handleNavigate} />}
+          {activeTab === "revenue-analytics" && <RevenueAnalyticsTab users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onBack={() => handleNavigate("overview")} />}
           {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} />}
           {activeTab === "classes" && <ClassManagementTab key={tabRefreshKey} />}
           {activeTab === "add-user" && <AddUserTab onRefresh={refreshOverview} />}
