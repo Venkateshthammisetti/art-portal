@@ -687,6 +687,16 @@ app.get("/api/attendance/student/:studentId", async (req, res) => {
   }
 });
 
+// 3b. GET CLASS ATTENDANCE (every record for a class — used by Class Attendance Analysis)
+app.get("/api/attendance/class/:classId", async (req, res) => {
+  try {
+    const records = await Attendance.find({ classId: req.params.classId });
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching attendance" });
+  }
+});
+
 // ✨ 4. EDIT FEEDBACK (Update PDF or Text)
 app.put("/api/feedback/:id", upload.single("report"), async (req, res) => {
   try {

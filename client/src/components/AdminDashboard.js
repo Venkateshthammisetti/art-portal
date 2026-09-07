@@ -793,6 +793,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
 // --- CLASS DETAILS VIEW ---
 const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
   const [copiedIdx, setCopiedIdx] = useState(null);
+  const [activeSection, setActiveSection] = useState("details");
 
   const handleCopyLink = (link, idx) => {
     if (link) {
@@ -840,6 +841,22 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
           <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
             <button
               className="edit-btn"
+              onClick={() => setActiveSection((s) => (s === "attendance" ? "details" : "attendance"))}
+              style={{
+                background: activeSection === "attendance" ? "#0f766e" : "#f0fdfa",
+                color: activeSection === "attendance" ? "#fff" : "#0f766e",
+                border: activeSection === "attendance" ? "none" : "1px solid #99f6e4",
+                padding: "10px 20px",
+                fontSize: "1rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <IconChart /> {activeSection === "attendance" ? "Class Details" : "Attendance Analysis"}
+            </button>
+            <button
+              className="edit-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
@@ -866,6 +883,10 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
       </div>
 
       <div className="object-body-grid">
+        {activeSection === "attendance" ? (
+          <ClassAttendanceAnalysis classId={cls._id} students={cls.students} />
+        ) : (
+        <>
         <div className="top-row-grid">
           <div className="detail-card">
             <h3>Schedule & Link</h3>
@@ -1084,6 +1105,8 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
             </>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );
@@ -1382,6 +1405,416 @@ const EditUserModal = ({ user, onClose, onSave }) => {
   );
 };
 
+// --- ATTENDANCE ANALYSIS (full-year, shared) ---
+// Given a flat list of Attendance records ({ date: "YYYY-MM-DD", status }),
+// AttendanceAnalysisPanel renders a month-by-month Present / Absent / Missed
+// breakdown for a chosen year with a rate line, split donut, trend area and a
+// sticky monthly table. StudentAttendanceAnalysis (User Management) and
+// ClassAttendanceAnalysis (Class Management) are thin fetch wrappers around it.
+const ATT_COLORS = { Present: "#16a34a", Absent: "#ef4444", Missed: "#f59e0b" };
+
+const AttendanceAnalysisTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div
+      style={{
+        background: "var(--card-bg, #fff)",
+        border: "1px solid var(--border, #e2e8f0)",
+        borderRadius: "8px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        padding: "9px 12px",
+        fontSize: "0.78rem",
+      }}
+    >
+      {label != null && (
+        <div style={{ fontWeight: 700, color: "var(--text, #1e293b)", marginBottom: "5px" }}>{label}</div>
+      )}
+      {payload.map((entry) => (
+        <div key={entry.dataKey || entry.name} style={{ color: entry.color || entry.payload?.color, fontWeight: 600 }}>
+          {entry.name}: {entry.value}{/rate/i.test(entry.dataKey || "") ? "%" : ""}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const AttendanceAnalysisPanel = ({ records, loading, error, emptyLabel, renderExtra }) => {
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+  const [chartType, setChartType] = useState("bar");
+
+  const years = (() => {
+    const set = new Set([currentYear]);
+    records.forEach((r) => {
+      if (r.date) set.add(Number(r.date.slice(0, 4)));
+    });
+    return [...set].filter((y) => y >= 2015 && y <= currentYear + 1).sort((a, b) => b - a);
+  })();
+
+  const monthly = [];
+  for (let m = 0; m < 12; m++) {
+    const monthStr = `${year}-${String(m + 1).padStart(2, "0")}`;
+    const inMonth = records.filter((r) => (r.date || "").slice(0, 7) === monthStr);
+    const present = inMonth.filter((r) => r.status === "Present").length;
+    const absent = inMonth.filter((r) => r.status === "Absent").length;
+    const missed = inMonth.filter((r) => r.status === "Missed").length;
+    const held = present + absent + missed;
+    const d = new Date(monthStr + "-01");
+    monthly.push({
+      monthStr,
+      name: d.toLocaleString("default", { month: "short" }),
+      nameLong: `${d.toLocaleString("default", { month: "long" })} ${year}`,
+      present,
+      absent,
+      missed,
+      held,
+      rate: held > 0 ? Math.round((present / held) * 100) : 0,
+    });
+  }
+
+  const totalPresent = monthly.reduce((a, r) => a + r.present, 0);
+  const totalAbsent = monthly.reduce((a, r) => a + r.absent, 0);
+  const totalMissed = monthly.reduce((a, r) => a + r.missed, 0);
+  const totalHeld = totalPresent + totalAbsent + totalMissed;
+  const overallRate = totalHeld > 0 ? Math.round((totalPresent / totalHeld) * 100) : 0;
+  const activeMonths = monthly.filter((r) => r.held > 0);
+  const bestMonth = activeMonths.reduce((b, r) => (!b || r.rate > b.rate ? r : b), null);
+  const worstMonth = activeMonths.reduce((b, r) => (!b || r.rate < b.rate ? r : b), null);
+
+  const pieData = [
+    { name: "Present", value: totalPresent, color: ATT_COLORS.Present },
+    { name: "Absent", value: totalAbsent, color: ATT_COLORS.Absent },
+    { name: "Missed", value: totalMissed, color: ATT_COLORS.Missed },
+  ].filter((d) => d.value > 0);
+
+  const kpis = [
+    { label: "Classes Held", value: totalHeld, color: "#0f172a", bg: "#f1f5f9", Icon: IconCalendar },
+    { label: "Present", value: totalPresent, color: "#16a34a", bg: "#f0fdf4", Icon: IconCheck },
+    { label: "Absent", value: totalAbsent, color: "#ef4444", bg: "#fef2f2", Icon: IconError },
+    { label: "Missed", value: totalMissed, color: "#f59e0b", bg: "#fffbeb", Icon: IconWarning },
+    { label: "Attendance Rate", value: `${overallRate}%`, color: "#0f766e", bg: "#f0fdfa", Icon: IconTrendingUp },
+  ];
+
+  return (
+    <div className="detail-card full-width-card" style={{ borderLeft: "4px solid #0f766e" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+        <h3 style={{ margin: 0 }}>Attendance Analysis — {year}</h3>
+        <select className="admin-att-select" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <p style={{ color: "#94a3b8", textAlign: "center", padding: "40px 0" }}>Loading attendance…</p>
+      ) : error ? (
+        <p style={{ color: "#dc2626", textAlign: "center", padding: "40px 0" }}>Failed to load attendance records.</p>
+      ) : records.length === 0 ? (
+        <p style={{ color: "#94a3b8", textAlign: "center", padding: "40px 0" }}>
+          {emptyLabel || "No attendance records found."}
+        </p>
+      ) : (
+        <>
+          {/* KPI ROW */}
+          <div className="rev-kpi-grid" style={{ marginBottom: "18px" }}>
+            {kpis.map((k) => (
+              <div key={k.label} className="rev-kpi-card">
+                <div className="rev-kpi-icon" style={{ background: k.bg, color: k.color }}>
+                  <k.Icon />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="rev-kpi-label">{k.label}</div>
+                  <div className="rev-kpi-value" style={{ color: k.color }}>{k.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* MAIN CHART */}
+          <div className="att-chart-card" style={{ marginBottom: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+              <h3 className="att-chart-title" style={{ margin: 0 }}>Monthly Attendance</h3>
+              <div className="chart-type-toggle" role="group" aria-label="Chart type">
+                {["bar", "line"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={chartType === t ? "active" : ""}
+                    onClick={() => setChartType(t)}
+                  >
+                    {t[0].toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 300, fontSize: "0.75rem" }}>
+              <ResponsiveContainer>
+                <ComposedChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis yAxisId="count" axisLine={false} tickLine={false} width={30} allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis yAxisId="rate" orientation="right" axisLine={false} tickLine={false} width={38} unit="%" domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <Tooltip content={<AttendanceAnalysisTooltip />} />
+                  <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "0.75rem" }} />
+                  {chartType === "bar" ? (
+                    <>
+                      <Bar yAxisId="count" dataKey="present" name="Present" stackId="a" fill={ATT_COLORS.Present} maxBarSize={30} />
+                      <Bar yAxisId="count" dataKey="absent" name="Absent" stackId="a" fill={ATT_COLORS.Absent} maxBarSize={30} />
+                      <Bar yAxisId="count" dataKey="missed" name="Missed" stackId="a" fill={ATT_COLORS.Missed} maxBarSize={30} radius={[4, 4, 0, 0]} />
+                      <Line yAxisId="rate" type="monotone" dataKey="rate" name="Rate %" stroke="#0f766e" strokeWidth={2.5} dot={{ r: 3, fill: "#0f766e" }} />
+                    </>
+                  ) : (
+                    <>
+                      <Line yAxisId="count" type="monotone" dataKey="present" name="Present" stroke={ATT_COLORS.Present} strokeWidth={2.5} dot={{ r: 3, fill: ATT_COLORS.Present }} />
+                      <Line yAxisId="count" type="monotone" dataKey="absent" name="Absent" stroke={ATT_COLORS.Absent} strokeWidth={2.5} dot={{ r: 3, fill: ATT_COLORS.Absent }} />
+                      <Line yAxisId="count" type="monotone" dataKey="missed" name="Missed" stroke={ATT_COLORS.Missed} strokeWidth={2.5} dot={{ r: 3, fill: ATT_COLORS.Missed }} />
+                      <Line yAxisId="rate" type="monotone" dataKey="rate" name="Rate %" stroke="#0f766e" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                    </>
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* YEAR SPLIT + RATE TREND */}
+          <div className="att-analytics-grid" style={{ marginBottom: "18px" }}>
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Year Split ({year})</h3>
+              {pieData.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontSize: "0.85rem" }}>
+                  No classes held in {year}.
+                </div>
+              ) : (
+                <div style={{ width: "100%", height: 220, fontSize: "0.75rem" }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={78} paddingAngle={2}>
+                        {pieData.map((d) => (
+                          <Cell key={d.name} fill={d.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<AttendanceAnalysisTooltip />} />
+                      <Legend verticalAlign="bottom" height={28} wrapperStyle={{ fontSize: "0.72rem" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Attendance Rate Trend</h3>
+              <div style={{ width: "100%", height: 220, fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <AreaChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="attRateGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0f766e" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} width={38} unit="%" domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <Tooltip content={<AttendanceAnalysisTooltip />} />
+                    <Area type="monotone" dataKey="rate" name="Rate %" stroke="#0f766e" strokeWidth={2.5} fillOpacity={1} fill="url(#attRateGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* MONTHLY BREAKDOWN TABLE */}
+          <div className="table-container sticky-head" style={{ maxHeight: "360px", overflowY: "auto" }}>
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Present</th>
+                  <th>Absent</th>
+                  <th>Missed</th>
+                  <th>Held</th>
+                  <th>Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map((r) => (
+                  <tr key={r.monthStr} style={r.held === 0 ? { opacity: 0.5 } : {}}>
+                    <td style={{ fontWeight: 700 }}>{r.name}</td>
+                    <td style={{ color: ATT_COLORS.Present, fontWeight: 600 }}>{r.present}</td>
+                    <td style={{ color: ATT_COLORS.Absent, fontWeight: 600 }}>{r.absent}</td>
+                    <td style={{ color: ATT_COLORS.Missed, fontWeight: 600 }}>{r.missed}</td>
+                    <td style={{ color: "#64748b" }}>{r.held}</td>
+                    <td style={{ fontWeight: 700, color: r.held === 0 ? "#94a3b8" : r.rate >= 80 ? "#16a34a" : r.rate >= 50 ? "#d97706" : "#dc2626" }}>
+                      {r.held > 0 ? `${r.rate}%` : "—"}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="totals-row" style={{ fontWeight: 800 }}>
+                  <td>Total</td>
+                  <td style={{ color: ATT_COLORS.Present }}>{totalPresent}</td>
+                  <td style={{ color: ATT_COLORS.Absent }}>{totalAbsent}</td>
+                  <td style={{ color: ATT_COLORS.Missed }}>{totalMissed}</td>
+                  <td style={{ color: "#64748b" }}>{totalHeld}</td>
+                  <td>{overallRate}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {bestMonth && worstMonth && (
+            <p style={{ margin: "12px 2px 0", fontSize: "0.8rem", color: "#94a3b8" }}>
+              Best month: <strong style={{ color: "#16a34a" }}>{bestMonth.nameLong}</strong> ({bestMonth.rate}%).{" "}
+              Lowest: <strong style={{ color: "#dc2626" }}>{worstMonth.nameLong}</strong> ({worstMonth.rate}%).
+            </p>
+          )}
+
+          {typeof renderExtra === "function" && renderExtra(year)}
+        </>
+      )}
+    </div>
+  );
+};
+
+// Fetches every attendance record for one student.
+const StudentAttendanceAnalysis = ({ studentId, studentName }) => {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(false);
+    axios
+      .get(`https://art-portal-7n6r.onrender.com/api/attendance/student/${studentId}`)
+      .then((res) => {
+        if (alive) setRecords(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (alive) setError(true);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [studentId]);
+
+  return (
+    <AttendanceAnalysisPanel
+      records={records}
+      loading={loading}
+      error={error}
+      emptyLabel={`No attendance records for ${studentName}.`}
+    />
+  );
+};
+
+// Fetches every attendance record for a whole class and adds a per-student table.
+const ClassAttendanceAnalysis = ({ classId, students = [] }) => {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(false);
+    axios
+      .get(`https://art-portal-7n6r.onrender.com/api/attendance/class/${classId}`)
+      .then((res) => {
+        if (alive) setRecords(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (alive) setError(true);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [classId]);
+
+  const renderPerStudent = (year) => {
+    const rows = students
+      .map((s) => {
+        const sid = String(s._id || s);
+        const recs = records.filter(
+          (r) => String(r.studentId) === sid && (r.date || "").slice(0, 4) === String(year),
+        );
+        const present = recs.filter((r) => r.status === "Present").length;
+        const absent = recs.filter((r) => r.status === "Absent").length;
+        const missed = recs.filter((r) => r.status === "Missed").length;
+        const held = present + absent + missed;
+        return {
+          id: sid,
+          name: s.childName || s.fullName || s.username || "Unknown",
+          present,
+          absent,
+          missed,
+          held,
+          rate: held > 0 ? Math.round((present / held) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.rate - a.rate || b.held - a.held);
+
+    return (
+      <div style={{ marginTop: "22px" }}>
+        <h3 className="att-chart-title" style={{ marginBottom: "10px" }}>Per-Student Attendance ({year})</h3>
+        <div className="table-container sticky-head" style={{ maxHeight: "360px", overflowY: "auto" }}>
+          <table className="custom-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>Missed</th>
+                <th>Held</th>
+                <th>Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: "center", color: "#94a3b8", padding: "24px" }}>
+                    No students enrolled.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.id} style={r.held === 0 ? { opacity: 0.5 } : {}}>
+                    <td style={{ fontWeight: 700 }}>{r.name}</td>
+                    <td style={{ color: ATT_COLORS.Present, fontWeight: 600 }}>{r.present}</td>
+                    <td style={{ color: ATT_COLORS.Absent, fontWeight: 600 }}>{r.absent}</td>
+                    <td style={{ color: ATT_COLORS.Missed, fontWeight: 600 }}>{r.missed}</td>
+                    <td style={{ color: "#64748b" }}>{r.held}</td>
+                    <td style={{ fontWeight: 700, color: r.held === 0 ? "#94a3b8" : r.rate >= 80 ? "#16a34a" : r.rate >= 50 ? "#d97706" : "#dc2626" }}>
+                      {r.held > 0 ? `${r.rate}%` : "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <AttendanceAnalysisPanel
+      records={records}
+      loading={loading}
+      error={error}
+      emptyLabel="No attendance records for this class yet."
+      renderExtra={renderPerStudent}
+    />
+  );
+};
+
 // --- USER DETAILS VIEW ---
 const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
   const [credentials, setCredentials] = useState(null);
@@ -1454,6 +1887,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
     { id: "overview", label: "Overview", icon: <IconUser /> },
     { id: "details", label: user.role === "parent" ? "Student Details" : "Professional Details", icon: user.role === "parent" ? <IconStudent /> : <IconTeacher /> },
     ...(user.role === "parent" ? [{ id: "fees", label: "Fee History", icon: <IconFeeShared /> }] : []),
+    ...(user.role === "parent" ? [{ id: "attendance", label: "Attendance Analysis", icon: <IconCalendar /> }] : []),
   ];
 
   const tabBarStyle = {
@@ -1765,7 +2199,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
             {feeHistory.length === 0 ? (
               <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>No fee history available.</p>
             ) : (
-              <div className="table-container" style={{ maxHeight: "360px", overflowY: "auto" }}>
+              <div className="table-container sticky-head" style={{ maxHeight: "360px", overflowY: "auto" }}>
                 <table className="custom-table">
                   <thead>
                     <tr>
@@ -1801,6 +2235,14 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── ATTENDANCE ANALYSIS TAB ── */}
+        {activeSection === "attendance" && user.role === "parent" && (
+          <StudentAttendanceAnalysis
+            studentId={user._id}
+            studentName={user.childName || user.fullName || user.username}
+          />
         )}
 
       </div>
@@ -7051,6 +7493,323 @@ const EXPENSE_TYPES = [
 const getExpenseTypeInfo = (type) =>
   EXPENSE_TYPES.find((t) => t.value === type) || EXPENSE_TYPES[EXPENSE_TYPES.length - 1];
 
+// Money-only tooltip for the expense/collection/savings charts.
+const ExpenseCollectionTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div
+      style={{
+        background: "var(--card-bg, #fff)",
+        border: "1px solid var(--border, #e2e8f0)",
+        borderRadius: "8px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        padding: "9px 12px",
+        fontSize: "0.78rem",
+      }}
+    >
+      {label != null && (
+        <div style={{ fontWeight: 700, color: "var(--text, #1e293b)", marginBottom: "5px" }}>
+          {label}
+        </div>
+      )}
+      {payload.map((entry) => (
+        <div key={entry.dataKey || entry.name} style={{ color: entry.color || entry.payload?.color, fontWeight: 600 }}>
+          {entry.name}: ₹{Number(entry.value || 0).toLocaleString()}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// --- EXPENSE · COLLECTION · SAVINGS ANALYSIS TAB ---
+// Full-page monthly view of fees collected vs expenses recorded vs the resulting
+// savings for a chosen year. `collected` uses the same rule as the Savings
+// summary card in ExpenseHistoryTab (any "Paid" payment entry for the month).
+const ExpenseAnalysisTab = ({ expenses = [], students = [], loading, onBack }) => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthIdx = now.getMonth();
+
+  const years = (() => {
+    const set = new Set([currentYear]);
+    expenses.forEach((e) => {
+      if (e.date) set.add(new Date(e.date).getFullYear());
+    });
+    students.forEach((s) => {
+      (s.payments || []).forEach((p) => {
+        if (p && p.month) set.add(Number(p.month.slice(0, 4)));
+      });
+    });
+    return [...set]
+      .filter((y) => y >= 2015 && y <= currentYear + 1)
+      .sort((a, b) => b - a);
+  })();
+
+  const [year, setYear] = useState(currentYear);
+  const [chartType, setChartType] = useState("bar");
+
+  const monthsCount = year === currentYear ? currentMonthIdx + 1 : 12;
+
+  const monthly = [];
+  let cumSavings = 0;
+  for (let m = 0; m < monthsCount; m++) {
+    const monthStr = `${year}-${String(m + 1).padStart(2, "0")}`;
+    const collected = students.reduce((acc, s) => {
+      const payment = (s.payments || []).find(
+        (p) => p.month === monthStr && p.status === "Paid",
+      );
+      return acc + (payment ? payment.amount || s.monthlyFee || 0 : 0);
+    }, 0);
+    const monthExpenses = expenses
+      .filter((e) => (e.date ? e.date.slice(0, 7) : "") === monthStr)
+      .reduce((acc, e) => acc + (e.amount || 0), 0);
+    const savings = collected - monthExpenses;
+    cumSavings += savings;
+    const d = new Date(monthStr + "-01");
+    monthly.push({
+      monthStr,
+      name: d.toLocaleString("default", { month: "short" }),
+      nameLong: `${d.toLocaleString("default", { month: "long" })} ${year}`,
+      collected,
+      expenses: monthExpenses,
+      savings,
+      cumSavings,
+    });
+  }
+
+  const totalCollected = monthly.reduce((a, r) => a + r.collected, 0);
+  const totalExpenses = monthly.reduce((a, r) => a + r.expenses, 0);
+  const netSavings = totalCollected - totalExpenses;
+  const savingsRate = totalCollected > 0 ? Math.round((netSavings / totalCollected) * 100) : 0;
+  const avgSavings = monthly.length ? Math.round(netSavings / monthly.length) : 0;
+  const bestMonth = monthly.reduce((b, r) => (!b || r.savings > b.savings ? r : b), null);
+  const worstMonth = monthly.reduce((b, r) => (!b || r.savings < b.savings ? r : b), null);
+
+  const categoryBreakdown = EXPENSE_TYPES.map((t) => ({
+    value: t.value,
+    label: t.label,
+    color: t.color,
+    total: expenses
+      .filter(
+        (e) => (e.date ? e.date.slice(0, 4) : "") === String(year) && e.type === t.value,
+      )
+      .reduce((acc, e) => acc + (e.amount || 0), 0),
+  })).filter((t) => t.total > 0);
+
+  const fmt = (n) => `₹${Number(n || 0).toLocaleString()}`;
+
+  const kpis = [
+    { label: "Collected", value: fmt(totalCollected), color: "#16a34a", bg: "#f0fdf4", Icon: IconMoney },
+    { label: "Expenses", value: fmt(totalExpenses), color: "#dc2626", bg: "#fef2f2", Icon: IconReceipt },
+    {
+      label: "Net Savings",
+      value: fmt(netSavings),
+      color: netSavings >= 0 ? "#16a34a" : "#dc2626",
+      bg: netSavings >= 0 ? "#f0fdf4" : "#fef2f2",
+      Icon: IconTrendingUp,
+    },
+    { label: "Savings Rate", value: `${savingsRate}%`, color: "#0f766e", bg: "#f0fdfa", Icon: IconChart },
+    { label: "Avg / Month", value: fmt(avgSavings), color: "#6366f1", bg: "#eef2ff", Icon: IconCalendar },
+  ];
+
+  return (
+    <div style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}>
+      <div className="rev-analytics-header">
+        <button type="button" className="rev-back-btn" onClick={onBack}>
+          ← Back
+        </button>
+        <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, flex: 1 }}>
+          Expense &amp; Collection Analysis
+        </h2>
+        <select
+          className="admin-att-select"
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading && students.length === 0 && expenses.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
+          Loading analysis…
+        </div>
+      ) : (
+        <>
+          {/* KPI ROW */}
+          <div className="rev-kpi-grid" style={{ marginBottom: "18px" }}>
+            {kpis.map((k) => (
+              <div key={k.label} className="rev-kpi-card">
+                <div className="rev-kpi-icon" style={{ background: k.bg, color: k.color }}>
+                  <k.Icon />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="rev-kpi-label">{k.label}</div>
+                  <div className="rev-kpi-value" style={{ color: k.color }}>{k.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* MAIN CHART */}
+          <div className="att-chart-card" style={{ marginBottom: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+              <h3 className="att-chart-title" style={{ margin: 0 }}>
+                Monthly Collection vs Expenses vs Savings
+              </h3>
+              <div className="chart-type-toggle" role="group" aria-label="Chart type">
+                {["bar", "area", "line"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={chartType === t ? "active" : ""}
+                    onClick={() => setChartType(t)}
+                  >
+                    {t[0].toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 300, fontSize: "0.75rem" }}>
+              <ResponsiveContainer>
+                <ComposedChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                  <defs>
+                    {[
+                      { id: "eaCollected", c: "#16a34a" },
+                      { id: "eaExpenses", c: "#dc2626" },
+                      { id: "eaSavings", c: "#2563eb" },
+                    ].map((g) => (
+                      <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={g.c} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={g.c} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis axisLine={false} tickLine={false} width={58} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <Tooltip content={<ExpenseCollectionTooltip />} />
+                  <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "0.75rem" }} />
+                  {chartType === "bar" && (
+                    <>
+                      <Bar dataKey="collected" name="Collected" fill="#16a34a" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                      <Bar dataKey="expenses" name="Expenses" fill="#dc2626" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                      <Line type="monotone" dataKey="savings" name="Savings" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 3, fill: "#2563eb" }} />
+                    </>
+                  )}
+                  {chartType === "area" && (
+                    <>
+                      <Area type="monotone" dataKey="collected" name="Collected" stroke="#16a34a" strokeWidth={2} fillOpacity={1} fill="url(#eaCollected)" />
+                      <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#dc2626" strokeWidth={2} fillOpacity={1} fill="url(#eaExpenses)" />
+                      <Area type="monotone" dataKey="savings" name="Savings" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#eaSavings)" />
+                    </>
+                  )}
+                  {chartType === "line" && (
+                    <>
+                      <Line type="monotone" dataKey="collected" name="Collected" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 3, fill: "#16a34a" }} />
+                      <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#dc2626" strokeWidth={2.5} dot={{ r: 3, fill: "#dc2626" }} />
+                      <Line type="monotone" dataKey="savings" name="Savings" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 3, fill: "#2563eb" }} />
+                    </>
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* CUMULATIVE SAVINGS + CATEGORY SPLIT */}
+          <div className="att-analytics-grid" style={{ marginBottom: "18px" }}>
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Cumulative Savings</h3>
+              <div style={{ width: "100%", height: 220, fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <AreaChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="eaCumSavings" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} width={60} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <Tooltip content={<ExpenseCollectionTooltip />} />
+                    <Area type="monotone" dataKey="cumSavings" name="Savings (cumulative)" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#eaCumSavings)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Expenses by Category ({year})</h3>
+              {categoryBreakdown.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontSize: "0.85rem" }}>
+                  No expenses recorded for {year}.
+                </div>
+              ) : (
+                <div style={{ width: "100%", height: 220, fontSize: "0.75rem" }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={categoryBreakdown} dataKey="total" nameKey="label" cx="50%" cy="50%" innerRadius={45} outerRadius={78} paddingAngle={2}>
+                        {categoryBreakdown.map((t) => (
+                          <Cell key={t.value} fill={t.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ExpenseCollectionTooltip />} />
+                      <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: "0.72rem" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MONTHLY BREAKDOWN TABLE */}
+          <div className="table-container">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Collected</th>
+                  <th>Expenses</th>
+                  <th>Savings</th>
+                  <th>Cumulative</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map((r) => (
+                  <tr key={r.monthStr}>
+                    <td style={{ fontWeight: 700 }}>{r.name}</td>
+                    <td style={{ color: "#16a34a", fontWeight: 600 }}>{fmt(r.collected)}</td>
+                    <td style={{ color: "#dc2626", fontWeight: 600 }}>{fmt(r.expenses)}</td>
+                    <td style={{ fontWeight: 700, color: r.savings >= 0 ? "#16a34a" : "#dc2626" }}>{fmt(r.savings)}</td>
+                    <td style={{ fontWeight: 600, color: r.cumSavings >= 0 ? "#0f766e" : "#dc2626" }}>{fmt(r.cumSavings)}</td>
+                  </tr>
+                ))}
+                <tr style={{ fontWeight: 800 }}>
+                  <td>Total</td>
+                  <td style={{ color: "#16a34a" }}>{fmt(totalCollected)}</td>
+                  <td style={{ color: "#dc2626" }}>{fmt(totalExpenses)}</td>
+                  <td style={{ color: netSavings >= 0 ? "#16a34a" : "#dc2626" }}>{fmt(netSavings)}</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {monthly.length > 0 && bestMonth && worstMonth && (
+            <p style={{ margin: "12px 2px 0", fontSize: "0.8rem", color: "#94a3b8" }}>
+              Best savings month: <strong style={{ color: "#16a34a" }}>{bestMonth.nameLong}</strong> ({fmt(bestMonth.savings)}).{" "}
+              Tightest month: <strong style={{ color: "#dc2626" }}>{worstMonth.nameLong}</strong> ({fmt(worstMonth.savings)}).
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 // --- ADD EXPENSE TAB ---
 const AddExpenseTab = ({ onSuccess }) => {
   const today = new Date().toISOString().split("T")[0];
@@ -7200,7 +7959,7 @@ const AddExpenseTab = ({ onSuccess }) => {
 };
 
 // --- EXPENSE HISTORY TAB ---
-const ExpenseHistoryTab = ({ onRefresh }) => {
+const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [expenses, setExpenses] = useState([]);
   const [students, setStudents] = useState([]);
@@ -7389,6 +8148,30 @@ const ExpenseHistoryTab = ({ onRefresh }) => {
           </div>
         </div>
       )}
+
+      {/* ── Analysis Trigger ── */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+        <button
+          type="button"
+          className="expense-analysis-btn"
+          onClick={() => onNavigate && onNavigate("expense-analysis")}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "#0f766e",
+            color: "#fff",
+            border: "none",
+            padding: "9px 18px",
+            borderRadius: "8px",
+            fontWeight: 700,
+            fontSize: "0.88rem",
+            cursor: "pointer",
+          }}
+        >
+          <IconChart /> Expense &amp; Collection Analysis
+        </button>
+      </div>
 
       {/* ── Summary Cards ── */}
       <div
@@ -7842,7 +8625,7 @@ const AdminDashboard = ({ onLogout }) => {
     setUserInitialGenderFilter("all");
     setUserInitialViewMode("active");
     if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
-    if (tab === "expense-add" || tab === "expense-history") setExpenseMenuOpen(true);
+    if (tab === "expense-add" || tab === "expense-history" || tab === "expense-analysis") setExpenseMenuOpen(true);
     setActiveTab(tab);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -7859,6 +8642,8 @@ const AdminDashboard = ({ onLogout }) => {
     else setUserInitialGenderFilter("all");
     if (params.viewMode) setUserInitialViewMode(params.viewMode);
     else setUserInitialViewMode("active");
+    if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
+    if (tab === "expense-add" || tab === "expense-history" || tab === "expense-analysis") setExpenseMenuOpen(true);
     setActiveTab(tab);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -7965,9 +8750,9 @@ const AdminDashboard = ({ onLogout }) => {
             <IconGallery /> <span>Gallery</span>
           </button>
           <button
-            className={(activeTab === "expense-add" || activeTab === "expense-history") ? "active" : ""}
+            className={(activeTab === "expense-add" || activeTab === "expense-history" || activeTab === "expense-analysis") ? "active" : ""}
             onClick={() => {
-              if (activeTab !== "expense-add" && activeTab !== "expense-history") {
+              if (activeTab !== "expense-add" && activeTab !== "expense-history" && activeTab !== "expense-analysis") {
                 handleNavClick("expense-add");
               } else {
                 setExpenseMenuOpen((o) => !o);
@@ -7998,6 +8783,12 @@ const AdminDashboard = ({ onLogout }) => {
                 onClick={() => handleNavClick("expense-history")}
               >
                 <IconClock /> <span>Expense History</span>
+              </button>
+              <button
+                className={activeTab === "expense-analysis" ? "active" : ""}
+                onClick={() => handleNavClick("expense-analysis")}
+              >
+                <IconChart /> <span>Collection Analysis</span>
               </button>
             </div>
           )}
@@ -8041,7 +8832,9 @@ const AdminDashboard = ({ onLogout }) => {
                               ? "Add Expense"
                               : activeTab === "expense-history"
                                 ? "Expense History"
-                                : "Register User"}
+                                : activeTab === "expense-analysis"
+                                  ? "Collection Analysis"
+                                  : "Register User"}
             </h2>
             <p>Welcome back, Admin</p>
             </div>
@@ -8130,7 +8923,8 @@ const AdminDashboard = ({ onLogout }) => {
           {/* ✨ ADDED GALLERY TAB */}
           {activeTab === "gallery" && <GalleryRepositoryTab key={tabRefreshKey} />}
           {activeTab === "expense-add" && <AddExpenseTab onSuccess={refreshOverview} />}
-          {activeTab === "expense-history" && <ExpenseHistoryTab key={tabRefreshKey} onRefresh={refreshOverview} />}
+          {activeTab === "expense-history" && <ExpenseHistoryTab key={tabRefreshKey} onRefresh={refreshOverview} onNavigate={handleNavigate} />}
+          {activeTab === "expense-analysis" && <ExpenseAnalysisTab expenses={overviewExpenses} students={overviewUsers.filter((u) => u.role === "parent")} loading={overviewLoading} onBack={() => handleNavigate("expense-history")} />}
         </div>
       </main>
 
@@ -8173,7 +8967,7 @@ const AdminDashboard = ({ onLogout }) => {
         </button>
         <button
           className={
-            activeTab === "expense-add" || activeTab === "expense-history"
+            activeTab === "expense-add" || activeTab === "expense-history" || activeTab === "expense-analysis"
               ? "nav-item active"
               : "nav-item"
           }
