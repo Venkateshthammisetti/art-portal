@@ -268,7 +268,7 @@ app.get("/api/classes", async (req, res) => {
   try {
     const classes = await Class.find()
       .populate("teacher", "fullName username")
-      .populate("students", "childName fullName username childAge joiningDate");
+      .populate("students", "childName fullName username childAge joiningDate phone");
     res.json(classes);
   } catch (err) {
     res.status(500).json({ message: "Error fetching classes" });

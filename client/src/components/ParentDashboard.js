@@ -4,6 +4,8 @@ import "./ParentDashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
+import { AttendanceAnalysisPanel } from "./AttendanceAnalysisPanel";
+
 // Ensure these image paths are correct in your project
 import logoImg from "./new-logo.png";
 import titleImg from "./logo-title-copy.png";
@@ -666,6 +668,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [attendanceMonth, setAttendanceMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
+  const [showAttendanceAnalysis, setShowAttendanceAnalysis] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState("Copy Link");
 
   // Modal States
@@ -1815,64 +1818,102 @@ const ParentDashboard = ({ user, onLogout }) => {
           {activeTab === "attendance" && (
             <div className="att-history-view">
               <div className="att-header-row">
-                <h3>Monthly Log</h3>
-                <div className="month-nav-mini">
-                  <button onClick={() => changeAttendanceMonth(-1)}>‹</button>
-                  <span>{formatMonthName(attendanceMonth)}</span>
-                  <button onClick={() => changeAttendanceMonth(1)}>›</button>
+                <h3>{showAttendanceAnalysis ? "Attendance Analysis" : "Monthly Log"}</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {!showAttendanceAnalysis && (
+                    <div className="month-nav-mini">
+                      <button onClick={() => changeAttendanceMonth(-1)}>‹</button>
+                      <span>{formatMonthName(attendanceMonth)}</span>
+                      <button onClick={() => changeAttendanceMonth(1)}>›</button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="att-analysis-toggle-btn"
+                    onClick={() => setShowAttendanceAnalysis((v) => !v)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: showAttendanceAnalysis ? "var(--p-button-bg, #f1f5f9)" : "#0f766e",
+                      color: showAttendanceAnalysis ? "var(--p-text, #0f766e)" : "#fff",
+                      border: showAttendanceAnalysis ? "1px solid var(--p-border, #e2e8f0)" : "none",
+                      padding: "8px 14px",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <IconTrendingUp /> {showAttendanceAnalysis ? "Monthly Log" : "View Analysis"}
+                  </button>
                 </div>
               </div>
-              <div className="att-summary-bar">
-                <div className="as-item">
-                  <span className="as-label">Attended</span>
-                  <span className="as-val green">{attStats.present}</span>
-                </div>
-                <div className="as-item">
-                  <span className="as-label">Absent</span>
-                  <span className="as-val red">{attStats.absent}</span>
-                </div>
-                <div className="as-item">
-                  <span className="as-label">Total classes</span>
-                  <span className="as-val">{attStats.target}</span>
-                </div>
-              </div>
-              <div className="att-table-wrapper">
-                {attStats.records.length === 0 ? (
-                  <div className="empty-state">
-                    No attendance records for {formatMonthName(attendanceMonth)}
-                    .
+
+              {showAttendanceAnalysis ? (
+                <AttendanceAnalysisPanel
+                  records={attendanceHistory}
+                  loading={loading}
+                  error={false}
+                  emptyLabel="No attendance records yet."
+                  dark={theme === "dark"}
+                />
+              ) : (
+                <>
+                  <div className="att-summary-bar">
+                    <div className="as-item">
+                      <span className="as-label">Attended</span>
+                      <span className="as-val green">{attStats.present}</span>
+                    </div>
+                    <div className="as-item">
+                      <span className="as-label">Absent</span>
+                      <span className="as-val red">{attStats.absent}</span>
+                    </div>
+                    <div className="as-item">
+                      <span className="as-label">Total classes</span>
+                      <span className="as-val">{attStats.target}</span>
+                    </div>
                   </div>
-                ) : (
-                  <table className="att-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Day</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attStats.records.map((rec) => (
-                        <tr key={rec._id}>
-                          <td>{formatDateDDMMYYYY(rec.date)}</td>
-                          <td>
-                            {new Date(rec.date).toLocaleDateString("en-US", {
-                              weekday: "long",
-                            })}
-                          </td>
-                          <td>
-                            <span
-                              className={`status-pill ${rec.status.toLowerCase()}`}
-                            >
-                              {rec.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+                  <div className="att-table-wrapper">
+                    {attStats.records.length === 0 ? (
+                      <div className="empty-state">
+                        No attendance records for {formatMonthName(attendanceMonth)}
+                        .
+                      </div>
+                    ) : (
+                      <table className="att-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {attStats.records.map((rec) => (
+                            <tr key={rec._id}>
+                              <td>{formatDateDDMMYYYY(rec.date)}</td>
+                              <td>
+                                {new Date(rec.date).toLocaleDateString("en-US", {
+                                  weekday: "long",
+                                })}
+                              </td>
+                              <td>
+                                <span
+                                  className={`status-pill ${rec.status.toLowerCase()}`}
+                                >
+                                  {rec.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
