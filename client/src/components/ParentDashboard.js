@@ -5,6 +5,7 @@ import "./ParentDashboard.css";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 import { AttendanceAnalysisPanel } from "./AttendanceAnalysisPanel";
+import ListCountHeader from "./ListCountHeader";
 
 // Ensure these image paths are correct in your project
 import logoImg from "./new-logo.png";
@@ -436,6 +437,10 @@ const ParentGalleryTab = ({ studentId }) => {
           </select>
         </div>
       </div>
+
+      {!loading && (
+        <ListCountHeader label="Artworks" count={filteredArtwork.length} total={artwork.length} style={{ padding: "0 0 12px" }} />
+      )}
 
       {/* GALLERY GRID — same class (and so the same column breakpoints) as the
           Teacher gallery, which uses these identical .gal-card children. */}
@@ -1723,6 +1728,12 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <button onClick={() => changeReportQuarter(1)}>›</button>
                 </div>
               </div>
+              <ListCountHeader
+                label={`Reports · Q${reportQuarter} ${reportYear}`}
+                count={filteredReports.length}
+                total={reports.length}
+                style={{ padding: "0 0 12px" }}
+              />
               {filteredReports.length === 0 ? (
                 <div className="empty-state">
                   No reports found for Quarter {reportQuarter}, {reportYear}.

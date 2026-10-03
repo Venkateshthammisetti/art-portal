@@ -2145,6 +2145,138 @@ body {
 }
 .user-status-tab-count.active-count  { background: #dcfce7; color: #166534; }
 .user-status-tab-count.inactive-count { background: #fee2e2; color: #991b1b; }
+.user-status-tab.charts { color: #2a78d6; border-bottom-color: #2a78d6; }
+
+/* ── User Management: Charts view ── */
+.um-charts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.um-stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.um-stat-tile {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fafbfc;
+}
+.um-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.um-stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 4px;
+}
+.um-stat-sub {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.um-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 20px;
+  align-items: start;
+}
+.um-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.um-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+.um-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.um-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+.um-chart-tooltip {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: #1e293b;
+  max-width: 260px;
+  line-height: 1.6;
+}
+.um-chart-tooltip-total { color: #64748b; }
+.um-tooltip-names {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e2e8f0;
+}
+.um-name-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.um-name-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.78rem;
+  color: #334155;
+  white-space: nowrap;
+}
+.admin-container[data-theme="dark"] .um-name-chip {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0 !important;
+}
+.admin-container[data-theme="dark"] .um-tooltip-names { border-top-color: #334155; }
+@media (max-width: 900px) {
+  .um-charts-grid { grid-template-columns: 1fr; }
+  .um-stat-row { grid-template-columns: repeat(2, 1fr); }
+}
+.admin-container[data-theme="dark"] .um-stat-tile {
+  background: #1e293b;
+  border-color: #334155;
+}
+.admin-container[data-theme="dark"] .um-stat-value,
+.admin-container[data-theme="dark"] .um-charts-header > span { color: #f1f5f9 !important; }
+.admin-container[data-theme="dark"] .um-stat-label,
+.admin-container[data-theme="dark"] .um-stat-sub,
+.admin-container[data-theme="dark"] .um-legend { color: #cbd5e1; }
+.admin-container[data-theme="dark"] .um-chart-tooltip {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+.admin-container[data-theme="dark"] .um-charts-grid { --um-chart-surface: #1e293b; }
 
 /* ── Inactive student card ── */
 .inactive-student-card {
