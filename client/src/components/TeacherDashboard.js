@@ -202,7 +202,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       formData.append("image", file);
 
       // Use the date selected by the teacher (defaults to today)
-      formData.append("dateCreated", new Date(artworkDate).toISOString());
+      formData.append("dateCreated", new Date(`${artworkDate}T12:00:00`).toISOString());
 
       try {
         const res = await axios.post(
@@ -312,16 +312,35 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     }
   };
 
+  // Selection only makes sense for what's on screen — drop it when the view changes
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [selectedStudent, filterYear, filterMonth]);
+
   // 5d. Edit Date — open (single artwork or bulk-selected)
+  // Local YYYY-MM-DD (toISOString would shift the day in non-UTC timezones)
+  const toDateInputValue = (date) => {
+    const d = new Date(date);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
   const openEditDate = (e, art) => {
     if (e) e.stopPropagation();
-    setDateEditValue(new Date(art.dateCreated).toISOString().split("T")[0]);
+    setDateEditValue(toDateInputValue(art.dateCreated));
     setDateEditTarget({ type: "single", id: art._id });
   };
 
   const openBulkEditDate = () => {
     if (selectedIds.length === 0) return;
-    setDateEditValue(new Date().toISOString().split("T")[0]);
+    // Prefill with the shared date if every selected artwork has the same one
+    const selectedDates = artwork
+      .filter((a) => selectedIds.includes(a._id))
+      .map((a) => toDateInputValue(a.dateCreated));
+    const allSame = selectedDates.every((d) => d === selectedDates[0]);
+    setDateEditValue(
+      allSame && selectedDates[0] ? selectedDates[0] : toDateInputValue(new Date()),
+    );
     setDateEditTarget({ type: "bulk", ids: selectedIds });
   };
 
@@ -330,17 +349,20 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   // 5e. Edit Date — save (single PUT or bulk POST)
   const saveEditDate = async () => {
     if (!dateEditTarget || !dateEditValue) return;
-    const isoDate = new Date(dateEditValue).toISOString();
+    // Local noon keeps the chosen day intact across timezones
+    const isoDate = new Date(`${dateEditValue}T12:00:00`).toISOString();
     setSavingDate(true);
     try {
       if (dateEditTarget.type === "single") {
-        const res = await axios.put(
+        await axios.put(
           `https://art-portal-7n6r.onrender.com/api/gallery/${dateEditTarget.id}/date`,
           { dateCreated: isoDate },
         );
+        // Merge only the date — the response isn't populated, so replacing
+        // the whole object would drop studentId.childName in the "all" view
         setArtwork((prev) =>
           prev.map((a) =>
-            a._id === dateEditTarget.id ? res.data.artwork : a,
+            a._id === dateEditTarget.id ? { ...a, dateCreated: isoDate } : a,
           ),
         );
       } else {
@@ -722,7 +744,12 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
           {selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
         </h4>
         {filteredArtwork.length > 0 && (
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            {selectMode && (
+              <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)" }}>
+                {selectedIds.length} selected
+              </span>
+            )}
             {selectMode ? (
               <>
                 <button onClick={handleSelectAll} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#2563eb" }}>
