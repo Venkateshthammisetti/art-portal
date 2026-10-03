@@ -3,6 +3,7 @@ import axios from "axios";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
+import ListCountHeader from "./ListCountHeader";
 
 import {
   IconGallery as IconGalleryShared,
@@ -740,9 +741,12 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
 
       {/* PORTFOLIO HEADER + SELECT MODE */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
-        <h4 style={{ color: "var(--text-muted)", margin: 0, fontWeight: 600 }}>
-          {selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
-        </h4>
+        <ListCountHeader
+          label={selectedStudent === "all" ? "Class Portfolio" : "Student Portfolio"}
+          count={filteredArtwork.length}
+          total={artwork.length}
+          style={{ padding: 0 }}
+        />
         {filteredArtwork.length > 0 && (
           <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
             {selectMode && (
@@ -2830,6 +2834,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 </div>
               </div>
               {studentViewMode === "list" ? (
+                <>
+                <ListCountHeader
+                  label="Students"
+                  count={getProcessedStudents().length}
+                  total={myStudents.length}
+                  style={{ padding: "4px 0 10px" }}
+                />
                 <div className="std-table-wrapper">
                   <table className="std-table">
                     <thead>
@@ -2883,6 +2894,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     </tbody>
                   </table>
                 </div>
+                </>
               ) : (
                 <div className="analytics-container">
                   <div className="chart-card">

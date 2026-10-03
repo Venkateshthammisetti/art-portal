@@ -21,6 +21,7 @@ import "./AdminDashboard.css";
 import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
 import { FaFilter } from "react-icons/fa6";
 import BirthdayNotificationBell from "./BirthdayNotifications";
+import ListCountHeader from "./ListCountHeader";
 
 import {
   IconGallery as IconGalleryShared,
@@ -3713,6 +3714,10 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
     return matchesRole && matchesMode && matchesGender;
   };
 
+  // Role alone defines what the list is; the other filters + search narrow it
+  const matchesRoleOnly = (user) => roleFilter === "all" || user.role === roleFilter;
+  const listLabel = roleFilter === "parent" ? "Students" : roleFilter === "teacher" ? "Teachers" : roleFilter === "admin" ? "Admins" : "Users";
+
   // Active users: isActive is true or undefined (legacy records default true)
   const activeUsers = users.filter(u => matchesRoleMode(u) && u.isActive !== false && matchesSearch(u));
   // Inactive users: isActive is explicitly false
@@ -3894,14 +3899,11 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
           ══════════════════════════════════════ */}
           {viewMode === "active" && (
             <>
-              <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "baseline", gap: "6px" }}>
-                <span style={{ fontSize: "1rem", fontWeight: "700", color: "#1e293b" }}>
-                  {roleFilter === "parent" ? "Students" : roleFilter === "teacher" ? "Teachers" : roleFilter === "admin" ? "Admins" : "Users"}
-                </span>
-                <span style={{ fontSize: "0.95rem", fontWeight: "700", color: "#64748b" }}>
-                  ({sortedActive.length})
-                </span>
-              </div>
+              <ListCountHeader
+                label={listLabel}
+                count={sortedActive.length}
+                total={users.filter((u) => matchesRoleOnly(u) && u.isActive !== false).length}
+              />
               <div className="table-container">
                 <table className="custom-table clickable-rows">
                   <thead>
@@ -4013,6 +4015,12 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
           ══════════════════════════════════════ */}
           {viewMode === "inactive" && (
             <div style={{ padding: "20px" }}>
+              <ListCountHeader
+                label={listLabel}
+                count={sortedInactive.length}
+                total={users.filter((u) => matchesRoleOnly(u) && u.isActive === false).length}
+                style={{ padding: "0 0 12px" }}
+              />
               {sortedInactive.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
                   <div style={{ marginBottom: "12px" }}><IconSuccess size={56} /></div>
@@ -5182,6 +5190,8 @@ const ClassManagementTab = () => {
             </div>
           </div>
 
+          <ListCountHeader label="Classes" count={sortedClasses.length} total={classes.length} />
+
           <div className="table-container">
             <table className="custom-table clickable-rows">
               <thead>
@@ -5198,7 +5208,7 @@ const ClassManagementTab = () => {
                 {sortedClasses.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="5"
+                      colSpan="6"
                       style={{
                         textAlign: "center",
                         padding: "30px",
@@ -6492,6 +6502,12 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                 </div>
               </div>
             </div>
+            <ListCountHeader
+              label={offlineOnly ? "Offline Students" : onlineOnly ? "Online Students" : "Students"}
+              count={processedStudents.length}
+              total={students.length}
+              style={{ padding: "4px 0 10px" }}
+            />
             <div className="table-container">
               <table className="custom-table">
                 <thead>
@@ -7254,6 +7270,10 @@ const GalleryRepositoryTab = () => {
           </select>
         </div>
       </div>
+
+      {!loading && (
+        <ListCountHeader label="Artworks" count={filteredArtwork.length} total={artwork.length} style={{ padding: "0 0 12px" }} />
+      )}
 
       {/* GALLERY GRID */}
       <div className="gallery-grid">
@@ -8177,6 +8197,8 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
             </button>
           )}
         </div>
+
+        <ListCountHeader label="Expenses" count={filtered.length} total={expenses.length} />
 
         <div className="table-container">
           <table className="custom-table">
