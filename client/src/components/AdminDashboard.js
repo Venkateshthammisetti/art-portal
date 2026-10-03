@@ -3932,6 +3932,28 @@ const AddUserTab = ({ onRefresh }) => {
 
   const [msg, setMsg] = useState("");
   const [autoFillMsg, setAutoFillMsg] = useState("");
+  const [nextAdmissionNo, setNextAdmissionNo] = useState(null);
+
+  // Next admission number = total students (active + inactive) + 1.
+  // Also stays above the highest existing TVA number so IDs never collide.
+  const fetchNextAdmissionNo = async () => {
+    try {
+      const res = await axios.get("https://art-portal-7n6r.onrender.com/api/users");
+      const students = res.data.filter((u) => u.role === "parent");
+      const maxExisting = students.reduce((max, s) => {
+        const m = /^TVA(\d+)$/i.exec((s.admissionId || "").trim());
+        return m ? Math.max(max, parseInt(m[1], 10)) : max;
+      }, 0);
+      const next = Math.max(students.length, maxExisting) + 1;
+      setNextAdmissionNo(next);
+      setFormData((prev) => ({ ...prev, admissionId: `TVA${next}` }));
+      setSiblingData((prev) => ({ ...prev, admissionId: `TVA${next + 1}` }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => { fetchNextAdmissionNo(); }, []);
 
   // Helper: Calculate Age
   const calculateAge = (dob) => {
@@ -3993,6 +4015,7 @@ const AddUserTab = ({ onRefresh }) => {
 
     const payload1 = {
       ...formData,
+      admissionId: formData.role === "parent" ? formData.admissionId : "",
       childName:
         formData.role === "parent"
           ? `${formData.firstName} ${formData.lastName}`.trim()
@@ -4074,6 +4097,7 @@ const AddUserTab = ({ onRefresh }) => {
         classMode: "online",
       });
       setShowSibling(false);
+      fetchNextAdmissionNo();
     } catch (err) {
       console.error(err);
       setMsg("❌ Error: Username taken or server issue.");
@@ -4186,6 +4210,7 @@ const AddUserTab = ({ onRefresh }) => {
                   name="admissionId"
                   value={formData.admissionId}
                   onChange={handleChange}
+                  placeholder={nextAdmissionNo ? `TVA${nextAdmissionNo}` : "Loading..."}
                 />
               </div>
             </div>

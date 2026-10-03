@@ -1214,16 +1214,25 @@ const TeacherDashboard = ({ user, onLogout }) => {
   // --- REPORT MAKER (in-app art report generator) ---
   const [rmGenerating, setRmGenerating] = useState(false);
   const [rmLibReady, setRmLibReady] = useState(!!window.html2pdf);
+  // Saved draft so filled-in content survives tab switches, student changes and reloads
+  const rmDraft = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("rmDraft")) || {};
+    } catch {
+      return {};
+    }
+  })();
   const [rmForm, setRmForm] = useState({
-    studentId: "",
     month: new Date().toISOString().slice(0, 7),
-    attendance: "/8 Classes",
+    attendance: "",
     fee: "Paid",
     topics: "",
     skills: "",
     homework: "",
     feedback: "",
     overall: "EXCELLENT",
+    ...rmDraft.form,
+    studentId: "",
   });
   const [rmRatings, setRmRatings] = useState({
     regularity: 5,
@@ -1233,7 +1242,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
     patience: 5,
     creativity: 5,
     homework: 5,
+    ...rmDraft.ratings,
   });
+  const [rmAttendanceLoading, setRmAttendanceLoading] = useState(false);
   const [rmImages, setRmImages] = useState([]);
   const [rmStudentGallery, setRmStudentGallery] = useState([]);
   const [rmGalleryLoading, setRmGalleryLoading] = useState(false);
@@ -1871,35 +1882,63 @@ const TeacherDashboard = ({ user, onLogout }) => {
     { key: "homework", label: "Homework Completion" },
   ];
 
+  // After sending a report, only the student is cleared — the written content
+  // stays so the teacher can reuse it for the next student until they edit it
   const resetRmForm = () => {
-    setRmForm({
-      studentId: "",
-      month: new Date().toISOString().slice(0, 7),
-      attendance: "/8 Classes",
-      fee: "Paid",
-      topics: "",
-      skills: "",
-      homework: "",
-      feedback: "",
-      overall: "EXCELLENT",
-    });
-    setRmRatings({
-      regularity: 5,
-      focus: 5,
-      attention: 5,
-      participation: 5,
-      patience: 5,
-      creativity: 5,
-      homework: 5,
-    });
+    setRmForm((prev) => ({ ...prev, studentId: "", attendance: "" }));
     setRmImages([]);
     setRmStudentGallery([]);
   };
 
   const openReportMaker = () => {
-    resetRmForm();
     handleNavClick("report-maker");
   };
+
+  // Persist the draft (everything except the student-specific fields)
+  useEffect(() => {
+    const { studentId, attendance, ...form } = rmForm;
+    try {
+      localStorage.setItem("rmDraft", JSON.stringify({ form, ratings: rmRatings }));
+    } catch {
+      // storage unavailable — draft just won't survive a reload
+    }
+  }, [rmForm, rmRatings]);
+
+  // Auto-fill attendance from the selected student's records for the selected month
+  useEffect(() => {
+    if (!rmForm.studentId || !rmForm.month) {
+      setRmForm((prev) => ({ ...prev, attendance: "" }));
+      return;
+    }
+    let cancelled = false;
+    setRmAttendanceLoading(true);
+    axios
+      .get(
+        `https://art-portal-7n6r.onrender.com/api/attendance/student/${rmForm.studentId}`,
+      )
+      .then((res) => {
+        if (cancelled) return;
+        const inMonth = res.data.filter((r) =>
+          (r.date || "").startsWith(rmForm.month),
+        );
+        // "Held" = Present + Absent + Missed, matching the Attendance Analysis panel
+        const present = inMonth.filter((r) => r.status === "Present").length;
+        setRmForm((prev) => ({
+          ...prev,
+          attendance: `${present}/${inMonth.length} Classes`,
+        }));
+      })
+      .catch((err) => {
+        console.error("Report attendance fetch error:", err);
+        if (!cancelled) setRmForm((prev) => ({ ...prev, attendance: "" }));
+      })
+      .finally(() => {
+        if (!cancelled) setRmAttendanceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rmForm.studentId, rmForm.month]);
 
   // Pull the selected student's whole gallery whenever they change
   useEffect(() => {
@@ -3698,7 +3737,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         <label>Attendance</label>
                         <input
                           type="text"
-                          value={rmForm.attendance}
+                          placeholder={
+                            rmAttendanceLoading
+                              ? "Loading attendance..."
+                              : rmForm.studentId
+                                ? "e.g. 6/8 Classes"
+                                : "Select a student"
+                          }
+                          value={rmAttendanceLoading ? "" : rmForm.attendance}
                           onChange={(e) =>
                             setRmForm({
                               ...rmForm,
