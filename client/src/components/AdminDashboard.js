@@ -1966,6 +1966,14 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
 
   const [year, setYear] = useState(currentYear);
   const [chartType, setChartType] = useState("area");
+  const [classPeriod, setClassPeriod] = useState("all");
+  const [classTeacher, setClassTeacher] = useState("all");
+
+  // Reset the class-revenue period when the year changes, since a month
+  // picked for one year doesn't exist in the other's month list.
+  useEffect(() => {
+    setClassPeriod("all");
+  }, [year]);
 
   const classNameFor = (student) => {
     const ac = student.assignedClass;
@@ -2043,6 +2051,81 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
   const bestJoinMonth = monthly.reduce((b, r) => (!b || r.joined > b.joined ? r : b), null);
 
   const fmt = (n) => `₹${Number(n || 0).toLocaleString()}`;
+
+  // ===== REVENUE BY CLASS =====
+  // Same per-student rules as the monthly loop above, grouped by the
+  // student's class. Period is either the whole selected year ("all")
+  // or a single month of it.
+  const classKeyFor = (student) => {
+    const ac = student.assignedClass;
+    if (ac) return String(ac._id || ac);
+    const c = classes.find((x) => (x.students || []).some((st) => (st._id || st) === student._id));
+    return c ? String(c._id) : "unassigned";
+  };
+  const periodMonths =
+    classPeriod === "all" ? monthly.map((r) => r.monthStr) : [classPeriod];
+  const emptyClassRow = (id, name, teacher, teacherId = "") => ({
+    id, name, teacher, teacherId, students: 0, collected: 0, expected: 0, paidCount: 0, pendingCount: 0,
+  });
+  const classRevMap = {};
+  classes.forEach((c) => {
+    classRevMap[String(c._id)] = emptyClassRow(
+      String(c._id),
+      c.className || "Unnamed",
+      c.teacher ? c.teacher.fullName || c.teacher.username : "—",
+      c.teacher ? String(c.teacher._id || c.teacher) : "",
+    );
+  });
+  students.forEach((s) => {
+    const key = classKeyFor(s);
+    if (!classRevMap[key]) {
+      classRevMap[key] = emptyClassRow(key, key === "unassigned" ? "Unassigned" : classNameFor(s), "—");
+    }
+    const row = classRevMap[key];
+    row.students += 1;
+    periodMonths.forEach((monthStr) => {
+      const status = getMonthPaymentStatus(s, monthStr);
+      if (status === "NotJoined" || status === "Inactive" || status === "Pass") return;
+      if (status === "Paid") {
+        const pmt = (s.payments || []).find((p) => p.month === monthStr);
+        row.collected += pmt?.amount ?? s.monthlyFee ?? 0;
+        row.expected += pmt?.amount ?? getFeeForMonth(s, monthStr) ?? 0;
+        row.paidCount += 1;
+      } else {
+        row.expected += getFeeForMonth(s, monthStr);
+        row.pendingCount += 1;
+      }
+    });
+  });
+  // Teachers that own at least one class, for the teacher filter dropdown.
+  const classTeacherOptions = [
+    ...new Map(
+      Object.values(classRevMap)
+        .filter((r) => r.teacherId)
+        .map((r) => [r.teacherId, r.teacher]),
+    ).entries(),
+  ].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+  const classTeacherName =
+    (classTeacherOptions.find(([id]) => id === classTeacher) || [])[1] || "";
+  const classRevenue = Object.values(classRevMap)
+    .filter((r) => r.students > 0 || r.expected > 0)
+    .filter((r) => classTeacher === "all" || r.teacherId === classTeacher)
+    .map((r) => ({
+      ...r,
+      pending: Math.max(0, r.expected - r.collected),
+      rate: r.expected > 0 ? Math.round((r.collected / r.expected) * 100) : 0,
+    }))
+    .sort((a, b) => b.collected - a.collected || b.expected - a.expected);
+  const classTotalCollected = classRevenue.reduce((a, r) => a + r.collected, 0);
+  const classTotalExpected = classRevenue.reduce((a, r) => a + r.expected, 0);
+  const classTotalPending = classRevenue.reduce((a, r) => a + r.pending, 0);
+  const classTotalStudents = classRevenue.reduce((a, r) => a + r.students, 0);
+  const classTotalRate =
+    classTotalExpected > 0 ? Math.round((classTotalCollected / classTotalExpected) * 100) : 0;
+  const classPeriodLabel =
+    classPeriod === "all"
+      ? `${year} (year to date)`
+      : (monthly.find((r) => r.monthStr === classPeriod) || {}).nameLong || classPeriod;
 
   const kpis = [
     { label: "Collected", value: fmt(totalCollected), Icon: IconMoney, color: "#16a34a", bg: "#f0fdf4" },
@@ -2249,6 +2332,110 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
             </div>
           </div>
 
+          {/* REVENUE BY CLASS */}
+          <div className="att-chart-card" style={{ marginBottom: "20px" }}>
+            <div className="overview-chart-head" style={{ flexWrap: "wrap", gap: "10px" }}>
+              <div>
+                <h3 className="att-chart-title" style={{ margin: 0 }}>Revenue by Class</h3>
+                <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "2px" }}>
+                  {classPeriodLabel}
+                  {classTeacher !== "all" && classTeacherName ? ` · ${classTeacherName}` : ""}
+                  {" · "}{fmt(classTotalCollected)} collected of {fmt(classTotalExpected)}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <select
+                  className="admin-att-select"
+                  value={classTeacher}
+                  onChange={(e) => setClassTeacher(e.target.value)}
+                >
+                  <option value="all">All teachers</option>
+                  {classTeacherOptions.map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+                <select
+                  className="admin-att-select"
+                  value={classPeriod}
+                  onChange={(e) => setClassPeriod(e.target.value)}
+                >
+                  <option value="all">Whole year</option>
+                  {monthly.map((r) => (
+                    <option key={r.monthStr} value={r.monthStr}>{r.nameLong}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {classRevenue.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>No class data for this period.</div>
+            ) : (
+              <>
+                <div style={{ width: "100%", height: Math.max(180, classRevenue.length * 44 + 40), fontSize: "0.75rem", marginTop: "10px" }}>
+                  <ResponsiveContainer>
+                    <BarChart data={classRevenue} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={110} tick={{ fill: "#64748b", fontSize: 11 }} />
+                      <Tooltip content={<RevenueChartTooltip />} />
+                      <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "0.75rem" }} />
+                      <Bar dataKey="collected" name="Collected" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                      <Bar dataKey="expected" name="Expected" fill="#cbd5e1" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="table-wrapper" style={{ marginTop: "14px" }}>
+                  <div className="table-container">
+                    <table className="custom-table">
+                      <thead>
+                        <tr>
+                          <th>Class</th>
+                          <th>Teacher</th>
+                          <th>Students</th>
+                          <th>Collected</th>
+                          <th>Expected</th>
+                          <th>Pending</th>
+                          <th>Rate</th>
+                          <th>Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {classRevenue.map((r) => (
+                          <tr key={r.id}>
+                            <td style={{ fontWeight: 700 }}>{r.name}</td>
+                            <td style={{ color: "#64748b" }}>{r.teacher}</td>
+                            <td>{r.students}</td>
+                            <td style={{ color: "#16a34a", fontWeight: 700 }}>{fmt(r.collected)}</td>
+                            <td style={{ color: "#94a3b8" }}>{fmt(r.expected)}</td>
+                            <td style={{ color: r.pending > 0 ? "#dc2626" : "#94a3b8" }}>{fmt(r.pending)}</td>
+                            <td style={{ fontWeight: 700, color: r.rate >= 80 ? "#16a34a" : r.rate >= 50 ? "#d97706" : "#dc2626" }}>
+                              {r.expected > 0 ? `${r.rate}%` : "—"}
+                            </td>
+                            <td>
+                              {classTotalCollected > 0
+                                ? `${Math.round((r.collected / classTotalCollected) * 100)}%`
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ fontWeight: 800 }}>
+                          <td>Total</td>
+                          <td>—</td>
+                          <td>{classTotalStudents}</td>
+                          <td style={{ color: "#16a34a" }}>{fmt(classTotalCollected)}</td>
+                          <td style={{ color: "#94a3b8" }}>{fmt(classTotalExpected)}</td>
+                          <td style={{ color: "#dc2626" }}>{fmt(classTotalPending)}</td>
+                          <td>{classTotalExpected > 0 ? `${classTotalRate}%` : "—"}</td>
+                          <td>{classTotalCollected > 0 ? "100%" : "—"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* MONTHLY BREAKDOWN TABLE */}
           <div className="table-wrapper">
