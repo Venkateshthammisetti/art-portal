@@ -3329,8 +3329,238 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
   );
 };
 
+// --- USER MANAGEMENT: CHARTS VIEW ---
+// Students split by class mode (online / offline) and by location.
+const MODE_COLORS = { online: "#2a78d6", offline: "#eb6834" };
+const MAX_LOCATION_BARS = 12;
+
+// Location shown/grouped for a user: `location`, falling back to `city`.
+const getUserLocation = (u) => (u.location || u.city || "").trim();
+
+const LocationChartTooltip = ({ active, payload }) => {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload || {};
+  return (
+    <div className="um-chart-tooltip">
+      <div style={{ fontWeight: 700, marginBottom: "4px" }}>{row.name}</div>
+      <div><span className="um-legend-swatch" style={{ background: MODE_COLORS.online }} /> Online: <strong>{row.online}</strong></div>
+      <div><span className="um-legend-swatch" style={{ background: MODE_COLORS.offline }} /> Offline: <strong>{row.offline}</strong></div>
+      <div className="um-chart-tooltip-total">Total: <strong>{row.total}</strong></div>
+      {row.others && <div className="um-chart-tooltip-total">{row.others.join(", ")}</div>}
+      {!row.others && row.students && (
+        <div className="um-tooltip-names">
+          {row.students.slice(0, 10).map((st) => (
+            <div key={st.id}>
+              <span className="um-legend-swatch" style={{ background: MODE_COLORS[st.mode] }} /> {st.name}
+            </div>
+          ))}
+          {row.students.length > 10 && (
+            <div className="um-chart-tooltip-total">+{row.students.length - 10} more — see table below</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ModeChartTooltip = ({ active, payload }) => {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload || {};
+  return (
+    <div className="um-chart-tooltip">
+      <span className="um-legend-swatch" style={{ background: row.color }} /> {row.name}: <strong>{row.value}</strong> ({row.pct}%)
+    </div>
+  );
+};
+
+const UserChartsView = ({ users }) => {
+  const [scope, setScope] = useState("active"); // "active" | "inactive" | "all"
+
+  const students = users.filter((u) => {
+    if (u.role !== "parent") return false;
+    if (scope === "active") return u.isActive !== false;
+    if (scope === "inactive") return u.isActive === false;
+    return true;
+  });
+
+  const total = students.length;
+  const onlineCount = students.filter((s) => (s.classMode || "online") === "online").length;
+  const offlineCount = total - onlineCount;
+  const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
+
+  const modeData = [
+    { name: "Online", value: onlineCount, pct: pct(onlineCount), color: MODE_COLORS.online },
+    { name: "Offline", value: offlineCount, pct: pct(offlineCount), color: MODE_COLORS.offline },
+  ];
+
+  // Group case-insensitively so "texas" and "Texas" land in one bar.
+  const locMap = {};
+  students.forEach((s) => {
+    const raw = getUserLocation(s);
+    const key = raw ? raw.toLowerCase() : "__none__";
+    if (!locMap[key]) locMap[key] = { name: raw || "Not specified", online: 0, offline: 0, total: 0, students: [] };
+    const mode = (s.classMode || "online") === "offline" ? "offline" : "online";
+    locMap[key][mode] += 1;
+    locMap[key].total += 1;
+    locMap[key].students.push({ id: s._id, name: s.childName || s.fullName || s.username, mode });
+  });
+  const allLocations = Object.values(locMap).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const specifiedCount = allLocations.filter((l) => l.name !== "Not specified").length;
+
+  let locationData = allLocations;
+  if (allLocations.length > MAX_LOCATION_BARS) {
+    const rest = allLocations.slice(MAX_LOCATION_BARS - 1);
+    locationData = [
+      ...allLocations.slice(0, MAX_LOCATION_BARS - 1),
+      {
+        name: `Other (${rest.length})`,
+        online: rest.reduce((sum, l) => sum + l.online, 0),
+        offline: rest.reduce((sum, l) => sum + l.offline, 0),
+        total: rest.reduce((sum, l) => sum + l.total, 0),
+        others: rest.map((l) => `${l.name} (${l.total})`),
+      },
+    ];
+  }
+
+  const ModeLegend = () => (
+    <div className="um-legend">
+      <span><span className="um-legend-swatch" style={{ background: MODE_COLORS.online }} /> Online</span>
+      <span><span className="um-legend-swatch" style={{ background: MODE_COLORS.offline }} /> Offline</span>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: "20px" }}>
+      <div className="um-charts-header">
+        <span style={{ fontSize: "1rem", fontWeight: "700", color: "#1e293b" }}>Student Analytics</span>
+        <div className="filter-dropdown">
+          <label>Students:</label>
+          <select value={scope} onChange={(e) => setScope(e.target.value)}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="um-stat-row">
+        <div className="um-stat-tile">
+          <div className="um-stat-label">Students</div>
+          <div className="um-stat-value">{total}</div>
+        </div>
+        <div className="um-stat-tile">
+          <div className="um-stat-label"><span className="um-legend-swatch" style={{ background: MODE_COLORS.online }} /> Online</div>
+          <div className="um-stat-value">{onlineCount} <span className="um-stat-sub">{pct(onlineCount)}%</span></div>
+        </div>
+        <div className="um-stat-tile">
+          <div className="um-stat-label"><span className="um-legend-swatch" style={{ background: MODE_COLORS.offline }} /> Offline</div>
+          <div className="um-stat-value">{offlineCount} <span className="um-stat-sub">{pct(offlineCount)}%</span></div>
+        </div>
+        <div className="um-stat-tile">
+          <div className="um-stat-label">Locations</div>
+          <div className="um-stat-value">{specifiedCount}</div>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>No students in this view.</div>
+      ) : (
+        <>
+          <div className="um-charts-grid">
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Online vs Offline</h3>
+              <div style={{ width: "100%", height: 240, position: "relative" }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={modeData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="58%"
+                      outerRadius="85%"
+                      paddingAngle={onlineCount && offlineCount ? 2 : 0}
+                      stroke="none"
+                      isAnimationActive={false}
+                    >
+                      {modeData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                    </Pie>
+                    <Tooltip content={<ModeChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="um-donut-center">
+                  <div className="att-donut-center-value">{total}</div>
+                  <div className="um-stat-label">students</div>
+                </div>
+              </div>
+              <ModeLegend />
+            </div>
+
+            <div className="att-chart-card">
+              <h3 className="att-chart-title">Students by Location</h3>
+              <div style={{ width: "100%", height: Math.max(200, locationData.length * 34 + 30), fontSize: "0.75rem" }}>
+                <ResponsiveContainer>
+                  <BarChart data={locationData} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }} barCategoryGap={6}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={110} axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
+                    <Tooltip content={<LocationChartTooltip />} cursor={{ fill: "rgba(148,163,184,0.12)" }} wrapperStyle={{ zIndex: 20 }} />
+                    <Bar dataKey="online" name="Online" stackId="mode" fill={MODE_COLORS.online} stroke="var(--um-chart-surface, #fafbfc)" strokeWidth={1} maxBarSize={22} />
+                    <Bar dataKey="offline" name="Offline" stackId="mode" fill={MODE_COLORS.offline} stroke="var(--um-chart-surface, #fafbfc)" strokeWidth={1} radius={[0, 4, 4, 0]} maxBarSize={22} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <ModeLegend />
+            </div>
+          </div>
+
+          <div className="att-chart-card" style={{ marginTop: "20px" }}>
+            <h3 className="att-chart-title">Location Breakdown</h3>
+            <div className="table-container">
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Location</th>
+                    <th>Online</th>
+                    <th>Offline</th>
+                    <th>Total</th>
+                    <th>Share</th>
+                    <th>Students</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allLocations.map((l) => (
+                    <tr key={l.name}>
+                      <td style={{ fontWeight: 600 }}>{l.name}</td>
+                      <td>{l.online}</td>
+                      <td>{l.offline}</td>
+                      <td style={{ fontWeight: 700 }}>{l.total}</td>
+                      <td>{pct(l.total)}%</td>
+                      <td>
+                        <div className="um-name-list">
+                          {[...l.students]
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((st) => (
+                              <span key={st.id} className="um-name-chip" title={st.mode === "offline" ? "Offline" : "Online"}>
+                                <span className="um-legend-swatch" style={{ background: MODE_COLORS[st.mode] }} />
+                                {st.name}
+                              </span>
+                            ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // --- TAB 2: USER MANAGEMENT ---
-const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all", initialGenderFilter = "all", initialViewMode = "active" }) => {
+const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all", initialGenderFilter = "all", initialViewMode = "active" }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
@@ -3345,18 +3575,23 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
   const [viewMode, setViewMode] = useState(initialViewMode); // "active" | "inactive"
   const [inactiveModal, setInactiveModal] = useState({ show: false, userId: null, userName: "" });
   const [visibleColumns, setVisibleColumns] = useState(() => {
-    const savedColumns = localStorage.getItem("admin_visible_columns");
-    return savedColumns
-      ? JSON.parse(savedColumns)
-      : {
-          name: true,
-          role: true,
-          mode: true,
-          fee: true,
-          joiningDate: true,
-          status: true,
-          action: true,
-        };
+    const defaults = {
+      name: true,
+      role: true,
+      mode: true,
+      location: true,
+      fee: true,
+      joiningDate: true,
+      status: true,
+      action: true,
+    };
+    // Merge so columns added later (e.g. location) show up for saved preferences
+    try {
+      const savedColumns = localStorage.getItem("admin_visible_columns");
+      return savedColumns ? { ...defaults, ...JSON.parse(savedColumns) } : defaults;
+    } catch {
+      return defaults;
+    }
   });
 
   useEffect(() => { fetchUsers(); }, []);
@@ -3550,9 +3785,18 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                 <span className="user-status-tab-count inactive-count">{inactiveCount}</span>
               )}
             </button>
+            <button
+              className={`user-status-tab ${viewMode === "charts" ? "charts" : ""}`}
+              onClick={() => setViewMode("charts")}
+            >
+              Charts
+            </button>
           </div>
 
+          {viewMode === "charts" && <UserChartsView users={users} />}
+
           {/* ── Shared Filter Bar ── */}
+          {viewMode !== "charts" && (
           <div className="filter-bar">
             <div className="search-box">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
@@ -3623,6 +3867,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                         { key: "name", label: "Name / ID" },
                         { key: "role", label: "Role" },
                         { key: "mode", label: "Mode" },
+                        { key: "location", label: "Location" },
                         { key: "fee", label: "Fee / Salary" },
                         { key: "joiningDate", label: "Joining Date" },
                         { key: "status", label: "Status" },
@@ -3642,6 +3887,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
               )}
             </div>
           </div>
+          )}
 
           {/* ══════════════════════════════════════
               ACTIVE VIEW — existing table
@@ -3663,6 +3909,7 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                       {visibleColumns.name && <th>Name / ID</th>}
                       {visibleColumns.role && <th>Role</th>}
                       {visibleColumns.mode && <th>Mode</th>}
+                      {visibleColumns.location && <th>Location</th>}
                       {visibleColumns.fee && <th>Fee / Salary</th>}
                       {visibleColumns.joiningDate && <th>Joining Date</th>}
                       {visibleColumns.status && <th>Status</th>}
@@ -3691,6 +3938,20 @@ const UserManagementTab = ({ initialRoleFilter = "all", initialModeFilter = "all
                               <span className={`mode-badge ${user.classMode || "online"}`}>
                                 {user.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                               </span>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
+                            )}
+                          </td>
+                        )}
+                        {visibleColumns.location && (
+                          <td>
+                            {getUserLocation(user) ? (
+                              <>
+                                <div style={{ fontWeight: "500", color: "#333" }}>{getUserLocation(user)}</div>
+                                {user.location && user.city && user.city.trim().toLowerCase() !== user.location.trim().toLowerCase() && (
+                                  <div style={{ fontSize: "12px", color: "#888" }}>{user.city}</div>
+                                )}
+                              </>
                             ) : (
                               <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
                             )}
