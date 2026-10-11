@@ -107,7 +107,7 @@ const ChatbotWidget = ({ user }) => {
     setIsTyping(true);
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/chatbot',
+        'https://art-portal-7n6r.onrender.com/api/chatbot',
         { message: text, history },
         { headers: { Authorization: `Bearer ${user.chatToken}` }, timeout: 40000 }
       );

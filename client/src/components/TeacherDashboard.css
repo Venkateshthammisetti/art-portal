@@ -932,7 +932,7 @@
 .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--text-main); }
 .stat-label { color: var(--text-muted); font-size: 0.9rem; margin-top: 5px; font-weight: 500; }
 .section-title { font-size: 1.1rem; color: var(--text-main); margin-bottom: 20px; }
-.today-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+.today-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px; }
 .today-card { background: var(--bg-card); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 15px; transition: box-shadow 0.18s ease; }
 .tc-header { display: flex; justify-content: space-between; align-items: center; }
 .tc-time { font-weight: 700; color: var(--primary); background: #eff6ff; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; }
@@ -1054,7 +1054,7 @@
 
 .class-detail-modal { 
   background-color: white; /* SOLID WHITE BACKGROUND */
-  width: 450px; padding: 25px; 
+  width: 450px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 25px; 
   border-radius: 16px; 
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   position: relative; 
@@ -1105,7 +1105,7 @@
 .class-badge { background: #eff6ff; color: var(--primary); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
 
 /* Analytics Charts (CSS Only) */
-.analytics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.analytics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
 .chart-card { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 25px; box-shadow: var(--shadow); }
 .chart-card h4 { margin: 0 0 20px 0; color: var(--text-main); font-size: 1.1rem; }
 
@@ -1649,7 +1649,7 @@
 .mode-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
 .mode-badge.online { background: #dcfce7; color: #16a34a; }
 .mode-badge.offline { background: #fef3c7; color: #d97706; }
-.analytics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.analytics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
 .chart-card { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 25px; box-shadow: var(--shadow); }
 .chart-card h4 { margin: 0 0 20px 0; color: var(--text-main); font-size: 1.1rem; }
 .pie-chart-wrapper { display: flex; align-items: center; justify-content: center; gap: 30px; }
@@ -2250,8 +2250,35 @@
   .multi-select-dropdown { width: 100%; max-width: 100%; }
 
   .daily-header { flex-direction: column; align-items: flex-start; gap: 15px; }
-  .dh-actions { width: 100%; overflow-x: auto; padding-bottom: 5px; }
-  
+  .dh-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 5px; }
+
+  /* Weekly timetable: squeeze all 7 days into the screen width */
+  .tt-time-col { width: 38px; }
+  .tt-time-label { font-size: 0.62rem; }
+  .tt-main-area { min-width: 0; }
+  .tt-header-cell { font-size: 0.7rem; min-width: 0; }
+  .day-name { font-size: 0.6rem; }
+  .tt-event-block { padding: 2px 3px; font-size: 0.6rem; border-left-width: 2px; }
+  .ev-time { font-size: 0.58rem; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ev-title {
+    white-space: normal; overflow-wrap: anywhere; line-height: 1.15;
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
+  }
+
+  /* Schedule list view: day/time on top, class details below, button right */
+  .list-header-row.table-header { display: none; }
+  .schedule-list-view-wrapper { padding: 10px; }
+  .schedule-list-item {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "day action" "time action" "info action";
+    row-gap: 2px;
+    padding: 12px;
+  }
+  .schedule-list-item .sli-day { grid-area: day; }
+  .schedule-list-item .sli-time { grid-area: time; }
+  .schedule-list-item .sli-info { grid-area: info; min-width: 0; }
+  .schedule-list-item .sli-action { grid-area: action; align-self: center; }
+
   .tt-toolbar { flex-direction: column; gap: 10px; align-items: stretch; }
   .tt-date-display { text-align: center; }
   .week-nav { justify-content: center; }
