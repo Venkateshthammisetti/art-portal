@@ -1543,9 +1543,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
     marginBottom: "24px",
     width: "fit-content",
     maxWidth: "100%",
-    overflowX: "auto",
-    scrollbarWidth: "none",
-    WebkitOverflowScrolling: "touch",
+    flexWrap: "wrap",
   };
 
   const tabBtnStyle = (id) => ({
@@ -1636,10 +1634,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
           <button
             key={tab.id}
             style={tabBtnStyle(tab.id)}
-            onClick={(e) => {
-              setActiveSection(tab.id);
-              e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }}
+            onClick={() => setActiveSection(tab.id)}
           >
             <span>{tab.icon}</span>
             <span>{tab.label}</span>
@@ -5861,7 +5856,7 @@ const SlotManagementTab = () => {
       <div className="table-wrapper">
         <div
           className="filter-bar"
-          style={{ overflowX: "auto", paddingBottom: "5px" }}
+          style={{ display: "flex", flexWrap: "wrap", rowGap: "8px", paddingBottom: "5px" }}
         >
           {days.map((day) => (
             <button

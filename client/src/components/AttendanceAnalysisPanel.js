@@ -157,20 +157,29 @@ const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data.", c
     zIndex: 3,
     background: c.headBg,
     color: c.faint,
-    padding: compact ? "10px 8px" : "12px 16px",
-    fontSize: compact ? "0.72rem" : "0.8rem",
+    padding: compact ? "8px 3px" : "12px 16px",
+    fontSize: compact ? "0.62rem" : "0.8rem",
     fontWeight: 700,
-    textAlign: "left",
+    textAlign: compact ? "center" : "left",
     boxShadow: `inset 0 -1px 0 ${c.border}`,
     whiteSpace: "nowrap",
+    overflow: compact ? "hidden" : undefined,
+    textOverflow: compact ? "ellipsis" : undefined,
   };
   const td = {
-    padding: compact ? "10px 8px" : "12px 16px",
-    fontSize: compact ? "0.82rem" : "0.9rem",
+    padding: compact ? "8px 3px" : "12px 16px",
+    fontSize: compact ? "0.78rem" : "0.9rem",
     borderBottom: `1px solid ${c.rowBorder}`,
     color: c.text,
     whiteSpace: "nowrap",
+    textAlign: compact ? "center" : undefined,
   };
+  // On phones the first column (month / student name) gets extra width,
+  // left-aligns and may wrap; the number columns share the rest evenly.
+  const firstCol = (i) =>
+    compact && i === 0
+      ? { width: "28%", textAlign: "left", paddingLeft: 8, whiteSpace: "normal", overflowWrap: "anywhere" }
+      : null;
   const totTd = {
     ...td,
     position: "sticky",
@@ -185,17 +194,26 @@ const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data.", c
     <div
       style={{
         maxHeight: 360,
-        overflow: "auto",
+        overflowY: "auto",
+        overflowX: compact ? "hidden" : "auto",
         border: `1px solid ${c.border}`,
         borderRadius: 12,
         position: "relative",
       }}
     >
-      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          textAlign: "left",
+          // Fixed layout splits the width evenly so all columns fit on phones
+          tableLayout: compact ? "fixed" : "auto",
+        }}
+      >
         <thead>
           <tr>
             {columns.map((col, i) => (
-              <th key={i} style={th}>
+              <th key={i} style={{ ...th, ...firstCol(i) }}>
                 {col}
               </th>
             ))}
@@ -217,7 +235,7 @@ const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data.", c
                 {row.cells.map((cell, i) => (
                   <td
                     key={i}
-                    style={{ ...td, color: cell.color || c.text, fontWeight: cell.bold ? 700 : 400 }}
+                    style={{ ...td, ...firstCol(i), color: cell.color || c.text, fontWeight: cell.bold ? 700 : 400 }}
                   >
                     {cell.v}
                   </td>
@@ -228,7 +246,7 @@ const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data.", c
           {totalsRow && (
             <tr>
               {totalsRow.map((cell, i) => (
-                <td key={i} style={{ ...totTd, color: cell.color || c.text }}>
+                <td key={i} style={{ ...totTd, ...firstCol(i), color: cell.color || c.text }}>
                   {cell.v}
                 </td>
               ))}
@@ -772,7 +790,7 @@ export const AttendanceAnalysisPanel = ({
           <StickyTable
             dark={dark}
             compact={compact}
-            columns={["Month", "Present", "Absent", "Missed", "Held", "Rate"]}
+            columns={compact ? ["Month", "Pres", "Abs", "Miss", "Held", "Rate"] : ["Month", "Present", "Absent", "Missed", "Held", "Rate"]}
             rows={monthly.map((r) => ({
               key: r.monthStr,
               dim: r.held === 0,
@@ -803,7 +821,7 @@ export const AttendanceAnalysisPanel = ({
             </p>
           )}
 
-          {typeof renderExtra === "function" && renderExtra(year, { dark })}
+          {typeof renderExtra === "function" && renderExtra(year, { dark, compact })}
         </>
       )}
     </div>
@@ -900,7 +918,7 @@ export const ClassAttendanceAnalysis = ({ classId, className, students = [], dar
     };
   }, [classId]);
 
-  const renderPerStudent = (year, { dark: d }) => {
+  const renderPerStudent = (year, { dark: d, compact }) => {
     const rows = students
       .map((s) => {
         const sid = String(s._id || s);
@@ -931,7 +949,8 @@ export const ClassAttendanceAnalysis = ({ classId, className, students = [], dar
         <StickyTable
           dark={d}
           emptyText="No students enrolled."
-          columns={["Student", "Present", "Absent", "Missed", "Held", "Rate"]}
+          compact={compact}
+          columns={compact ? ["Student", "Pres", "Abs", "Miss", "Held", "Rate"] : ["Student", "Present", "Absent", "Missed", "Held", "Rate"]}
           rows={rows.map((r) => ({
             key: r.id,
             dim: r.held === 0,

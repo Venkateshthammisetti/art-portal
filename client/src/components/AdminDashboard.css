@@ -1702,10 +1702,10 @@ body {
     width: 100%;
   }
 
+  /* Tables become stacked cards below (no sideways scrolling) */
   .table-wrapper,
   .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: visible;
   }
 
   .form-row,
@@ -1750,9 +1750,74 @@ body {
     min-width: 110px;
   }
 
-  /* CLASS DETAIL enrolled students table — min-width for scrolling */
-  .custom-table {
-    min-width: 400px;
+  /* ALL .custom-table → stacked cards on mobile, one card per row.
+     Column names come from data-label (set by useMobileTableLabels). */
+  .custom-table,
+  .custom-table tbody,
+  .custom-table tr,
+  .custom-table td {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+  .custom-table thead {
+    display: none;
+  }
+  .custom-table tbody tr {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 6px 0;
+    margin-bottom: 10px;
+  }
+  .custom-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+  .custom-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 12px !important;
+    border-bottom: none !important;
+    text-align: right;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  .custom-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 45%;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+  }
+  .custom-table td:not([data-label])::before,
+  .custom-table td[data-label=""]::before {
+    content: none;
+  }
+  /* "No records" style rows that span all columns */
+  .custom-table td[colspan] {
+    justify-content: center;
+    text-align: center;
+  }
+  /* Let the page scroll instead of a boxed inner scroll area */
+  .table-container.sticky-head {
+    max-height: none !important;
+  }
+  .table-container.sticky-head .custom-table tbody tr.totals-row td {
+    position: static;
+  }
+  .admin-container[data-theme="dark"] .custom-table tbody tr {
+    background: var(--card-bg, #1e293b);
+    border: 1px solid var(--border) !important;
+  }
+  .admin-container[data-theme="dark"] .custom-table td::before {
+    color: var(--text-muted);
   }
 
   /* CLASS DETAIL — swap the Enrolled Students table for stacked cards,
@@ -2593,7 +2658,7 @@ body {
 
 .object-body {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 20px;
 }
 .detail-card {
@@ -3528,16 +3593,20 @@ body {
     font-size: 0.7rem !important;
   }
 
-  /* UserDetailsView: tighter, scrollable tab bar */
-  .user-details-tabbar::-webkit-scrollbar {
-    display: none;
-  }
+  /* UserDetailsView: tabs wrap into a 2-column grid instead of scrolling */
   .user-details-tabbar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    width: 100% !important;
+    box-sizing: border-box;
+    overflow: visible !important;
     margin-bottom: 16px !important;
   }
   .user-details-tabbar button {
-    padding: 8px 12px !important;
+    justify-content: center;
+    padding: 8px 10px !important;
     font-size: 0.82rem !important;
+    white-space: normal !important;
   }
 
   /* UserDetailsView: stack Login Credentials above Contact Information */

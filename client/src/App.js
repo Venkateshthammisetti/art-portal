@@ -10,9 +10,11 @@ import TeacherDashboard from './components/TeacherDashboard';
 import ParentDashboard from './components/ParentDashboard';
 import SplashScreen from './components/SplashScreen';
 import ChatbotWidget from './components/ChatbotWidget';
+import { useMobileTableLabels } from './utils/mobileTableLabels';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
+  useMobileTableLabels();
   
   // 1. Initialize State
   const [user, setUser] = useState(() => {
