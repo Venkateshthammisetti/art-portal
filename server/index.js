@@ -19,6 +19,7 @@ const nodemailer = require("nodemailer");
 const webpush = require("web-push");
 
 const startScheduler = require("./scheduler");
+const { router: chatbotRouter, signChatToken } = require("./chatbot");
 
 // ⚡️ KEEP ALIVE SCRIPT ⚡️
 // This forces the server to ping itself every 10 minutes to stay awake.
@@ -97,9 +98,15 @@ const transporter = nodemailer.createTransport({
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   const user = await User.findOne({ username, password });
-  if (user) res.json(user);
+  if (user) {
+    // Additive: chatToken is used only by the chatbot (/api/chatbot)
+    const chatToken = signChatToken(user);
+    res.json(chatToken ? { ...user.toObject(), chatToken } : user);
+  }
   else res.status(401).json({ success: false, message: "Wrong credentials" });
 });
+
+app.use("/api/chatbot", chatbotRouter);
 
 app.post("/api/register", async (req, res) => {
   try {
