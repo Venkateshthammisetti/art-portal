@@ -3527,6 +3527,27 @@ body {
     word-break: break-all !important;
     font-size: 0.7rem !important;
   }
+
+  /* UserDetailsView: tighter, scrollable tab bar */
+  .user-details-tabbar::-webkit-scrollbar {
+    display: none;
+  }
+  .user-details-tabbar {
+    margin-bottom: 16px !important;
+  }
+  .user-details-tabbar button {
+    padding: 8px 12px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* UserDetailsView: stack Login Credentials above Contact Information */
+  .top-row-grid.user-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .top-row-grid.user-overview-grid .detail-card .info-row {
+    word-break: break-word;
+  }
 }
 
 /* ─────────────────────────────────────────

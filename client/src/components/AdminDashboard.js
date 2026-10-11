@@ -1474,6 +1474,55 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
     setTimeout(() => setCopyMsg(""), 2000);
   };
 
+  // Copies username + password wrapped in a ready-to-send message for parents
+  const handleCopyLoginMessage = async () => {
+    let creds = credentials;
+    if (!creds) {
+      setLoadingCreds(true);
+      try {
+        const res = await axios.get(
+          `https://art-portal-7n6r.onrender.com/api/users/${user._id}/credentials`,
+        );
+        creds = res.data;
+        setCredentials(creds);
+      } catch (err) {
+        console.error("Error fetching creds", err);
+        setCopyMsg("Could not fetch password");
+        setTimeout(() => setCopyMsg(""), 2000);
+        return;
+      } finally {
+        setLoadingCreds(false);
+      }
+    }
+
+    const greetingName = user.role === "parent"
+      ? `Parent of ${user.childName || user.fullName || user.username}`
+      : user.fullName || user.username;
+
+    const message = [
+      `Hello ${greetingName},`,
+      ``,
+      `Here are your login details for the Art Academy portal:`,
+      ``,
+      `Portal: ${window.location.origin}`,
+      `Username: ${user.username}`,
+      `Password: ${creds.password}`,
+      ``,
+      `Please keep these details safe and do not share them with anyone.`,
+      `If you face any issues logging in, feel free to reach out to us.`,
+      ``,
+      `Thank you!`,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopyMsg("Login message copied!");
+    } catch {
+      setCopyMsg("Copy failed");
+    }
+    setTimeout(() => setCopyMsg(""), 2000);
+  };
+
   const displayDob = user.role === "admin" ? user.dob : user.childDob;
 
   const [activeSection, setActiveSection] = useState("overview");
@@ -1493,12 +1542,18 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
     borderRadius: "12px",
     marginBottom: "24px",
     width: "fit-content",
+    maxWidth: "100%",
+    overflowX: "auto",
+    scrollbarWidth: "none",
+    WebkitOverflowScrolling: "touch",
   };
 
   const tabBtnStyle = (id) => ({
     display: "flex",
     alignItems: "center",
     gap: "6px",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
     padding: "8px 18px",
     borderRadius: "8px",
     border: "none",
@@ -1576,12 +1631,15 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
       </div>
 
       {/* ── Tab Bar ── */}
-      <div style={tabBarStyle}>
+      <div style={tabBarStyle} className="user-details-tabbar">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             style={tabBtnStyle(tab.id)}
-            onClick={() => setActiveSection(tab.id)}
+            onClick={(e) => {
+              setActiveSection(tab.id);
+              e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }}
           >
             <span>{tab.icon}</span>
             <span>{tab.label}</span>
@@ -1606,7 +1664,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
 
         {/* ── OVERVIEW TAB ── */}
         {activeSection === "overview" && (
-          <div className="top-row-grid">
+          <div className="top-row-grid user-overview-grid">
             <div
               className="detail-card"
               style={{ borderLeft: "4px solid #3b82f6" }}
@@ -1668,6 +1726,30 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                   </div>
                 </div>
               </div>
+              <button
+                onClick={handleCopyLoginMessage}
+                disabled={loadingCreds}
+                title="Copy username, password and a message to send to the parent"
+                style={{
+                  marginTop: "12px",
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "10px 16px",
+                  background: "#2563eb",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  cursor: loadingCreds ? "wait" : "pointer",
+                  opacity: loadingCreds ? 0.7 : 1,
+                }}
+              >
+                <IconClipboard /> {loadingCreds ? "Fetching..." : "Copy Login Message"}
+              </button>
             </div>
 
             <div className="detail-card">

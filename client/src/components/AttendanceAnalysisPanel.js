@@ -149,7 +149,7 @@ const AttTooltip = ({ active, payload, label, dark }) => {
 };
 
 // Scrollable table with a sticky header row and an optional sticky totals row.
-const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data." }) => {
+const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data.", compact = false }) => {
   const c = palette(dark);
   const th = {
     position: "sticky",
@@ -157,16 +157,16 @@ const StickyTable = ({ dark, columns, rows, totalsRow, emptyText = "No data." })
     zIndex: 3,
     background: c.headBg,
     color: c.faint,
-    padding: "12px 16px",
-    fontSize: "0.8rem",
+    padding: compact ? "10px 8px" : "12px 16px",
+    fontSize: compact ? "0.72rem" : "0.8rem",
     fontWeight: 700,
     textAlign: "left",
     boxShadow: `inset 0 -1px 0 ${c.border}`,
     whiteSpace: "nowrap",
   };
   const td = {
-    padding: "12px 16px",
-    fontSize: "0.9rem",
+    padding: compact ? "10px 8px" : "12px 16px",
+    fontSize: compact ? "0.82rem" : "0.9rem",
     borderBottom: `1px solid ${c.rowBorder}`,
     color: c.text,
     whiteSpace: "nowrap",
@@ -261,6 +261,17 @@ export const AttendanceAnalysisPanel = ({
   const captureRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Track the panel's own width so it lays out compactly on phones
+  const [panelWidth, setPanelWidth] = useState(0);
+  useEffect(() => {
+    const node = captureRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(([entry]) => setPanelWidth(entry.contentRect.width));
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
+  const compact = panelWidth > 0 && panelWidth < 560;
 
   const canExport = !!exportTitle;
   const fileBase = `${slugify(exportTitle)}-attendance-${year}`;
@@ -391,7 +402,7 @@ export const AttendanceAnalysisPanel = ({
     { label: "Attendance Rate", value: `${overallRate}%`, color: "#0f766e", tint: dark ? "#042f2e" : "#f0fdfa", Icon: IconTrendingUp },
   ];
 
-  const cardStyle = { background: c.cardBg, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16 };
+  const cardStyle = { background: c.cardBg, border: `1px solid ${c.border}`, borderRadius: 12, padding: compact ? 10 : 16, minWidth: 0 };
   const sectionTitle = { margin: "0 0 10px", fontSize: "0.9rem", fontWeight: 700, color: c.text };
 
   const toolBtn = (bg, color, border) => ({
@@ -418,7 +429,10 @@ export const AttendanceAnalysisPanel = ({
         border: `1px solid ${c.border}`,
         borderLeft: "4px solid #0f766e",
         borderRadius: 14,
-        padding: 20,
+        padding: compact ? 12 : 20,
+        minWidth: 0,
+        width: "100%",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -570,19 +584,22 @@ export const AttendanceAnalysisPanel = ({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: 12,
-              marginBottom: 18,
+              gridTemplateColumns: compact ? "1fr 1fr" : "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: compact ? 8 : 12,
+              marginBottom: compact ? 14 : 18,
             }}
           >
-            {kpis.map((k) => (
+            {kpis.map((k, i) => (
               <div
                 key={k.label}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
-                  padding: "12px 14px",
+                  gap: compact ? 8 : 12,
+                  padding: compact ? "10px" : "12px 14px",
+                  minWidth: 0,
+                  // Odd last card (Attendance Rate) spans the full row on phones
+                  gridColumn: compact && i === kpis.length - 1 && kpis.length % 2 === 1 ? "1 / -1" : undefined,
                   borderRadius: 12,
                   border: `1px solid ${c.border}`,
                   background: c.soloBg,
@@ -668,13 +685,13 @@ export const AttendanceAnalysisPanel = ({
                 ))}
               </div>
             </div>
-            <div style={{ width: "100%", height: 300, fontSize: "0.75rem" }}>
+            <div style={{ width: "100%", height: compact ? 240 : 300, fontSize: "0.75rem" }}>
               <ResponsiveContainer>
-                <ComposedChart data={monthly} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+                <ComposedChart data={monthly} margin={{ top: 10, right: compact ? 0 : 6, left: compact ? -8 : 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={c.grid} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: c.faint, fontSize: 11 }} />
-                  <YAxis yAxisId="count" axisLine={false} tickLine={false} width={30} allowDecimals={false} tick={{ fill: c.faint, fontSize: 11 }} />
-                  <YAxis yAxisId="rate" orientation="right" axisLine={false} tickLine={false} width={38} unit="%" domain={[0, 100]} tick={{ fill: c.faint, fontSize: 11 }} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} interval={compact ? 1 : 0} tick={{ fill: c.faint, fontSize: compact ? 10 : 11 }} />
+                  <YAxis yAxisId="count" axisLine={false} tickLine={false} width={compact ? 26 : 30} allowDecimals={false} tick={{ fill: c.faint, fontSize: compact ? 10 : 11 }} />
+                  <YAxis yAxisId="rate" orientation="right" axisLine={false} tickLine={false} width={compact ? 32 : 38} unit="%" domain={[0, 100]} tick={{ fill: c.faint, fontSize: compact ? 10 : 11 }} />
                   <Tooltip content={<AttTooltip dark={dark} />} />
                   <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "0.75rem" }} />
                   {chartType === "bar" ? (
@@ -741,8 +758,8 @@ export const AttendanceAnalysisPanel = ({
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={c.grid} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: c.faint, fontSize: 11 }} />
-                    <YAxis axisLine={false} tickLine={false} width={38} unit="%" domain={[0, 100]} tick={{ fill: c.faint, fontSize: 11 }} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} interval={compact ? 1 : 0} tick={{ fill: c.faint, fontSize: compact ? 10 : 11 }} />
+                    <YAxis axisLine={false} tickLine={false} width={compact ? 32 : 38} unit="%" domain={[0, 100]} tick={{ fill: c.faint, fontSize: compact ? 10 : 11 }} />
                     <Tooltip content={<AttTooltip dark={dark} />} />
                     <Area type="monotone" dataKey="rate" name="Rate %" stroke="#0f766e" strokeWidth={2.5} fillOpacity={1} fill="url(#aaRateGrad)" />
                   </AreaChart>
@@ -754,6 +771,7 @@ export const AttendanceAnalysisPanel = ({
           {/* MONTHLY BREAKDOWN TABLE */}
           <StickyTable
             dark={dark}
+            compact={compact}
             columns={["Month", "Present", "Absent", "Missed", "Held", "Rate"]}
             rows={monthly.map((r) => ({
               key: r.monthStr,
