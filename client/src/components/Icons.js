@@ -104,12 +104,18 @@ import {
   FiMail,
   FiInbox,
   FiVolume2,
+  FiVolumeX,
   FiPhone,
+  FiMic,
+  FiSend,
   // theme
   FiSun,
   FiMoon,
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
+// Lucide is a fork of Feather (same 24x24 grid, 2px round stroke), so it is
+// used only for icons Feather lacks, such as a paintbrush.
+import { LuPaintbrush } from "react-icons/lu";
 
 // Wrap every icon so it is decorative by default and inherits font size.
 // `size` / `className` / `style` still pass straight through to react-icons.
@@ -216,6 +222,11 @@ export const IconInbox = icon(FiInbox);
 export const IconAnnounce = icon(FiVolume2);
 export const IconPhone = icon(FiPhone);
 export const IconLocation = icon(FiMapPin);
+export const IconPaintbrush = icon(LuPaintbrush); // AI assistant launcher
+export const IconMic = icon(FiMic);
+export const IconSend = icon(FiSend);
+export const IconSpeakerOn = icon(FiVolume2);
+export const IconSpeakerOff = icon(FiVolumeX);
 
 /* ---------- theme ---------- */
 export const IconSun = icon(FiSun);
