@@ -15,3 +15,8 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+// Dev-only browser-preference panel; the dynamic import keeps it out of production builds.
+if (process.env.NODE_ENV === 'development') {
+  import('devknobs').then(({ mount }) => mount());
+}

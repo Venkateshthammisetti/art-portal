@@ -36,7 +36,7 @@ body.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
 /* --- 1. ANIMATED BACKGROUND --- */
 .login-page {
-  height: 100vh;
+  height: 100vh; height: 100dvh;
   width: 100vw;
   background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
   display: flex;

@@ -49,7 +49,7 @@ body.dark .chatbot-root,
 .chatbot-panel {
   width: 360px;
   height: 520px;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px);
   margin-bottom: 12px;
   background: var(--cb-card);
   border: 1px solid var(--cb-border);
@@ -207,13 +207,13 @@ body.dark .chatbot-root,
 
 /* Mobile: sit above the dashboards' 62px bottom nav, panel goes near full-screen */
 @media (max-width: 768px) {
-  .chatbot-root { right: 16px; bottom: 78px; }
+  .chatbot-root { right: 16px; bottom: calc(78px + env(safe-area-inset-bottom)); }
   .chatbot-toggle-btn { width: 50px; height: 50px; font-size: 1.3rem; }
   .chatbot-panel {
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: 140px;
+    bottom: calc(140px + env(safe-area-inset-bottom));
     width: auto;
     height: auto;
     top: 12px;
