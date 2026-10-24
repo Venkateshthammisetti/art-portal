@@ -93,6 +93,9 @@ GMAIL_USER=
 GMAIL_PASS=
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
+CHATBOT_SECRET=      # signs chatbot tokens (server/chatbot.js)
+GEMINI_API_KEY=      # Google Gemini key for the chatbot
+GEMINI_MODEL=        # optional, defaults to gemini-flash-lite-latest
 ```
 
 If `MONGO_URI` is missing, the server falls back to `mongodb://localhost:27017/art_academy`.

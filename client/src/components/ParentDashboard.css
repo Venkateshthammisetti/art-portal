@@ -36,7 +36,7 @@ button, a, input, .clickable-heading, .mobile-menu-btn, .logout-btn, .nav-item {
 
 .parent-container {
   display: flex;
-  height: 100vh;
+  height: 100vh; height: 100dvh;
   background-color: var(--p-bg);
   font-family: "Plus Jakarta Sans", sans-serif;
   color: var(--p-text);
@@ -390,7 +390,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     width: 78%;
     max-width: 300px;
     z-index: 3000;
@@ -453,7 +453,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     width: 78%;
     max-width: 300px;
     z-index: 3000;
@@ -485,7 +485,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
     align-items: center;
     position: fixed;
     bottom: 0; left: 0;
-    width: 100%; height: 62px;
+    width: 100%; height: calc(62px + env(safe-area-inset-bottom));
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -545,7 +545,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
   .logout-btn { padding: 8px 10px; width: auto; }
   
   .profile-dropdown { right: 10px; top: 55px; width: 200px; }
-  .p-content { padding: 15px 15px 90px 15px; }
+  .p-content { padding: 15px 15px calc(90px + env(safe-area-inset-bottom)) 15px; }
   .overview-grid { grid-template-columns: 1fr; gap: 15px; }
   .welcome-card { grid-column: span 1; padding: 30px 20px 90px 20px; background-image: var(--mobile-bg) !important; background-position: bottom center !important; background-size: 100% auto !important; background-repeat: no-repeat !important; }
   .att-summary-bar { flex-direction: column; gap: 10px; }
@@ -560,7 +560,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
 }
 
 /* LOADING & MODAL */
-.art-loading-screen { height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: var(--p-bg); z-index: 2000; }
+.art-loading-screen { height: 100vh; height: 100dvh; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: var(--p-bg); z-index: 2000; }
 .loading-text { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.1rem; color: var(--p-muted); font-weight: 600; letter-spacing: 0.5px; animation: fadePulse 1.5s infinite; }
 .logout-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 3000; animation: fadeIn 0.2s ease-out; }
 .logout-modal { background: var(--p-card); width: 90%; max-width: 320px; padding: 25px; border-radius: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: scale(0.95); animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -1114,7 +1114,7 @@ body.dark .tm-btn.secondary { background: #1e293b; border-color: #334155; color:
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100vh; height: 100dvh;
   background: rgba(0, 0, 0, 0.95);
   z-index: 10000; /* Ensure it's on top of everything */
   display: flex;

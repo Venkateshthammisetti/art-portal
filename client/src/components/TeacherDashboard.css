@@ -883,7 +883,7 @@
 * { box-sizing: border-box; }
 
 .teacher-container {
-  display: flex; height: 100vh; background-color: var(--bg-body);
+  display: flex; height: 100vh; height: 100dvh; background-color: var(--bg-body);
   font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-main);
 }
 
@@ -1578,7 +1578,7 @@
 
 /* FEEDBACK SPLIT LAYOUT */
 .feedback-view { max-width: 1000px; margin: 0 auto; padding-top: 10px; }
-.feedback-container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; height: calc(100vh - 160px); }
+.feedback-container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; height: calc(100vh - 160px); height: calc(100dvh - 160px); }
 .form-card, .history-card { background: white; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); padding: 25px; overflow-y: auto; }
 .form-card h3, .history-card h3 { margin-top: 0; margin-bottom: 20px; color: var(--text-main); border-bottom: 1px solid var(--border); padding-bottom: 15px; font-size: 1.1rem; }
 .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
@@ -1975,7 +1975,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     width: 78%;
     max-width: 300px;
     z-index: 2000;
@@ -2007,7 +2007,7 @@
   /* 1. LAYOUT RESET */
   .teacher-container {
     flex-direction: column;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     overflow: hidden;
   }
 
@@ -2039,7 +2039,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     width: 78%;
     max-width: 300px;
     z-index: 2000;
@@ -2068,7 +2068,7 @@
   .teacher-main {
     width: 100%;
     flex: 1;
-    padding-bottom: 75px; /* Space for bottom nav */
+    padding-bottom: calc(75px + env(safe-area-inset-bottom)); /* Space for bottom nav */
   }
 
   .t-content { padding: 15px; }
@@ -2085,7 +2085,7 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 62px;
+    height: calc(62px + env(safe-area-inset-bottom));
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -2254,12 +2254,12 @@
 
   /* Weekly timetable: squeeze all 7 days into the screen width */
   .tt-time-col { width: 38px; }
-  .tt-time-label { font-size: 0.62rem; }
+  .tt-time-label { font-size: 0.7rem; }
   .tt-main-area { min-width: 0; }
   .tt-header-cell { font-size: 0.7rem; min-width: 0; }
-  .day-name { font-size: 0.6rem; }
-  .tt-event-block { padding: 2px 3px; font-size: 0.6rem; border-left-width: 2px; }
-  .ev-time { font-size: 0.58rem; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-name { font-size: 0.7rem; }
+  .tt-event-block { padding: 2px 3px; font-size: 0.7rem; border-left-width: 2px; }
+  .ev-time { font-size: 0.7rem; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ev-title {
     white-space: normal; overflow-wrap: anywhere; line-height: 1.15;
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
@@ -2322,7 +2322,7 @@
     content: attr(data-label);
     font-weight: 700;
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
@@ -2396,7 +2396,7 @@
   color: var(--text-muted);
 }
 .mcd-label {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--text-muted);
@@ -2485,7 +2485,7 @@
 /* --- LOADING ANIMATION STYLES (Add to TeacherDashboard.css) --- */
 
 .art-loading-screen {
-  height: 100vh;
+  height: 100vh; height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -2542,7 +2542,7 @@
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100vh; height: 100dvh;
   background: rgba(0, 0, 0, 0.97);
   z-index: 10000;
   display: flex;
@@ -2913,12 +2913,12 @@
   }
 
   .man-dot {
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     color: #cbd5e1;
   }
 
   .man-timestamp {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     color: #94a3b8;
   }
 
@@ -3011,7 +3011,7 @@
   /* Swipe hint text */
   .man-swipe-hint {
     text-align: center;
-    font-size: 0.62rem;
+    font-size: 0.7rem;
     color: #cbd5e1;
     padding: 0 0 8px;
     letter-spacing: 0.3px;
@@ -3296,7 +3296,7 @@
 .gal-card:hover .gal-card-overlay { opacity: 1; }
 
 .gal-card-overlay-student {
-  font-size: 0.68rem; font-weight: 600;
+  font-size: 0.72rem; font-weight: 600;
   color: rgba(255,255,255,0.72);
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;
 }
@@ -3316,6 +3316,11 @@
   transition: opacity 0.2s ease;
 }
 .gal-card:hover .gal-card-actions { opacity: 1; }
+/* Touch devices have no hover — keep overlay + actions visible so they stay reachable */
+@media (hover: none) {
+  .gal-card-overlay,
+  .gal-card-actions { opacity: 1; }
+}
 
 .gal-action-btn {
   width: 32px; height: 32px; border-radius: 50%; border: none;
@@ -3383,7 +3388,7 @@
 .lightbox-action-pill.danger:hover { background: rgba(239,68,68,0.48); }
 
 @media (max-width: 768px) {
-  .lightbox-action-bar { bottom: 80px; gap: 7px; padding: 7px 10px; }
+  .lightbox-action-bar { bottom: calc(80px + env(safe-area-inset-bottom)); gap: 7px; padding: 7px 10px; }
   .lightbox-zoom-val { min-width: 28px; font-size: 0.7rem; }
   .lightbox-action-pill { padding: 5px 10px; font-size: 0.75rem; }
 }
@@ -3794,7 +3799,7 @@
 .rm-note-section p { font-size: 0.85rem; font-style: italic; color: #2d2a26; margin: 0; line-height: 1.6; white-space: pre-wrap; }
 
 .rm-report-footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #e5e0d8; margin-top: auto; padding-top: 28px; }
-.rm-footer-label { font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+.rm-footer-label { font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
 .rm-footer-signature { font-family: 'Great Vibes', cursive; font-size: 1.6rem; color: #2d2a26; margin: 6px 0 0; }
 .rm-footer-right { text-align: right; }
 .rm-footer-overall { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700; color: #c5a059; margin: 6px 0 0; }
