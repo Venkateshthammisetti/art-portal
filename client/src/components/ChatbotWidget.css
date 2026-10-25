@@ -207,13 +207,13 @@ body.dark .chatbot-root,
 
 /* Mobile: sit above the dashboards' 62px bottom nav, panel goes near full-screen */
 @media (max-width: 768px) {
-  .chatbot-root { right: 16px; bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .chatbot-root { right: 16px; bottom: calc(78px + min(env(safe-area-inset-bottom), 12px)); }
   .chatbot-toggle-btn { width: 50px; height: 50px; font-size: 1.3rem; }
   .chatbot-panel {
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: calc(140px + env(safe-area-inset-bottom));
+    bottom: calc(140px + min(env(safe-area-inset-bottom), 12px));
     width: auto;
     height: auto;
     top: 12px;
