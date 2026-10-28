@@ -15,6 +15,7 @@ const Feedback = require("./models/Feedback");
 const Artwork = require("./models/Artwork");
 const Certification = require("./models/Certification");
 const Expense = require("./models/Expense");
+const Spotlight = require("./models/Spotlight");
 const nodemailer = require("nodemailer");
 const webpush = require("web-push");
 
@@ -1014,6 +1015,91 @@ app.post("/api/notifications/subscribe", async (req, res) => {
     res.status(201).json({});
   } catch (err) {
     res.status(500).json({ error: "Could not save subscription" });
+  }
+});
+
+// ===========================
+//      ARTIST SPOTLIGHT 🌟
+// ===========================
+
+// 1. LIST SPOTLIGHTS (newest first) — used by the Admin history tab and by the
+//    notification bell on every dashboard.
+app.get("/api/spotlights", async (req, res) => {
+  try {
+    const spotlights = await Spotlight.find().sort({ publishedAt: -1 });
+    res.json(spotlights);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching spotlights" });
+  }
+});
+
+// 2. PUBLISH SPOTLIGHT (Admin) — saves the poster to Cloudinary, then sends a
+//    push notification to every active user (all roles) with a saved device.
+app.post("/api/spotlights", upload.single("poster"), async (req, res) => {
+  try {
+    const { studentName, studentId, achievementTitle, description, publishedBy } = req.body;
+    if (!req.file) return res.status(400).json({ message: "Poster image is required" });
+    if (!studentName?.trim() || !achievementTitle?.trim() || !description?.trim()) {
+      return res.status(400).json({ message: "Name, achievement title and description are required" });
+    }
+
+    const spotlight = new Spotlight({
+      studentName,
+      studentId: mongoose.Types.ObjectId.isValid(studentId) ? studentId : null,
+      achievementTitle,
+      description,
+      posterUrl: req.file.path, // Cloudinary URL
+      publishedBy: publishedBy || "",
+    });
+    await spotlight.save();
+
+    const recipients = await User.find({
+      pushSubscription: { $ne: null },
+      isActive: { $ne: false },
+    }).select("pushSubscription");
+
+    const payload = JSON.stringify({
+      title: `🌟 Artist Spotlight: ${spotlight.studentName}`,
+      body: spotlight.achievementTitle,
+      tag: `spotlight-${spotlight._id}`,
+      spotlightId: spotlight._id.toString(),
+      url: `https://art-portal.netlify.app/?spotlight=${spotlight._id}`,
+    });
+
+    const results = await Promise.allSettled(
+      recipients.map((u) => webpush.sendNotification(u.pushSubscription, payload)),
+    );
+    let sent = 0;
+    const expiredIds = [];
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") sent++;
+      else if (r.reason?.statusCode === 404 || r.reason?.statusCode === 410) {
+        expiredIds.push(recipients[i]._id);
+      }
+    });
+    if (expiredIds.length > 0) {
+      await User.updateMany({ _id: { $in: expiredIds } }, { $set: { pushSubscription: null } });
+    }
+
+    spotlight.pushSentCount = sent;
+    await spotlight.save();
+
+    res.json({ success: true, spotlight, pushSent: sent });
+  } catch (err) {
+    console.error("Spotlight Publish Error:", err);
+    res.status(500).json({ message: "Error publishing spotlight" });
+  }
+});
+
+// 3. DELETE SPOTLIGHT (Admin) — removes the DB record only; the Cloudinary
+//    poster is left in place (same tradeoff as artwork deletion).
+app.delete("/api/spotlights/:id", async (req, res) => {
+  try {
+    const deleted = await Spotlight.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Spotlight not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting spotlight" });
   }
 });
 
