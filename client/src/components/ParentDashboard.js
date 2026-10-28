@@ -1387,10 +1387,12 @@ const ParentDashboard = ({ user, onLogout }) => {
             >
               <span className={loading ? "spin" : ""}><IconRefresh /></span>
             </button>
-            {/* Parents get Artist Spotlights here; no birthday reminders */}
+            {/* Parents get posters here (new ones pop up on open); no birthday reminders */}
             <BirthdayNotificationBell
               students={[]}
               storageKey={`parent_notif_read_${currentUser._id}`}
+              autoPopup
+              holdPopup={loading || showFeeReminder || showTutorial}
             />
             <span className="role-badge desktop-only">Parent</span>
             <div
