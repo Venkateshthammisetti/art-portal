@@ -188,6 +188,14 @@ body.dark .bday-notif-icon.spotlight {
   background: rgba(245, 158, 11, 0.16);
   color: #fcd34d;
 }
+.bday-notif-icon.spotlight.tone-rose { background: #fce7f3; color: #be185d; }
+.bday-notif-icon.spotlight.tone-blue { background: #dbeafe; color: #1d4ed8; }
+.admin-container[data-theme="dark"] .bday-notif-icon.spotlight.tone-rose,
+.teacher-container[data-theme="dark"] .bday-notif-icon.spotlight.tone-rose,
+body.dark .bday-notif-icon.spotlight.tone-rose { background: rgba(236, 72, 153, 0.16); color: #f9a8d4; }
+.admin-container[data-theme="dark"] .bday-notif-icon.spotlight.tone-blue,
+.teacher-container[data-theme="dark"] .bday-notif-icon.spotlight.tone-blue,
+body.dark .bday-notif-icon.spotlight.tone-blue { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
 .bday-notif-item.spotlight { cursor: pointer; }
 .bday-notif-item.spotlight:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.45);

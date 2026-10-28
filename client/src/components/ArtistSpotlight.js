@@ -1,6 +1,7 @@
-// Artist Spotlight — admin-published posters celebrating a student's achievement.
-// Admin-only: SpotlightPublishTab (form) and SpotlightHistoryTab (published list).
-// Shared by every role: SpotlightViewer (full poster modal, opened from the bell).
+// Posters — admin-published Artist Spotlights, festival greetings and announcements.
+// Admin-only: SpotlightPublishTab (form) and SpotlightHistoryTab (published list,
+// with WhatsApp sharing). Shared by every role: SpotlightViewer (full poster modal,
+// opened from the bell), where parents and teachers can react.
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -8,6 +9,8 @@ import imageCompression from "browser-image-compression";
 import "./ArtistSpotlight.css";
 import {
   IconTrophy,
+  IconCelebrate,
+  IconAnnounce,
   IconUpload,
   IconTrash,
   IconX,
@@ -20,6 +23,7 @@ import {
   IconPlus,
   IconClock,
   IconImage,
+  IconWhatsApp,
 } from "./Icons";
 
 const API = "https://art-portal-7n6r.onrender.com/api/spotlights";
@@ -28,6 +32,66 @@ const TITLE_MAX = 80;
 const DESCRIPTION_MAX = 600;
 const POSTER_MAX_MB = 15;
 const POSTER_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// Poster types. `tone` picks the badge/icon colour; field copy changes per type.
+export const CATEGORIES = {
+  artist_spotlight: {
+    label: "Artist Spotlight",
+    Icon: IconTrophy,
+    tone: "amber",
+    emoji: "🌟",
+    heading: "New Artist Spotlight",
+    intro: "Celebrate a student's achievement with a poster for the whole academy.",
+    needsStudent: true,
+    titleLabel: "Achievement title",
+    titlePlaceholder: "e.g. 1st Prize, District Drawing Competition",
+    descLabel: "Description",
+    descPlaceholder: "What did they achieve, and where?",
+    descRequired: true,
+  },
+  festival_greeting: {
+    label: "Festival Greeting",
+    Icon: IconCelebrate,
+    tone: "rose",
+    emoji: "🎉",
+    heading: "New Festival Greeting",
+    intro: "Send festival wishes with a poster to every family and teacher.",
+    needsStudent: false,
+    titleLabel: "Greeting",
+    titlePlaceholder: "e.g. Happy Diwali!",
+    descLabel: "Message",
+    descPlaceholder: "A short wish for families (optional)",
+    descRequired: false,
+  },
+  announcement: {
+    label: "Announcement",
+    Icon: IconAnnounce,
+    tone: "blue",
+    emoji: "📢",
+    heading: "New Announcement",
+    intro: "Share important news — holidays, events or schedule changes — with everyone.",
+    needsStudent: false,
+    titleLabel: "Announcement title",
+    titlePlaceholder: "e.g. Academy closed on 2 November",
+    descLabel: "Message",
+    descPlaceholder: "What do families and teachers need to know?",
+    descRequired: true,
+  },
+};
+const CATEGORY_KEYS = Object.keys(CATEGORIES);
+
+export const categoryOf = (sp) => CATEGORIES[sp?.category] || CATEGORIES.artist_spotlight;
+const isSpotlight = (sp) => categoryOf(sp) === CATEGORIES.artist_spotlight;
+// Main line for a poster: the student for a spotlight, otherwise its title.
+export const posterHeadline = (sp) => (isSpotlight(sp) ? sp.studentName : sp.achievementTitle);
+
+export const REACTIONS = [
+  { emoji: "❤️", label: "Love" },
+  { emoji: "👏", label: "Applause" },
+  { emoji: "🎉", label: "Celebrate" },
+  { emoji: "🌟", label: "Star" },
+  { emoji: "😍", label: "Amazing" },
+];
 
 export const formatPublishedAt = (date) =>
   new Date(date).toLocaleString("en-IN", {
@@ -43,13 +107,96 @@ export const formatPublishedAt = (date) =>
 export const isDarkContext = (el) =>
   document.body.classList.contains("dark") || !!el?.closest('[data-theme="dark"]');
 
-const currentAdminName = () => {
+const getStoredUser = () => {
   try {
-    const u = JSON.parse(localStorage.getItem("user") || "null");
-    return u?.fullName || u?.username || "";
+    return JSON.parse(localStorage.getItem("user") || "null");
   } catch {
-    return "";
+    return null;
   }
+};
+
+export const CategoryBadge = ({ spotlight, category }) => {
+  const c = category ? CATEGORIES[category] : categoryOf(spotlight);
+  return (
+    <span className={`spot-badge tone-${c.tone}`}>
+      <c.Icon /> {c.label}
+    </span>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// WhatsApp sharing (Admin). On phones the share sheet sends the poster image
+// itself (pick WhatsApp, then the group); elsewhere WhatsApp opens with the
+// text and a poster link.
+// ---------------------------------------------------------------------------
+const posterFiles = new Map(); // posterUrl -> File (ready to share)
+const posterFetches = new Map(); // posterUrl -> Promise<File|null>
+
+const preparePosterFile = (url) => {
+  if (!url) return Promise.resolve(null);
+  if (posterFiles.has(url)) return Promise.resolve(posterFiles.get(url));
+  if (!posterFetches.has(url)) {
+    posterFetches.set(
+      url,
+      fetch(url)
+        .then((r) => (r.ok ? r.blob() : null))
+        .then((blob) => {
+          if (!blob) return null;
+          const ext = blob.type === "image/png" ? "png" : "jpg";
+          const file = new File([blob], `poster.${ext}`, { type: blob.type || "image/jpeg" });
+          posterFiles.set(url, file);
+          return file;
+        })
+        .catch(() => null),
+    );
+  }
+  return posterFetches.get(url);
+};
+
+const shareText = (sp) => {
+  const c = categoryOf(sp);
+  const lines = isSpotlight(sp)
+    ? [`${c.emoji} *Artist Spotlight*`, "", `*${sp.studentName}*`, sp.achievementTitle]
+    : [`${c.emoji} *${c === CATEGORIES.announcement ? `Announcement: ${sp.achievementTitle}` : sp.achievementTitle}*`];
+  if (sp.description) lines.push("", sp.description);
+  lines.push("", "— Thevenkyart Art Academy");
+  return lines.join("\n");
+};
+
+const openWhatsAppLink = (sp) => {
+  const text = `${shareText(sp)}\n\n${sp.posterUrl}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+};
+
+const sharePosterOnWhatsApp = async (sp) => {
+  const text = shareText(sp);
+  let file = posterFiles.get(sp.posterUrl);
+  if (!file) file = await preparePosterFile(sp.posterUrl);
+  if (file && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text });
+      return;
+    } catch (err) {
+      if (err?.name === "AbortError") return; // user closed the share sheet
+    }
+  }
+  openWhatsAppLink(sp);
+};
+
+export const WhatsAppShareButton = ({ spotlight, className = "" }) => {
+  const warm = () => preparePosterFile(spotlight.posterUrl);
+  return (
+    <button
+      type="button"
+      className={`spot-btn spot-btn-whatsapp ${className}`}
+      onPointerEnter={warm}
+      onTouchStart={warm}
+      onFocus={warm}
+      onClick={() => sharePosterOnWhatsApp(spotlight)}
+    >
+      <IconWhatsApp /> Share on WhatsApp
+    </button>
+  );
 };
 
 // Shared modal shell: Escape / backdrop close, focus moved in and restored, scroll lock.
@@ -120,26 +267,143 @@ const ConfirmDialog = ({ title, message, confirmLabel, tone = "primary", busy, d
   );
 };
 
-// Full poster view — used by the history tab and by the notification bell on every dashboard.
-export const SpotlightViewer = ({ spotlight, dark, onClose }) => {
+// ---------------------------------------------------------------------------
+// REACTIONS
+// ---------------------------------------------------------------------------
+const reactionCounts = (reactions = []) =>
+  REACTIONS.map((r) => ({ ...r, count: reactions.filter((x) => x.emoji === r.emoji).length }));
+
+// Compact "❤️ 3  👏 2" summary for cards; nothing when there are no reactions.
+export const ReactionSummary = ({ reactions = [] }) => {
+  const counts = reactionCounts(reactions).filter((r) => r.count > 0);
+  if (counts.length === 0) return null;
+  return (
+    <p className="spot-reaction-summary" aria-label={`${reactions.length} reaction${reactions.length === 1 ? "" : "s"}`}>
+      {counts.map((r) => (
+        <span key={r.emoji} aria-hidden="true">
+          {r.emoji} {r.count}
+        </span>
+      ))}
+    </p>
+  );
+};
+
+// Parents and teachers tap to react (tap again to remove); admins see who reacted.
+const ReactionBar = ({ spotlight, onUpdate }) => {
+  const me = getStoredUser();
+  const canReact = me?.role === "parent" || me?.role === "teacher";
+  const [reactions, setReactions] = useState(spotlight.reactions || []);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => setReactions(spotlight.reactions || []), [spotlight]);
+
+  const mine = canReact ? reactions.find((r) => String(r.userId) === String(me._id))?.emoji : null;
+  const counts = reactionCounts(reactions);
+
+  const react = async (emoji) => {
+    if (!canReact || saving) return;
+    const previous = reactions;
+    const others = reactions.filter((r) => String(r.userId) !== String(me._id));
+    const optimistic = mine === emoji ? others : [...others, { userId: me._id, emoji, role: me.role, name: "" }];
+    setReactions(optimistic);
+    setSaving(true);
+    setError("");
+    try {
+      const res = await axios.post(`${API}/${spotlight._id}/react`, { userId: me._id, emoji });
+      setReactions(res.data.reactions);
+      onUpdate?.({ ...spotlight, reactions: res.data.reactions });
+    } catch {
+      setReactions(previous);
+      setError("Couldn't save your reaction. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!canReact) {
+    return (
+      <div className="spot-reactions">
+        <p className="spot-reactions-label">
+          {reactions.length === 0 ? "No reactions yet" : `${reactions.length} reaction${reactions.length === 1 ? "" : "s"}`}
+        </p>
+        {reactions.length > 0 && (
+          <>
+            <div className="spot-reaction-row">
+              {counts.filter((r) => r.count > 0).map((r) => (
+                <span key={r.emoji} className="spot-reaction-chip is-static">
+                  <span aria-hidden="true">{r.emoji}</span> {r.count}
+                  <span className="spot-visually-hidden"> {r.label}</span>
+                </span>
+              ))}
+            </div>
+            <details className="spot-reactors">
+              <summary>See who reacted</summary>
+              <ul>
+                {reactions.map((r) => (
+                  <li key={`${r.userId}`}>
+                    <span aria-hidden="true">{r.emoji}</span> {r.name || "Someone"}
+                    <span className="spot-reactor-role">{r.role === "teacher" ? "Teacher" : "Parent"}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="spot-reactions">
+      <p className="spot-reactions-label" id={`spot-react-label-${spotlight._id}`}>
+        {mine ? "You reacted — tap again to remove" : "React to this post"}
+      </p>
+      <div className="spot-reaction-row" role="group" aria-labelledby={`spot-react-label-${spotlight._id}`}>
+        {counts.map((r) => (
+          <button
+            key={r.emoji}
+            type="button"
+            className={`spot-reaction-chip${mine === r.emoji ? " is-mine" : ""}`}
+            aria-pressed={mine === r.emoji}
+            aria-label={`${r.label}${r.count ? `, ${r.count}` : ""}`}
+            onClick={() => react(r.emoji)}
+            disabled={saving}
+          >
+            <span aria-hidden="true">{r.emoji}</span>
+            {r.count > 0 && <span className="spot-reaction-count" aria-hidden="true">{r.count}</span>}
+          </button>
+        ))}
+      </div>
+      {error && <p className="spot-error" role="alert"><IconError /> {error}</p>}
+    </div>
+  );
+};
+
+// Full poster view — used by the history tab and by the notification bell on every
+// dashboard. `onUpdate` receives the poster with fresh reactions.
+export const SpotlightViewer = ({ spotlight, dark, onClose, onUpdate, showShare = false }) => {
   const closeRef = useRef(null);
   if (!spotlight) return null;
+  const spot = isSpotlight(spotlight);
   return (
     <Modal labelledBy="spot-viewer-name" dark={dark} onClose={onClose} className="spot-viewer" initialFocusRef={closeRef}>
-      <button ref={closeRef} type="button" className="spot-viewer-close" onClick={onClose} aria-label="Close spotlight">
+      <button ref={closeRef} type="button" className="spot-viewer-close" onClick={onClose} aria-label="Close poster">
         <IconX size={22} />
       </button>
       <div className="spot-viewer-poster">
-        <img src={spotlight.posterUrl} alt={`Spotlight poster for ${spotlight.studentName}`} />
+        <img src={spotlight.posterUrl} alt={`Poster: ${posterHeadline(spotlight)}`} />
       </div>
       <div className="spot-viewer-body">
-        <span className="spot-badge"><IconTrophy /> Artist Spotlight</span>
-        <h2 id="spot-viewer-name" className="spot-viewer-name">{spotlight.studentName}</h2>
-        <p className="spot-viewer-title">{spotlight.achievementTitle}</p>
-        <p className="spot-viewer-desc">{spotlight.description}</p>
+        <CategoryBadge spotlight={spotlight} />
+        <h2 id="spot-viewer-name" className="spot-viewer-name">{posterHeadline(spotlight)}</h2>
+        {spot && <p className="spot-viewer-title">{spotlight.achievementTitle}</p>}
+        {spotlight.description && <p className="spot-viewer-desc">{spotlight.description}</p>}
         <p className="spot-meta">
           <IconCalendar /> Published {formatPublishedAt(spotlight.publishedAt)}
         </p>
+        <ReactionBar spotlight={spotlight} onUpdate={onUpdate} />
+        {showShare && <WhatsAppShareButton spotlight={spotlight} className="spot-btn-block" />}
       </div>
     </Modal>
   );
@@ -148,10 +412,11 @@ export const SpotlightViewer = ({ spotlight, dark, onClose }) => {
 // ---------------------------------------------------------------------------
 // PUBLISH TAB (Admin)
 // ---------------------------------------------------------------------------
-const emptyForm = { studentName: "", achievementTitle: "", description: "" };
+const emptyForm = { category: "artist_spotlight", studentName: "", achievementTitle: "", description: "" };
 
 export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
   const rootRef = useRef(null);
+  const categoryRef = useRef(null);
   const nameRef = useRef(null);
   const titleRef = useRef(null);
   const descRef = useRef(null);
@@ -168,6 +433,8 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
   const [submitError, setSubmitError] = useState("");
   const [result, setResult] = useState(null);
 
+  const cat = CATEGORIES[form.category];
+
   const studentOptions = useMemo(
     () =>
       students
@@ -183,6 +450,11 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
     if (errors[name]) setErrors((er) => ({ ...er, [name]: "" }));
+  };
+
+  const setCategory = (e) => {
+    setForm((f) => ({ ...f, category: e.target.value }));
+    setErrors({});
   };
 
   const pickPoster = (file) => {
@@ -208,9 +480,9 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
 
   const validate = () => {
     const next = {};
-    if (!form.studentName.trim()) next.studentName = "Enter the student's name.";
-    if (!form.achievementTitle.trim()) next.achievementTitle = "Enter the achievement title.";
-    if (!form.description.trim()) next.description = "Describe the achievement.";
+    if (cat.needsStudent && !form.studentName.trim()) next.studentName = "Enter the student's name.";
+    if (!form.achievementTitle.trim()) next.achievementTitle = `Enter the ${cat.titleLabel.toLowerCase()}.`;
+    if (cat.descRequired && !form.description.trim()) next.description = `Enter the ${cat.descLabel.toLowerCase()}.`;
     if (!posterFile) next.poster = "Upload a poster image.";
     setErrors(next);
     const firstInvalid = [
@@ -242,25 +514,30 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
       });
 
       setStatus("publishing");
-      const match = studentOptions.find(
-        (s) => s.name.toLowerCase() === form.studentName.trim().toLowerCase(),
-      );
       const data = new FormData();
-      data.append("studentName", form.studentName.trim());
-      if (match) data.append("studentId", match.id);
+      data.append("category", form.category);
+      if (cat.needsStudent) {
+        data.append("studentName", form.studentName.trim());
+        const match = studentOptions.find(
+          (s) => s.name.toLowerCase() === form.studentName.trim().toLowerCase(),
+        );
+        if (match) data.append("studentId", match.id);
+      }
       data.append("achievementTitle", form.achievementTitle.trim());
       data.append("description", form.description.trim());
-      data.append("publishedBy", currentAdminName());
+      const me = getStoredUser();
+      data.append("publishedBy", me?.fullName || me?.username || "");
       data.append("poster", compressed, posterFile.type === "image/png" ? "poster.png" : "poster.jpg");
 
       const res = await axios.post(API, data);
       setResult({ spotlight: res.data.spotlight, pushSent: res.data.pushSent || 0 });
-      setForm(emptyForm);
+      preparePosterFile(res.data.spotlight?.posterUrl); // ready for WhatsApp sharing
+      setForm((f) => ({ ...emptyForm, category: f.category }));
       removePoster();
       setConfirmOpen(false);
     } catch (err) {
       setConfirmOpen(false);
-      setSubmitError(err.response?.data?.message || "Couldn't publish the spotlight. Check your connection and try again.");
+      setSubmitError(err.response?.data?.message || "Couldn't publish the poster. Check your connection and try again.");
     } finally {
       setStatus("idle");
     }
@@ -269,18 +546,20 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
   const busy = status !== "idle";
 
   if (result) {
+    const sp = result.spotlight;
     return (
       <div className="spot-scope" ref={rootRef}>
         <div className="spot-card spot-success" role="status">
           <span className="spot-success-icon"><IconSuccess size={36} /></span>
-          <h3>Spotlight published</h3>
+          <h3>{categoryOf(sp).label} published</h3>
           <p>
-            <strong>{result.spotlight.studentName}</strong> is now in the Artist Spotlight.{" "}
+            <strong>{posterHeadline(sp)}</strong> is now live.{" "}
             {result.pushSent > 0
               ? `Push notification sent to ${result.pushSent} device${result.pushSent === 1 ? "" : "s"}.`
               : "No devices have alerts turned on yet."}{" "}
             It also appears in everyone's notification bell.
           </p>
+          <WhatsAppShareButton spotlight={sp} />
           <div className="spot-success-actions">
             <button type="button" className="spot-btn spot-btn-ghost" onClick={onViewHistory}>
               <IconClock /> View history
@@ -309,44 +588,60 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
       <div className="spot-publish">
         <form className="spot-card spot-form" onSubmit={handleSubmit} noValidate>
           <div className="spot-form-head">
-            <span className="spot-form-icon"><IconTrophy size={22} /></span>
+            <span className={`spot-form-icon tone-${cat.tone}`}><cat.Icon size={22} /></span>
             <div>
-              <h3>New Artist Spotlight</h3>
-              <p>Celebrate a student's achievement with a poster for the whole academy.</p>
+              <h3>{cat.heading}</h3>
+              <p>{cat.intro}</p>
             </div>
           </div>
 
           <div className="spot-field">
-            <label htmlFor="spot-studentName">Student name <span className="spot-req" aria-hidden="true">*</span></label>
-            <input ref={nameRef} {...fieldProps("studentName")} list="spot-student-list" autoComplete="off" maxLength={80} required />
-            <datalist id="spot-student-list">
-              {studentOptions.map((s) => (
-                <option key={s.id} value={s.name} />
-              ))}
-            </datalist>
-            {errors.studentName ? (
-              <p id="spot-studentName-error" className="spot-error"><IconError /> {errors.studentName}</p>
-            ) : (
-              <p id="spot-studentName-hint" className="spot-hint">Start typing to pick an academy student.</p>
-            )}
+            <label htmlFor="spot-category">Poster type</label>
+            <div className="spot-select">
+              <select ref={categoryRef} id="spot-category" name="category" value={form.category} onChange={setCategory} disabled={busy}>
+                {CATEGORY_KEYS.map((key) => (
+                  <option key={key} value={key}>{CATEGORIES[key].label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
+          {cat.needsStudent && (
+            <div className="spot-field">
+              <label htmlFor="spot-studentName">Student name <span className="spot-req" aria-hidden="true">*</span></label>
+              <input ref={nameRef} {...fieldProps("studentName")} list="spot-student-list" autoComplete="off" maxLength={80} required />
+              <datalist id="spot-student-list">
+                {studentOptions.map((s) => (
+                  <option key={s.id} value={s.name} />
+                ))}
+              </datalist>
+              {errors.studentName ? (
+                <p id="spot-studentName-error" className="spot-error"><IconError /> {errors.studentName}</p>
+              ) : (
+                <p id="spot-studentName-hint" className="spot-hint">Start typing to pick an academy student.</p>
+              )}
+            </div>
+          )}
+
           <div className="spot-field">
-            <label htmlFor="spot-achievementTitle">Achievement title <span className="spot-req" aria-hidden="true">*</span></label>
-            <input ref={titleRef} {...fieldProps("achievementTitle")} maxLength={TITLE_MAX} required placeholder="e.g. 1st Prize, District Drawing Competition" />
+            <label htmlFor="spot-achievementTitle">{cat.titleLabel} <span className="spot-req" aria-hidden="true">*</span></label>
+            <input ref={titleRef} {...fieldProps("achievementTitle")} maxLength={TITLE_MAX} required placeholder={cat.titlePlaceholder} />
             {errors.achievementTitle ? (
               <p id="spot-achievementTitle-error" className="spot-error"><IconError /> {errors.achievementTitle}</p>
             ) : (
               <p id="spot-achievementTitle-hint" className="spot-hint spot-hint-row">
-                <span>Shown as the notification text.</span>
+                <span>Shown in the notification.</span>
                 <span>{form.achievementTitle.length}/{TITLE_MAX}</span>
               </p>
             )}
           </div>
 
           <div className="spot-field">
-            <label htmlFor="spot-description">Description <span className="spot-req" aria-hidden="true">*</span></label>
-            <textarea ref={descRef} {...fieldProps("description")} rows={5} maxLength={DESCRIPTION_MAX} required placeholder="What did they achieve, and where?" />
+            <label htmlFor="spot-description">
+              {cat.descLabel}{" "}
+              {cat.descRequired ? <span className="spot-req" aria-hidden="true">*</span> : <span className="spot-optional">(optional)</span>}
+            </label>
+            <textarea ref={descRef} {...fieldProps("description")} rows={5} maxLength={DESCRIPTION_MAX} required={cat.descRequired} placeholder={cat.descPlaceholder} />
             {errors.description ? (
               <p id="spot-description-error" className="spot-error"><IconError /> {errors.description}</p>
             ) : (
@@ -428,13 +723,13 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
               </>
             ) : (
               <>
-                <IconBell /> Publish spotlight
+                <IconBell /> Publish {cat.label.toLowerCase()}
               </>
             )}
           </button>
         </form>
 
-        <aside className="spot-card spot-preview" aria-label="Spotlight preview">
+        <aside className="spot-card spot-preview" aria-label="Poster preview">
           <p className="spot-preview-label">Preview</p>
           <div className="spot-preview-poster">
             {posterPreview ? (
@@ -443,17 +738,23 @@ export const SpotlightPublishTab = ({ students = [], onViewHistory }) => {
               <span className="spot-preview-placeholder"><IconImage size={32} /> Poster appears here</span>
             )}
           </div>
-          <span className="spot-badge"><IconTrophy /> Artist Spotlight</span>
-          <h4 className="spot-preview-name">{form.studentName.trim() || "Student name"}</h4>
-          <p className="spot-preview-title">{form.achievementTitle.trim() || "Achievement title"}</p>
-          <p className="spot-preview-desc">{form.description.trim() || "The description of the achievement shows here."}</p>
+          <CategoryBadge category={form.category} />
+          <h4 className="spot-preview-name">
+            {cat.needsStudent ? form.studentName.trim() || "Student name" : form.achievementTitle.trim() || cat.titleLabel}
+          </h4>
+          {cat.needsStudent && (
+            <p className="spot-preview-title">{form.achievementTitle.trim() || cat.titleLabel}</p>
+          )}
+          {(form.description.trim() || cat.descRequired) && (
+            <p className="spot-preview-desc">{form.description.trim() || `The ${cat.descLabel.toLowerCase()} shows here.`}</p>
+          )}
         </aside>
       </div>
 
       {confirmOpen && (
         <ConfirmDialog
-          title="Publish this spotlight?"
-          message={`${form.studentName.trim()}'s spotlight will be sent to all parents, teachers and admins as a notification. Push alerts can't be recalled once sent.`}
+          title={`Publish this ${cat.label.toLowerCase()}?`}
+          message={`“${cat.needsStudent ? form.studentName.trim() : form.achievementTitle.trim()}” will be sent to all parents, teachers and admins as a notification. Push alerts can't be recalled once sent.`}
           confirmLabel={status === "preparing" ? "Preparing…" : status === "publishing" ? "Publishing…" : "Publish"}
           busy={busy}
           dark={isDarkContext(rootRef.current)}
@@ -474,6 +775,7 @@ export const SpotlightHistoryTab = ({ onCreate }) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [viewing, setViewing] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -486,7 +788,7 @@ export const SpotlightHistoryTab = ({ onCreate }) => {
       const res = await axios.get(API);
       setSpotlights(res.data || []);
     } catch {
-      setLoadError("Couldn't load spotlights.");
+      setLoadError("Couldn't load posters.");
     } finally {
       setLoading(false);
     }
@@ -504,51 +806,71 @@ export const SpotlightHistoryTab = ({ onCreate }) => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return spotlights;
-    return spotlights.filter(
-      (s) => s.studentName.toLowerCase().includes(q) || s.achievementTitle.toLowerCase().includes(q),
-    );
-  }, [spotlights, query]);
+    return spotlights.filter((s) => {
+      if (typeFilter !== "all" && (s.category || "artist_spotlight") !== typeFilter) return false;
+      if (!q) return true;
+      return (
+        (s.studentName || "").toLowerCase().includes(q) ||
+        s.achievementTitle.toLowerCase().includes(q) ||
+        (s.description || "").toLowerCase().includes(q)
+      );
+    });
+  }, [spotlights, query, typeFilter]);
 
   const confirmDelete = async () => {
     setDeleting(true);
     try {
       await axios.delete(`${API}/${toDelete._id}`);
       setSpotlights((list) => list.filter((s) => s._id !== toDelete._id));
-      setToast({ type: "success", message: "Spotlight deleted." });
+      setToast({ type: "success", message: "Poster deleted." });
       setToDelete(null);
     } catch {
-      setToast({ type: "error", message: "Couldn't delete the spotlight." });
+      setToast({ type: "error", message: "Couldn't delete the poster." });
     } finally {
       setDeleting(false);
     }
   };
 
   const dark = () => isDarkContext(rootRef.current);
+  const narrowed = query.trim() || typeFilter !== "all";
 
   return (
     <div className="spot-scope" ref={rootRef}>
       <div className="spot-history-toolbar">
         <div>
-          <h3 className="spot-history-heading">Spotlight History</h3>
+          <h3 className="spot-history-heading">Poster History</h3>
           <p className="spot-hint" aria-live="polite">
             {loading
               ? "Loading…"
-              : query
-                ? `${filtered.length} of ${spotlights.length} spotlight${spotlights.length === 1 ? "" : "s"}`
-                : `${spotlights.length} spotlight${spotlights.length === 1 ? "" : "s"}`}
+              : narrowed
+                ? `${filtered.length} of ${spotlights.length} poster${spotlights.length === 1 ? "" : "s"}`
+                : `${spotlights.length} poster${spotlights.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <div className="spot-history-actions">
           <label className="spot-search">
             <IconSearch />
-            <span className="spot-visually-hidden">Search spotlights</span>
-            <input type="search" placeholder="Search by name or title" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <span className="spot-visually-hidden">Search posters</span>
+            <input type="search" placeholder="Search posters" value={query} onChange={(e) => setQuery(e.target.value)} />
           </label>
           <button type="button" className="spot-btn spot-btn-primary" onClick={onCreate}>
-            <IconPlus /> New spotlight
+            <IconPlus /> New poster
           </button>
         </div>
+      </div>
+
+      <div className="spot-filter-chips" role="group" aria-label="Filter by poster type">
+        {["all", ...CATEGORY_KEYS].map((key) => (
+          <button
+            key={key}
+            type="button"
+            className={`spot-chip${typeFilter === key ? " is-active" : ""}`}
+            aria-pressed={typeFilter === key}
+            onClick={() => setTypeFilter(key)}
+          >
+            {key === "all" ? "All" : CATEGORIES[key].label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -571,32 +893,44 @@ export const SpotlightHistoryTab = ({ onCreate }) => {
         </div>
       ) : spotlights.length === 0 ? (
         <div className="spot-card spot-empty">
-          <span className="spot-form-icon"><IconTrophy size={26} /></span>
-          <h4>No spotlights yet</h4>
-          <p>Publish the first one to celebrate a student's achievement.</p>
+          <span className="spot-form-icon tone-amber"><IconTrophy size={26} /></span>
+          <h4>No posters yet</h4>
+          <p>Publish an Artist Spotlight, festival greeting or announcement.</p>
           <button type="button" className="spot-btn spot-btn-primary" onClick={onCreate}>
-            <IconPlus /> Create a spotlight
+            <IconPlus /> Create a poster
           </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="spot-card spot-empty">
-          <p>No spotlights match “{query}”.</p>
-          <button type="button" className="spot-btn spot-btn-ghost" onClick={() => setQuery("")}>Clear search</button>
+          <p>No posters match these filters.</p>
+          <button
+            type="button"
+            className="spot-btn spot-btn-ghost"
+            onClick={() => {
+              setQuery("");
+              setTypeFilter("all");
+            }}
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
-        <ul className="spot-grid" aria-label="Published spotlights">
+        <ul className="spot-grid" aria-label="Published posters">
           {filtered.map((s) => (
             <li key={s._id} className="spot-card spot-history-card">
-              <button type="button" className="spot-history-poster" onClick={() => setViewing(s)} aria-label={`View ${s.studentName}'s spotlight`}>
+              <button type="button" className="spot-history-poster" onClick={() => setViewing(s)} aria-label={`View poster: ${posterHeadline(s)}`}>
                 <img src={s.posterUrl} alt="" loading="lazy" />
               </button>
               <div className="spot-history-body">
-                <h4 className="spot-history-name">{s.studentName}</h4>
-                <p className="spot-history-title">{s.achievementTitle}</p>
-                <p className="spot-history-desc">{s.description}</p>
+                <CategoryBadge spotlight={s} />
+                <h4 className="spot-history-name">{posterHeadline(s)}</h4>
+                {isSpotlight(s) && <p className="spot-history-title">{s.achievementTitle}</p>}
+                {s.description && <p className="spot-history-desc">{s.description}</p>}
                 <p className="spot-meta"><IconCalendar /> Published {formatPublishedAt(s.publishedAt)}</p>
                 <p className="spot-meta"><IconBell /> Push sent to {s.pushSentCount || 0} device{s.pushSentCount === 1 ? "" : "s"}</p>
+                <ReactionSummary reactions={s.reactions} />
                 <div className="spot-history-card-actions">
+                  <WhatsAppShareButton spotlight={s} className="spot-btn-sm spot-btn-block" />
                   <button type="button" className="spot-btn spot-btn-ghost spot-btn-sm" onClick={() => setViewing(s)}>
                     <IconEye /> View
                   </button>
@@ -610,11 +944,18 @@ export const SpotlightHistoryTab = ({ onCreate }) => {
         </ul>
       )}
 
-      {viewing && <SpotlightViewer spotlight={viewing} dark={dark()} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <SpotlightViewer
+          spotlight={viewing}
+          dark={dark()}
+          showShare
+          onClose={() => setViewing(null)}
+        />
+      )}
       {toDelete && (
         <ConfirmDialog
-          title="Delete this spotlight?"
-          message={`${toDelete.studentName}'s spotlight will be removed from history and from everyone's notification bell. This can't be undone.`}
+          title="Delete this poster?"
+          message={`“${posterHeadline(toDelete)}” will be removed from history and from everyone's notification bell. This can't be undone.`}
           confirmLabel={deleting ? "Deleting…" : "Delete"}
           tone="danger"
           busy={deleting}
