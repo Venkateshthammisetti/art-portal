@@ -1,13 +1,20 @@
 // Shared "notification centre" bell used by every dashboard.
-// Surfaces Artist Spotlights (newest first) and student birthday reminders:
+// Surfaces admin posters — Artist Spotlights, festival greetings and announcements
+// (newest first) — and student birthday reminders:
 // 1 week before, 3 days before, and on the day.
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import "./BirthdayNotifications.css";
-import { IconBell, IconBirthday, IconTrophy } from "./Icons";
-import { SpotlightViewer, formatPublishedAt, isDarkContext } from "./ArtistSpotlight";
+import { IconBell, IconBirthday } from "./Icons";
+import { SpotlightViewer, formatPublishedAt, isDarkContext, categoryOf } from "./ArtistSpotlight";
 
-const SPOTLIGHTS_IN_BELL = 10; // most recent spotlights kept in the bell
+const SPOTLIGHTS_IN_BELL = 10; // most recent posters kept in the bell
+
+const spotlightLine = (sp) => {
+  if (sp.category === "festival_greeting") return <strong>{sp.achievementTitle}</strong>;
+  if (sp.category === "announcement") return <>Announcement: <strong>{sp.achievementTitle}</strong></>;
+  return <>Artist Spotlight: <strong>{sp.studentName}</strong></>;
+};
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const REMINDER_OFFSETS = [0, 3, 7]; // days before (0 = today)
@@ -236,12 +243,19 @@ const BirthdayNotificationBell = ({ students, storageKey }) => {
                       }
                     }}
                   >
-                    <div className="bday-notif-icon spotlight"><IconTrophy size={20} /></div>
+                    {(() => {
+                      const c = categoryOf(n.spotlight);
+                      return (
+                        <div className={`bday-notif-icon spotlight tone-${c.tone}`}><c.Icon size={20} /></div>
+                      );
+                    })()}
                     <div className="bday-notif-body">
-                      <p className="bday-notif-title">
-                        Artist Spotlight: <strong>{n.spotlight.studentName}</strong>
+                      <p className="bday-notif-title">{spotlightLine(n.spotlight)}</p>
+                      <p className="bday-notif-sub">
+                        {n.spotlight.category === "artist_spotlight" || !n.spotlight.category
+                          ? n.spotlight.achievementTitle
+                          : categoryOf(n.spotlight).label}
                       </p>
-                      <p className="bday-notif-sub">{n.spotlight.achievementTitle}</p>
                       <p className="bday-notif-sub">{formatPublishedAt(n.spotlight.publishedAt)}</p>
                     </div>
                     {!readIds.includes(n.id) && <span className="bday-notif-dot" />}
@@ -273,6 +287,10 @@ const BirthdayNotificationBell = ({ students, storageKey }) => {
           spotlight={viewing}
           dark={isDarkContext(wrapRef.current)}
           onClose={() => setViewing(null)}
+          onUpdate={(updated) => {
+            setViewing(updated);
+            setSpotlights((list) => list.map((sp) => (sp._id === updated._id ? updated : sp)));
+          }}
         />
       )}
     </div>

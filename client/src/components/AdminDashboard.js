@@ -22,6 +22,7 @@ import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
 import { FaFilter } from "react-icons/fa6";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 import { SpotlightPublishTab, SpotlightHistoryTab } from "./ArtistSpotlight";
+import { subscribeDeviceToPush } from "../pushSubscribe";
 import ListCountHeader from "./ListCountHeader";
 
 import {
@@ -8552,7 +8553,7 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
 // ==========================================
 // 4. MAIN COMPONENT (Defined LAST to fix dependency errors)
 // ==========================================
-const AdminDashboard = ({ onLogout }) => {
+const AdminDashboard = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [feeMenuOpen, setFeeMenuOpen] = useState(false);
   const [expenseMenuOpen, setExpenseMenuOpen] = useState(false);
@@ -8767,6 +8768,12 @@ const AdminDashboard = ({ onLogout }) => {
     fetchOverviewData();
   }, []);
 
+  // Register this device for push so admins also get poster / reminder alerts
+  // outside the app (Teacher and Parent dashboards already do this on login).
+  useEffect(() => {
+    if (user?._id) subscribeDeviceToPush(user._id);
+  }, [user?._id]);
+
   // Keeps the Overview tab's stats/expenses in sync the moment fees or
   // expenses change elsewhere in the app, instead of only on first load.
   const refreshOverview = () => {
@@ -8936,7 +8943,7 @@ const AdminDashboard = ({ onLogout }) => {
             style={{ justifyContent: "space-between" }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <IconTrophy /> <span>Artist Spotlight</span>
+              <IconTrophy /> <span>Spotlight &amp; Posters</span>
             </span>
             <span aria-hidden="true" style={{
               fontSize: "0.7rem",
@@ -8951,13 +8958,13 @@ const AdminDashboard = ({ onLogout }) => {
                 className={activeTab === "spotlight-publish" ? "active" : ""}
                 onClick={() => handleNavClick("spotlight-publish")}
               >
-                <IconPlus /> <span>Publish Spotlight</span>
+                <IconPlus /> <span>Publish Poster</span>
               </button>
               <button
                 className={activeTab === "spotlight-history" ? "active" : ""}
                 onClick={() => handleNavClick("spotlight-history")}
               >
-                <IconClock /> <span>Spotlight History</span>
+                <IconClock /> <span>Poster History</span>
               </button>
             </div>
           )}
@@ -9039,9 +9046,9 @@ const AdminDashboard = ({ onLogout }) => {
                           : activeTab === "gallery"
                             ? "Art Gallery"
                             : activeTab === "spotlight-publish"
-                              ? "Publish Spotlight"
+                              ? "Publish Poster"
                             : activeTab === "spotlight-history"
-                              ? "Spotlight History"
+                              ? "Poster History"
                             : activeTab === "revenue-analytics"
                               ? "Revenue Analytics"
                             : activeTab === "expense-add"

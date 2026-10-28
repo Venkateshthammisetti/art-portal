@@ -12,6 +12,7 @@ self.addEventListener('push', e => {
       body:              data.body,
       icon:              '/new-logo1.png',
       badge:             '/new-logo.png',
+      image:             data.image             || undefined,
       tag:               data.tag               || 'art-portal-notif',
       requireInteraction: data.requireInteraction || false,
       vibrate:           [200, 100, 200],
