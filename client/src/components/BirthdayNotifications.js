@@ -9,6 +9,7 @@ import { IconBell, IconBirthday } from "./Icons";
 import { SpotlightViewer, formatPublishedAt, isDarkContext, categoryOf } from "./ArtistSpotlight";
 
 const SPOTLIGHTS_IN_BELL = 10; // most recent posters kept in the bell
+const POPUP_WINDOW_DAYS = 7; // only posters this recent pop up automatically
 
 const spotlightLine = (sp) => {
   if (sp.category === "festival_greeting") return <strong>{sp.achievementTitle}</strong>;
@@ -70,8 +71,12 @@ export const getBirthdayNotifications = (students, today = new Date()) => {
  * Notification-centre bell. Pass the list of student user docs the viewer should be
  * reminded about (all students for Admin, assigned-class students for Teacher, none
  * for Parent) and a unique localStorage key so read state persists per user.
+ *
+ * `autoPopup` opens the newest unseen poster (from the last week) by itself when the
+ * app opens, once per poster. `holdPopup` delays it while another dialog is showing
+ * or the page is still loading, so popups never stack.
  */
-const BirthdayNotificationBell = ({ students, storageKey }) => {
+const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, holdPopup = false }) => {
   const [open, setOpen] = useState(false);
   const [spotlights, setSpotlights] = useState([]);
   const [spotlightsLoaded, setSpotlightsLoaded] = useState(false);
@@ -132,10 +137,46 @@ const BirthdayNotificationBell = ({ students, storageKey }) => {
     return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, []);
 
+  // Auto popup: newest poster this user hasn't seen, shown once. The short delay
+  // lets the dashboard's own load-time dialogs (e.g. fee reminder) claim the screen
+  // first; `holdPopup` is re-checked when the timer fires.
+  const holdRef = useRef(holdPopup);
+  holdRef.current = holdPopup;
+  const popupShownKey = `${storageKey}_popup_shown`;
+  const poppedThisOpen = useRef(false); // at most one popup per app open; the rest wait in the bell
+  useEffect(() => {
+    if (!autoPopup || poppedThisOpen.current) return undefined;
+    if (!spotlightsLoaded || holdPopup || viewing || pendingSpotlightId) return undefined;
+    let shown;
+    try {
+      shown = JSON.parse(localStorage.getItem(popupShownKey) || "[]");
+    } catch {
+      shown = [];
+    }
+    const cutoff = Date.now() - POPUP_WINDOW_DAYS * MS_PER_DAY;
+    const fresh = spotlights.find(
+      (sp) =>
+        new Date(sp.publishedAt).getTime() >= cutoff &&
+        !shown.includes(sp._id) &&
+        !readIds.includes(`spotlight-${sp._id}`),
+    );
+    if (!fresh) return undefined;
+    const timer = setTimeout(() => {
+      if (holdRef.current) return;
+      poppedThisOpen.current = true;
+      localStorage.setItem(popupShownKey, JSON.stringify([...shown, fresh._id].slice(-50)));
+      markRead(`spotlight-${fresh._id}`);
+      setViewing(fresh);
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPopup, spotlightsLoaded, holdPopup, viewing, pendingSpotlightId, spotlights]);
+
   useEffect(() => {
     if (!pendingSpotlightId || !spotlightsLoaded) return;
     const match = spotlights.find((sp) => sp._id === pendingSpotlightId);
     if (match) {
+      poppedThisOpen.current = true;
       setViewing(match);
       markRead(`spotlight-${match._id}`);
     }
