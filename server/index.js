@@ -242,7 +242,7 @@ app.get("/api/dashboard/stats", async (req, res) => {
     const offlineStudents = await User.countDocuments({ role: "parent", classMode: "offline" });
     const onlineStudents = totalStudents - offlineStudents;
     const revenueResult = await User.aggregate([
-      { $match: { role: "parent" } },
+      { $match: { role: "parent", isActive: { $ne: false } } }, // inactive students owe no fee
       { $group: { _id: null, totalRevenue: { $sum: "$monthlyFee" } } },
     ]);
     res.json({
