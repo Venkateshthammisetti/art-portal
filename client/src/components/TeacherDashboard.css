@@ -3857,17 +3857,3 @@
 @media (max-width: 480px) {
   .rm-portfolio-grid { grid-template-columns: repeat(2, 1fr); }
 }
-/* Extend the bottom nav's background below the viewport so no page background
-   shows under translucent browser toolbars (iOS Safari) or the home indicator. */
-@media (max-width: 768px) {
-  .mobile-bottom-nav::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    height: 120px;
-    background: inherit;
-    pointer-events: none;
-  }
-}
