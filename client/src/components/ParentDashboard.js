@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 import { AttendanceAnalysisPanel } from "./AttendanceAnalysisPanel";
 import ListCountHeader from "./ListCountHeader";
+import BirthdayNotificationBell from "./BirthdayNotifications";
 
 // Ensure these image paths are correct in your project
 import logoImg from "./new-logo.png";
@@ -1386,6 +1387,11 @@ const ParentDashboard = ({ user, onLogout }) => {
             >
               <span className={loading ? "spin" : ""}><IconRefresh /></span>
             </button>
+            {/* Parents get Artist Spotlights here; no birthday reminders */}
+            <BirthdayNotificationBell
+              students={[]}
+              storageKey={`parent_notif_read_${currentUser._id}`}
+            />
             <span className="role-badge desktop-only">Parent</span>
             <div
               className="header-profile"

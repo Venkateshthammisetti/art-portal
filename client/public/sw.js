@@ -15,7 +15,7 @@ self.addEventListener('push', e => {
       tag:               data.tag               || 'art-portal-notif',
       requireInteraction: data.requireInteraction || false,
       vibrate:           [200, 100, 200],
-      data:              { url: data.url || APP_ORIGIN },
+      data:              { url: data.url || APP_ORIGIN, spotlightId: data.spotlightId || null },
     })
   );
 });
@@ -32,7 +32,12 @@ self.addEventListener('notificationclick', e => {
         const appTab = windowClients.find(
           c => c.url.startsWith(APP_ORIGIN) || c.url.startsWith('http://localhost')
         );
-        if (appTab) return appTab.focus();
+        if (appTab) {
+          // Ask the open page to show the spotlight poster it was notified about
+          const spotlightId = e.notification.data?.spotlightId;
+          if (spotlightId) appTab.postMessage({ type: 'open-spotlight', id: spotlightId });
+          return appTab.focus();
+        }
 
         // Otherwise open a fresh tab pointing at the app
         return clients.openWindow(targetUrl);

@@ -1,4 +1,4 @@
-/* Notification-centre bell — shared by AdminDashboard and TeacherDashboard */
+/* Notification-centre bell — shared by Admin, Teacher and Parent dashboards */
 
 .bday-notif-wrap {
   position: relative;
@@ -13,7 +13,8 @@
 }
 
 .admin-container[data-theme="dark"] .bday-notif-wrap,
-.teacher-container[data-theme="dark"] .bday-notif-wrap {
+.teacher-container[data-theme="dark"] .bday-notif-wrap,
+body.dark .bday-notif-wrap {
   --bn-card: #1e293b;
   --bn-text: #f1f5f9;
   --bn-muted: #94a3b8;
@@ -162,9 +163,38 @@
 @media (max-width: 480px) {
   .bday-notif-dropdown {
     position: fixed;
-    top: 64px;
+    top: calc(64px + env(safe-area-inset-top, 0px));
     right: 8px;
     left: 8px;
     width: auto;
   }
+}
+
+/* Artist Spotlight entries */
+.bday-notif-icon.spotlight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #b45309;
+}
+.admin-container[data-theme="dark"] .bday-notif-icon.spotlight,
+.teacher-container[data-theme="dark"] .bday-notif-icon.spotlight,
+body.dark .bday-notif-icon.spotlight {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+.bday-notif-item.spotlight { cursor: pointer; }
+.bday-notif-item.spotlight:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: -3px;
+}
+.bday-notif-bell-btn { color: var(--bn-text); }
+.bday-notif-bell-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
 }

@@ -21,6 +21,7 @@ import "./AdminDashboard.css";
 import { FaUserCheck, FaUserPlus } from "react-icons/fa6";
 import { FaFilter } from "react-icons/fa6";
 import BirthdayNotificationBell from "./BirthdayNotifications";
+import { SpotlightPublishTab, SpotlightHistoryTab } from "./ArtistSpotlight";
 import ListCountHeader from "./ListCountHeader";
 
 import {
@@ -64,6 +65,7 @@ import {
   IconMoney,
   IconEdit,
   IconWhatsApp,
+  IconTrophy,
 } from "./Icons";
 import {
   StudentAttendanceAnalysis,
@@ -8554,6 +8556,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [feeMenuOpen, setFeeMenuOpen] = useState(false);
   const [expenseMenuOpen, setExpenseMenuOpen] = useState(false);
+  const [spotlightMenuOpen, setSpotlightMenuOpen] = useState(false);
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
   const [overviewUsers, setOverviewUsers] = useState([]);
   const [overviewClasses, setOverviewClasses] = useState([]);
@@ -8795,6 +8798,7 @@ const AdminDashboard = ({ onLogout }) => {
     setUserInitialViewMode("active");
     if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
     if (tab === "expense-add" || tab === "expense-history" || tab === "expense-analysis") setExpenseMenuOpen(true);
+    if (tab === "spotlight-publish" || tab === "spotlight-history") setSpotlightMenuOpen(true);
     setActiveTab(tab);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -8813,6 +8817,7 @@ const AdminDashboard = ({ onLogout }) => {
     else setUserInitialViewMode("active");
     if (tab === "fees" || tab === "offline-fees" || tab === "online-fees") setFeeMenuOpen(true);
     if (tab === "expense-add" || tab === "expense-history" || tab === "expense-analysis") setExpenseMenuOpen(true);
+    if (tab === "spotlight-publish" || tab === "spotlight-history") setSpotlightMenuOpen(true);
     setActiveTab(tab);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -8919,6 +8924,44 @@ const AdminDashboard = ({ onLogout }) => {
             <IconGallery /> <span>Gallery</span>
           </button>
           <button
+            className={(activeTab === "spotlight-publish" || activeTab === "spotlight-history") ? "active" : ""}
+            onClick={() => {
+              if (activeTab !== "spotlight-publish" && activeTab !== "spotlight-history") {
+                handleNavClick("spotlight-publish");
+              } else {
+                setSpotlightMenuOpen((o) => !o);
+              }
+            }}
+            aria-expanded={spotlightMenuOpen}
+            style={{ justifyContent: "space-between" }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <IconTrophy /> <span>Artist Spotlight</span>
+            </span>
+            <span aria-hidden="true" style={{
+              fontSize: "0.7rem",
+              transition: "transform 0.2s",
+              transform: spotlightMenuOpen ? "rotate(180deg)" : "rotate(0deg)",
+              opacity: 0.7,
+            }}>▼</span>
+          </button>
+          {spotlightMenuOpen && (
+            <div className="sidebar-sub-nav">
+              <button
+                className={activeTab === "spotlight-publish" ? "active" : ""}
+                onClick={() => handleNavClick("spotlight-publish")}
+              >
+                <IconPlus /> <span>Publish Spotlight</span>
+              </button>
+              <button
+                className={activeTab === "spotlight-history" ? "active" : ""}
+                onClick={() => handleNavClick("spotlight-history")}
+              >
+                <IconClock /> <span>Spotlight History</span>
+              </button>
+            </div>
+          )}
+          <button
             className={(activeTab === "expense-add" || activeTab === "expense-history" || activeTab === "expense-analysis") ? "active" : ""}
             onClick={() => {
               if (activeTab !== "expense-add" && activeTab !== "expense-history" && activeTab !== "expense-analysis") {
@@ -8995,6 +9038,10 @@ const AdminDashboard = ({ onLogout }) => {
                           ? "Slot Manager"
                           : activeTab === "gallery"
                             ? "Art Gallery"
+                            : activeTab === "spotlight-publish"
+                              ? "Publish Spotlight"
+                            : activeTab === "spotlight-history"
+                              ? "Spotlight History"
                             : activeTab === "revenue-analytics"
                               ? "Revenue Analytics"
                             : activeTab === "expense-add"
@@ -9091,6 +9138,8 @@ const AdminDashboard = ({ onLogout }) => {
           {activeTab === "slots" && <SlotManagementTab key={tabRefreshKey} />}
           {/* ✨ ADDED GALLERY TAB */}
           {activeTab === "gallery" && <GalleryRepositoryTab key={tabRefreshKey} />}
+          {activeTab === "spotlight-publish" && <SpotlightPublishTab students={overviewUsers} onViewHistory={() => handleNavClick("spotlight-history")} />}
+          {activeTab === "spotlight-history" && <SpotlightHistoryTab key={tabRefreshKey} onCreate={() => handleNavClick("spotlight-publish")} />}
           {activeTab === "expense-add" && <AddExpenseTab onSuccess={refreshOverview} />}
           {activeTab === "expense-history" && <ExpenseHistoryTab key={tabRefreshKey} onRefresh={refreshOverview} onNavigate={handleNavigate} />}
           {activeTab === "expense-analysis" && <ExpenseAnalysisTab expenses={overviewExpenses} students={overviewUsers.filter((u) => u.role === "parent")} loading={overviewLoading} onBack={() => handleNavigate("expense-history")} />}
