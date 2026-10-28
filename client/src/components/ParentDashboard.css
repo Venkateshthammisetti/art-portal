@@ -1161,3 +1161,17 @@ body.dark .gallery-skeleton-line {
   background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
   background-size: 800px 100%;
 }
+/* Extend the bottom nav's background below the viewport so no page background
+   shows under translucent browser toolbars (iOS Safari) or the home indicator. */
+@media (max-width: 767px) {
+  .mobile-bottom-nav::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: inherit;
+    pointer-events: none;
+  }
+}
