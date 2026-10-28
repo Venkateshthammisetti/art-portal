@@ -24,7 +24,7 @@ const ArtworkSchema = new mongoose.Schema({
   },
   dateCreated: { 
     type: String, 
-    default: new Date().toISOString().split('T')[0] 
+    default: () => new Date().toISOString().split('T')[0] 
   }
 }, { timestamps: true });
 
