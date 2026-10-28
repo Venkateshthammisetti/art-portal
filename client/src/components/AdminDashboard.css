@@ -4266,3 +4266,14 @@ body {
     justify-content: center;
   }
 }
+
+/* iPhone home-screen app (black-translucent status bar + viewport-fit=cover):
+   keep the header and slide-out menu below the clock/signal icons. The inset is
+   0 in normal browsers and on desktop, so nothing changes there. */
+.admin-container .top-header {
+  box-sizing: content-box;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.admin-sidebar.mobile-open {
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+}
