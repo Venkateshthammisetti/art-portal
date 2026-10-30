@@ -2415,6 +2415,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
             <BirthdayNotificationBell
               students={myStudents}
               storageKey={`teacher_bday_notif_read_${currentUser._id}`}
+              autoPopup
+              holdPopup={loading || attendanceReminders.length > 0}
             />
             <label
               className="theme-toggle-label desktop-only"

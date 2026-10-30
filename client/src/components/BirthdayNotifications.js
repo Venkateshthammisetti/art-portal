@@ -72,8 +72,8 @@ export const getBirthdayNotifications = (students, today = new Date()) => {
  * reminded about (all students for Admin, assigned-class students for Teacher, none
  * for Parent) and a unique localStorage key so read state persists per user.
  *
- * `autoPopup` opens the newest unseen poster (from the last week) by itself when the
- * app opens, once per poster. `holdPopup` delays it while another dialog is showing
+ * `autoPopup` (Parent and Teacher dashboards) opens the newest unseen poster (from
+ * the last week) by itself when the app opens, once per poster. `holdPopup` delays it while another dialog is showing
  * or the page is still loading, so popups never stack.
  */
 const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, holdPopup = false }) => {
