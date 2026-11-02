@@ -24,7 +24,7 @@ const CertificationSchema = new mongoose.Schema({
   },
   dateIssued: {
     type: String,
-    default: new Date().toISOString().split('T')[0]
+    default: () => new Date().toISOString().split('T')[0]
   }
 }, { timestamps: true });
 

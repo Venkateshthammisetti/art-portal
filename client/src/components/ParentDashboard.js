@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 import { AttendanceAnalysisPanel } from "./AttendanceAnalysisPanel";
 import ListCountHeader from "./ListCountHeader";
+import BirthdayNotificationBell from "./BirthdayNotifications";
 
 // Ensure these image paths are correct in your project
 import logoImg from "./new-logo.png";
@@ -686,6 +687,9 @@ const ParentDashboard = ({ user, onLogout }) => {
   // Toast State
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [pushEnabled, setPushEnabled] = useState(
+    typeof Notification !== "undefined" && Notification.permission === "granted",
+  );
 
   // Comment States
   const [activeCommentId, setActiveCommentId] = useState(null);
@@ -709,6 +713,14 @@ const ParentDashboard = ({ user, onLogout }) => {
   useEffect(() => {
     if (currentUser?._id) fetchParentData();
   }, [currentUser]);
+
+  // Turn alerts on automatically when a parent opens the dashboard. If already
+  // allowed, this just refreshes the saved device subscription; if not yet
+  // decided, the browser asks once; if blocked, it does nothing.
+  useEffect(() => {
+    if (user?._id) subscribeToPush({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id]);
 
   useEffect(() => {
     document.body.className = theme;
@@ -1036,30 +1048,60 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   // --- ACTIONS ---
 
-  // ✨ PUSH NOTIFICATION LOGIC (MOVED TO CORRECT LOCATION)
-  const subscribeToPush = async () => {
-    // 1. Check if browser supports it
-    if (!("serviceWorker" in navigator)) {
-      return alert("Sorry, this browser does not support notifications.");
+  // ✨ PUSH NOTIFICATION LOGIC
+  // silent=true is used for the automatic attempt on login: no alerts, and it
+  // never re-asks once the parent has blocked notifications. silent=false is the
+  // manual "Enable Alerts" button, which explains what happened.
+  const subscribeToPush = async ({ silent = false } = {}) => {
+    // 1. Check if browser supports it (iOS only allows push in an installed PWA)
+    if (
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window) ||
+      !("Notification" in window)
+    ) {
+      if (!silent) {
+        alert("Sorry, this browser does not support notifications.");
+      }
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      if (!silent) {
+        alert(
+          "Notifications are blocked for this site. Please allow them in your browser settings.",
+        );
+      }
+      return;
     }
 
     try {
-      // 2. Register the Service Worker (sw.js)
-      // We look for this file in your 'public' folder
-      await navigator.serviceWorker.register("/sw.js");
-      const register = await navigator.serviceWorker.register("/sw.js");
+      // 2. Ask permission (shows the browser prompt only when not yet decided)
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        if (!silent) {
+          alert(
+            "Notifications were not allowed. Please allow them in your browser settings.",
+          );
+        }
+        return;
+      }
 
-      // 3. Subscribe using your VAPID Key
+      // 3. Register the Service Worker (sw.js from the 'public' folder)
+      const register = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+
+      // 4. Reuse the existing subscription, or create one with the VAPID key
       const publicVapidKey =
         "BC0ajb0fFmrJohj0JlE5fseL4l4BU2gNRP8cPkQXVlAaXw4W6uGAevDqLgrD9Qzy4-W-FQvR-DNf0ccmo0YYkmM";
 
-      const subscription = await register.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
-      });
+      const subscription =
+        (await register.pushManager.getSubscription()) ||
+        (await register.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+        }));
 
-      // 4. Send subscription to Backend to save in MongoDB
-      // Uses the 'user' prop to get the ID
+      // 5. Save it on the backend so the server can push to this device
       await axios.post(
         "https://art-portal-7n6r.onrender.com/api/notifications/subscribe",
         {
@@ -1068,12 +1110,17 @@ const ParentDashboard = ({ user, onLogout }) => {
         },
       );
 
-      alert("✅ Notifications Enabled! You will now receive artwork updates.");
+      setPushEnabled(true);
+      if (!silent) {
+        alert("✅ Notifications Enabled! You will now receive artwork updates.");
+      }
     } catch (err) {
       console.error("Push Error:", err);
-      alert(
-        "Failed to enable. Please allow notifications in your browser settings.",
-      );
+      if (!silent) {
+        alert(
+          "Failed to enable. Please allow notifications in your browser settings.",
+        );
+      }
     }
   };
 
@@ -1277,8 +1324,8 @@ const ParentDashboard = ({ user, onLogout }) => {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
             Refer & Support
           </button>
-          {/* <button 
-            onClick={subscribeToPush} 
+          <button 
+            onClick={() => subscribeToPush()} 
             style={{
               marginTop: '15px', 
               background: '#10b981', 
@@ -1294,8 +1341,8 @@ const ParentDashboard = ({ user, onLogout }) => {
               gap: '8px'
             }}
           >
-            <IconBell /> Enable Alerts
-          </button> */}
+            <IconBell /> {pushEnabled ? "Alerts On" : "Enable Alerts"}
+          </button>
 
           <button
             onClick={() => setShowTutorial(true)}
@@ -1340,6 +1387,13 @@ const ParentDashboard = ({ user, onLogout }) => {
             >
               <span className={loading ? "spin" : ""}><IconRefresh /></span>
             </button>
+            {/* Parents get posters here (new ones pop up on open); no birthday reminders */}
+            <BirthdayNotificationBell
+              students={[]}
+              storageKey={`parent_notif_read_${currentUser._id}`}
+              autoPopup
+              holdPopup={loading || showFeeReminder || showTutorial}
+            />
             <span className="role-badge desktop-only">Parent</span>
             <div
               className="header-profile"
@@ -1384,7 +1438,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   }}
                   style={{ fontWeight: "bold" }}
                 >
-                  <IconBell /> Enable Alerts
+                  <IconBell /> {pushEnabled ? "Alerts On" : "Enable Alerts"}
                 </button>
                 <button
                   className="pd-menu-btn logout"

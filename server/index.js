@@ -15,6 +15,7 @@ const Feedback = require("./models/Feedback");
 const Artwork = require("./models/Artwork");
 const Certification = require("./models/Certification");
 const Expense = require("./models/Expense");
+const Spotlight = require("./models/Spotlight");
 const nodemailer = require("nodemailer");
 const webpush = require("web-push");
 
@@ -242,7 +243,7 @@ app.get("/api/dashboard/stats", async (req, res) => {
     const offlineStudents = await User.countDocuments({ role: "parent", classMode: "offline" });
     const onlineStudents = totalStudents - offlineStudents;
     const revenueResult = await User.aggregate([
-      { $match: { role: "parent" } },
+      { $match: { role: "parent", isActive: { $ne: false } } }, // inactive students owe no fee
       { $group: { _id: null, totalRevenue: { $sum: "$monthlyFee" } } },
     ]);
     res.json({
@@ -1014,6 +1015,150 @@ app.post("/api/notifications/subscribe", async (req, res) => {
     res.status(201).json({});
   } catch (err) {
     res.status(500).json({ error: "Could not save subscription" });
+  }
+});
+
+// ===========================
+//   POSTERS: SPOTLIGHT, GREETINGS & ANNOUNCEMENTS 🌟
+// ===========================
+
+// Push notification text for each poster type.
+const spotlightPushText = (sp) => {
+  const message = (sp.description || "").replace(/\s+/g, " ").trim();
+  const short = message.length > 120 ? `${message.slice(0, 117)}…` : message;
+  if (sp.category === "festival_greeting") {
+    return { title: `🎉 ${sp.achievementTitle}`, body: short || "Warm wishes from Thevenkyart Art Academy" };
+  }
+  if (sp.category === "announcement") {
+    return { title: `📢 Announcement: ${sp.achievementTitle}`, body: short || "Tap to read the full announcement" };
+  }
+  return { title: `🌟 Artist Spotlight: ${sp.studentName}`, body: sp.achievementTitle };
+};
+
+// 1. LIST POSTERS (newest first) — used by the Admin history tab and by the
+//    notification bell on every dashboard.
+app.get("/api/spotlights", async (req, res) => {
+  try {
+    const spotlights = await Spotlight.find().sort({ publishedAt: -1 });
+    res.json(spotlights);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching spotlights" });
+  }
+});
+
+// 2. PUBLISH POSTER (Admin) — saves the poster to Cloudinary, then sends a push
+//    notification to every active user (all roles) with a saved device.
+app.post("/api/spotlights", upload.single("poster"), async (req, res) => {
+  try {
+    const { studentName, studentId, achievementTitle, description, publishedBy } = req.body;
+    const category = Spotlight.CATEGORIES.includes(req.body.category) ? req.body.category : "artist_spotlight";
+    if (!req.file) return res.status(400).json({ message: "Poster image is required" });
+    if (!achievementTitle?.trim()) return res.status(400).json({ message: "Title is required" });
+    if (category === "artist_spotlight" && (!studentName?.trim() || !description?.trim())) {
+      return res.status(400).json({ message: "Student name and description are required" });
+    }
+    if (category === "announcement" && !description?.trim()) {
+      return res.status(400).json({ message: "Announcement message is required" });
+    }
+
+    const spotlight = new Spotlight({
+      category,
+      studentName: category === "artist_spotlight" ? studentName : "",
+      studentId: category === "artist_spotlight" && mongoose.Types.ObjectId.isValid(studentId) ? studentId : null,
+      achievementTitle,
+      description: description || "",
+      posterUrl: req.file.path, // Cloudinary URL
+      publishedBy: publishedBy || "",
+    });
+    await spotlight.save();
+
+    const recipients = await User.find({
+      pushSubscription: { $ne: null },
+      isActive: { $ne: false },
+    }).select("pushSubscription");
+
+    const { title, body } = spotlightPushText(spotlight);
+    const payload = JSON.stringify({
+      title,
+      body,
+      image: spotlight.posterUrl, // shown as a large picture on Android
+      tag: `spotlight-${spotlight._id}`,
+      spotlightId: spotlight._id.toString(),
+      url: `https://art-portal.netlify.app/?spotlight=${spotlight._id}`,
+    });
+
+    // urgency "high" asks the push service to wake the phone right away
+    const results = await Promise.allSettled(
+      recipients.map((u) => webpush.sendNotification(u.pushSubscription, payload, { urgency: "high", TTL: 86400 })),
+    );
+    let sent = 0;
+    const expiredIds = [];
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") sent++;
+      else if (r.reason?.statusCode === 404 || r.reason?.statusCode === 410) {
+        expiredIds.push(recipients[i]._id);
+      } else {
+        console.error("Spotlight push failed:", r.reason?.statusCode, r.reason?.body || r.reason?.message);
+      }
+    });
+    if (expiredIds.length > 0) {
+      await User.updateMany({ _id: { $in: expiredIds } }, { $set: { pushSubscription: null } });
+    }
+
+    spotlight.pushSentCount = sent;
+    await spotlight.save();
+
+    res.json({ success: true, spotlight, pushSent: sent });
+  } catch (err) {
+    console.error("Spotlight Publish Error:", err);
+    res.status(500).json({ message: "Error publishing spotlight" });
+  }
+});
+
+// 3. REACT TO A POSTER (Parent/Teacher) — one reaction per user. Sending the
+//    same emoji again, or an empty one, removes it; a different emoji replaces it.
+app.post("/api/spotlights/:id/react", async (req, res) => {
+  try {
+    const { userId, emoji } = req.body;
+    if (emoji && !Spotlight.REACTIONS.includes(emoji)) {
+      return res.status(400).json({ message: "Unsupported reaction" });
+    }
+    const user = await User.findById(userId).select("role fullName childName username");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.role !== "parent" && user.role !== "teacher") {
+      return res.status(403).json({ message: "Only parents and teachers can react" });
+    }
+
+    const spotlight = await Spotlight.findById(req.params.id);
+    if (!spotlight) return res.status(404).json({ message: "Spotlight not found" });
+
+    const existing = spotlight.reactions.find((r) => r.userId.toString() === user._id.toString());
+    const removing = !emoji || (existing && existing.emoji === emoji);
+    spotlight.reactions = spotlight.reactions.filter((r) => r.userId.toString() !== user._id.toString());
+    if (!removing) {
+      spotlight.reactions.push({
+        userId: user._id,
+        name: user.role === "parent" ? (user.childName ? `${user.childName}'s parent` : user.fullName || user.username) : user.fullName || user.username,
+        role: user.role,
+        emoji,
+      });
+    }
+    await spotlight.save();
+    res.json({ success: true, reactions: spotlight.reactions });
+  } catch (err) {
+    res.status(500).json({ message: "Error saving reaction" });
+  }
+});
+
+// 4. DELETE POSTER (Admin) — removes the DB record only; the Cloudinary
+//    poster is left in place (same tradeoff as artwork deletion).
+app.delete("/api/spotlights/:id", async (req, res) => {
+  try {
+    const deleted = await Spotlight.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Spotlight not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting spotlight" });
   }
 });
 

@@ -37,7 +37,7 @@ const UserSchema = new mongoose.Schema({
   joiningDate: String, // Original joining date (for reference)
   
   // ✨ NEW FIELD: This controls when Fee Calculation starts
-  registeredDate: { type: String, default: new Date().toISOString().split('T')[0] }, 
+  registeredDate: { type: String, default: () => new Date().toISOString().split('T')[0] }, 
 
   // Teacher/Admin Specific
   specialization: String,
