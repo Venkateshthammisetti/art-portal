@@ -6044,10 +6044,19 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     return new Date(dateStr).toISOString().slice(0, 7);
   };
 
+  // Deactivated students (isActive === false) can still show Pay/Pass for months
+  // outside their inactive range — ask before recording anything against them.
+  const confirmInactiveAction = (student, actionLabel) => {
+    if (!student || student.isActive !== false) return true;
+    const name = student.childName || student.name || "This student";
+    return window.confirm(`${name} is marked as inactive.\n\nAre you sure you want to ${actionLabel} for ${selectedMonth}?`);
+  };
+
   const handleTogglePayment = async (studentId, currentStatus, feeAmount) => {
     if (currentStatus === "Not Joined") return; // 🔒 Prevent action if not joined
 
     const newStatus = currentStatus === "Paid" ? "Pending" : "Paid";
+    if (newStatus === "Paid" && !confirmInactiveAction(allStudents.find((s) => s._id === studentId), "mark this month as paid")) return;
     const updatedStudents = allStudents.map((s) => {
       if (s._id === studentId) {
         let newPayments = [...(s.payments || [])];
@@ -7009,7 +7018,10 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                           fontSize: "0.85rem",
                                           backgroundColor: "#7c3aed",
                                         }}
-                                        onClick={() => { setPassReason(""); setPassCustomReason(""); setPassModal({ show: true, student }); }}
+                                        onClick={() => {
+                                          if (!confirmInactiveAction(student, "mark a pass")) return;
+                                          setPassReason(""); setPassCustomReason(""); setPassModal({ show: true, student });
+                                        }}
                                       >
                                         Mark Pass
                                       </button>
