@@ -6241,18 +6241,45 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       return;
     }
 
-    const monthLabel = new Date(selectedMonth + "-01").toLocaleString("default", {
-      month: "long",
-      year: "numeric",
-    });
+    // Built from local year/month so the label never slips a month in any timezone.
+    const labelFor = (monthStr) => {
+      const [y, m] = monthStr.split("-").map(Number);
+      return new Date(y, m - 1, 1).toLocaleString("default", { month: "long", year: "numeric" });
+    };
+    const money = (n) => `₹${Number(n).toLocaleString()}`;
+
+    // Every unpaid month up to now (skipping passes and inactive months), the same
+    // figures the Fee Tracker shows under "pending". Falls back to just the selected
+    // month if nothing is overdue yet (e.g. the admin is looking at a future month).
+    let pendingMonths = calculateTotalPending(student).months;
+    if (pendingMonths.length === 0) {
+      pendingMonths = [{ month: selectedMonth, amount: getFeeForMonth(student, selectedMonth) }];
+    }
+    const total = pendingMonths.reduce((sum, m) => sum + m.amount, 0);
+    const hasAmounts = total > 0;
+
     const childName = student.childName || "your child";
     // Falls back to a plain "Sir/Madam" when no parent name is on record.
     const greetName = student.fullName
       ? `${student.fullName} Sir/Madam`
       : "Sir/Madam";
-    const feeLine = student.monthlyFee
-      ? `\n\nPending amount: ₹${Number(student.monthlyFee).toLocaleString()}`
-      : "";
+
+    // One month reads as a sentence; several are listed with a total to pay.
+    let pendingBlock;
+    if (pendingMonths.length === 1) {
+      const only = pendingMonths[0];
+      pendingBlock =
+        `Just a friendly reminder that ${childName}'s art class fee for ${labelFor(only.month)} is still pending.` +
+        (hasAmounts ? `\n\nPending amount: ${money(only.amount)}` : "");
+    } else {
+      const lines = pendingMonths
+        .map((m, i) => `${i + 1}. ${labelFor(m.month)}${hasAmounts ? ` - ${money(m.amount)}` : ""}`)
+        .join("\n");
+      pendingBlock =
+        `Just a friendly reminder that ${childName}'s art class fees for the following ${pendingMonths.length} months are still pending:\n\n` +
+        `${lines}` +
+        (hasAmounts ? `\n\nTotal pending: ${money(total)}` : "");
+    }
 
     // Deliberately plain text — no emoji. Some recipient devices rendered them
     // as "?" replacement glyphs (a missing-emoji-font issue on the viewing
@@ -6261,7 +6288,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     const message =
       `Art class fee reminder\n` +
       `Hello ${greetName}, this is Thevenkyart Art Academy.\n\n` +
-      `Just a friendly reminder that ${childName}'s art class fee for ${monthLabel} is still pending.${feeLine}\n\n` +
+      `${pendingBlock}\n\n` +
       `Please pay at your convenience, and do let us know once it is done.\n\n` +
       `Thank you for your understanding!`;
 
@@ -6312,6 +6339,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
 
     let pendingCount = 0;
     let pendingAmount = 0;
+    const months = []; // [{ month: "YYYY-MM", amount }] — oldest first, for the reminder message
 
     let iterIndex = startTotalIndex;
     // Loop from Start Month -> Current Month
@@ -6327,13 +6355,15 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       const isInactive = isStudentInactiveForMonth(student, monthStr);
 
       if (!isPaid && !isPass && !isInactive) {
+        const amount = getFeeForMonth(student, monthStr);
         pendingCount++;
-        pendingAmount += getFeeForMonth(student, monthStr);
+        pendingAmount += amount;
+        months.push({ month: monthStr, amount });
       }
       iterIndex++;
     }
 
-    return { count: pendingCount, amount: pendingAmount };
+    return { count: pendingCount, amount: pendingAmount, months };
   };
 
   const totalEstRevenue = students.reduce((acc, s) => {
