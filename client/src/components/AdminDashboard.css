@@ -923,6 +923,67 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* Total Students card tiles (Active Online / Active Offline / Expert Teachers) */
+.sc-tile {
+  flex: 1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.sc-tile-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.sc-tile-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+.sc-tile-online { background: #ecfdf5; }
+.sc-tile-online .sc-tile-label { color: #059669; }
+.sc-tile-online .sc-tile-value { color: #065f46; }
+.sc-tile-offline { background: #fef3c7; }
+.sc-tile-offline .sc-tile-label { color: #d97706; }
+.sc-tile-offline .sc-tile-value { color: #92400e; }
+.sc-tile-teachers {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  background: #f0fdf4;
+}
+.sc-tile-teachers .sc-tile-label { color: #16a34a; margin-bottom: 0; }
+.sc-tile-teachers .sc-tile-value { color: #166534; font-size: 1.05rem; }
+
+.admin-container[data-theme="dark"] .sc-tile-online {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.admin-container[data-theme="dark"] .sc-tile-online .sc-tile-label { color: #34d399; }
+.admin-container[data-theme="dark"] .sc-tile-online .sc-tile-value { color: #a7f3d0; }
+.admin-container[data-theme="dark"] .sc-tile-offline {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.admin-container[data-theme="dark"] .sc-tile-offline .sc-tile-label { color: #fbbf24; }
+.admin-container[data-theme="dark"] .sc-tile-offline .sc-tile-value { color: #fde68a; }
+.admin-container[data-theme="dark"] .sc-tile-teachers {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+.admin-container[data-theme="dark"] .sc-tile-teachers .sc-tile-label { color: #4ade80; }
+.admin-container[data-theme="dark"] .sc-tile-teachers .sc-tile-value { color: #bbf7d0; }
+
+/* Donut charts (Student Demographics) — centre total + legend */
+.admin-container[data-theme="dark"] .donut-total { color: #f1f5f9 !important; }
+.admin-container[data-theme="dark"] .donut-legend-name { color: #cbd5e1 !important; }
+.admin-container[data-theme="dark"] .donut-legend-value { color: #f1f5f9 !important; }
+
 /* Tablet / iPad (no sidebar yet, but too narrow for 3 stat cards in a row):
    stack into 2 columns and let the wider "Collected This Month" card span
    the full width so its four sub-tiles have room to breathe. */
@@ -1368,6 +1429,19 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* Total Students tiles: wrap "Active Online" instead of cutting it off */
+  .overview-stat-card .sc-tile-online .sc-tile-label,
+  .overview-stat-card .sc-tile-offline .sc-tile-label {
+    white-space: normal;
+    overflow: visible;
+    align-items: flex-start;
+    line-height: 1.2;
+  }
+  .overview-stat-card .sc-tile-label svg {
+    flex-shrink: 0;
+    margin-top: 1px;
   }
 
   .overview-stat-card .stat-mini-value {
