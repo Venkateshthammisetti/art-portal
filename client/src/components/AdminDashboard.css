@@ -4402,3 +4402,163 @@ body {
   .admin-container .more-sheet,
   .admin-container .more-sheet-backdrop { animation: none; }
 }
+
+/* ---------- Slot Manager (layout moved out of inline styles so it can adapt) ---------- */
+.admin-container .slot-manager .slot-day-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  border-bottom: 1px solid #e2e8f0;
+}
+.admin-container .slot-manager .slot-day-tabs::-webkit-scrollbar { display: none; }
+.admin-container .slot-day-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.admin-container .slot-day-tab:hover { background: #e2e8f0; }
+.admin-container .slot-day-tab.active { background: #0284c7; color: #ffffff; }
+.admin-container .slot-day-tab:focus-visible { outline: 3px solid rgba(2, 132, 199, 0.45); outline-offset: 2px; }
+.admin-container .slot-day-short { display: none; }
+.admin-container .slot-day-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.admin-container .slot-day-tab.active .slot-day-count { background: rgba(255, 255, 255, 0.25); color: #ffffff; }
+
+.admin-container .slot-body { padding: 25px; }
+.admin-container .slot-section { margin-bottom: 30px; }
+.admin-container .slot-section:last-child { margin-bottom: 0; }
+.admin-container .slot-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 15px 0;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.admin-container .slot-section-title.morning { background: #ffedd5; color: #c2410c; }
+.admin-container .slot-section-title.evening { background: #e0e7ff; color: #4338ca; }
+.admin-container .slot-rows {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.admin-container .slot-row { display: contents; }
+.admin-container .slot-time-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 100px;
+  padding: 15px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #334155;
+}
+.admin-container .slot-time-count { font-size: 0.75rem; font-weight: 600; color: #0369a1; }
+.admin-container .slot-cards { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+.admin-container .slot-class-card {
+  margin: 0 !important;
+  min-height: 100px;
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 320px;
+}
+.admin-container .slot-class-card.single { flex: 1 1 100%; min-width: 100%; max-width: none; }
+.admin-container .slot-empty-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  padding: 15px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+.admin-container .slot-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 0;
+  color: #64748b;
+  font-weight: 600;
+}
+.admin-container .slot-loading-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid #bae6fd;
+  border-top-color: #0284c7;
+  animation: slotSpin 0.8s linear infinite;
+}
+@keyframes slotSpin { to { transform: rotate(360deg); } }
+
+/* Phones: one swipeable row of short day names; time becomes a small heading
+   above its classes; class cards take the full width. */
+@media (max-width: 768px) {
+  .admin-container .slot-manager .slot-day-tabs { padding: 12px; gap: 6px; }
+  .admin-container .slot-day-tab { padding: 0 14px; min-height: 44px; }
+  .admin-container .slot-day-full { display: none; }
+  .admin-container .slot-day-short { display: inline; }
+  .admin-container .slot-body { padding: 14px 12px; }
+  .admin-container .slot-section { margin-bottom: 22px; }
+  .admin-container .slot-section-title { font-size: 0.95rem; margin-bottom: 8px; }
+  .admin-container .slot-rows { grid-template-columns: 1fr; gap: 6px; }
+  .admin-container .slot-manager .slot-time-label {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    min-height: 0;
+    margin-top: 10px;
+    padding: 0 2px;
+    background: transparent !important;
+    border: none !important;
+    font-size: 0.85rem;
+    color: #475569;
+  }
+  .admin-container .slot-class-card,
+  .admin-container .slot-class-card.single { flex: 1 1 100%; min-width: 0; max-width: none; min-height: 0; }
+  .admin-container .slot-manager .slot-empty-card { min-height: 48px; padding: 10px; }
+}
+
+.admin-container[data-theme="dark"] .slot-manager .slot-day-tabs { border-bottom-color: #334155; }
+.admin-container[data-theme="dark"] .slot-day-tab { background: #1e293b; color: #cbd5e1; }
+.admin-container[data-theme="dark"] .slot-day-tab:hover { background: #273449; }
+.admin-container[data-theme="dark"] .slot-day-tab.active { background: #0284c7; color: #ffffff; }
+.admin-container[data-theme="dark"] .slot-day-count { background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }
+.admin-container[data-theme="dark"] .slot-time-count { color: #7dd3fc; }
+.admin-container[data-theme="dark"] .slot-section-title.morning { background: rgba(251, 146, 60, 0.16); color: #fdba74; }
+.admin-container[data-theme="dark"] .slot-section-title.evening { background: rgba(129, 140, 248, 0.18); color: #c7d2fe; }
+@media (max-width: 768px) {
+  .admin-container[data-theme="dark"] .slot-manager .slot-time-label { color: #cbd5e1 !important; }
+}

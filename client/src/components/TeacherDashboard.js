@@ -4,6 +4,7 @@ import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 import ListCountHeader from "./ListCountHeader";
+import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 
 import {
   IconGallery as IconGalleryShared,
@@ -100,18 +101,6 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   );
   const [filterMonth, setFilterMonth] = useState("all");
 
-  // ✨ Enhanced Lightbox: Swipe + Pinch-to-Zoom + Scroll Lock
-  const touchStartX = useRef(null);
-  const touchEndX = useRef(null);
-  const [zoomScale, setZoomScale] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const initialPinchDist = useRef(null);
-  const initialScale = useRef(1);
-  const lastTap = useRef(0);
-  const panStart = useRef(null);
-  const initialOffset = useRef({ x: 0, y: 0 });
-  const wasPinch = useRef(false);
-
   // 1. Fetch Artwork
   useEffect(() => {
     setLoadingGallery(true);
@@ -145,6 +134,8 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
 
     return yearMatch && monthMatch;
   });
+  // Long galleries render in batches as you scroll (1,000+ artworks in "All")
+  const { visible: visibleArtwork, hasMore: hasMoreArt, showMore: showMoreArt } = useIncrementalList(filteredArtwork);
 
   // 3. Multi-Image Compression
   const handleFileChange = async (e) => {
@@ -409,133 +400,11 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     }
   };
 
-  // ✨ NAVIGATION HELPERS
-  const handleNext = (e) => {
-    if (e) e.stopPropagation();
-    setLightboxIndex((prev) => (prev + 1) % filteredArtwork.length);
-  };
-
-  const handlePrev = (e) => {
-    if (e) e.stopPropagation();
-    setLightboxIndex(
-      (prev) => (prev - 1 + filteredArtwork.length) % filteredArtwork.length,
-    );
-  };
-
-  // ✨ KEYBOARD NAVIGATION + BODY SCROLL LOCK
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (lightboxIndex === null) return;
-      if (e.key === "ArrowRight") handleNext();
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Escape") setLightboxIndex(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-
-    // Lock body scroll when lightbox is open
-    if (lightboxIndex !== null) {
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
-    } else {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    }
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    };
-  }, [lightboxIndex, filteredArtwork]);
-
-  // Reset zoom/pan when image changes
-  useEffect(() => {
-    setZoomScale(1);
-    setPanOffset({ x: 0, y: 0 });
-  }, [lightboxIndex]);
-
-  // ✨ Helper: distance between two touches
-  const getTouchDistance = (touches) => {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-
-  // ✨ TOUCH HANDLERS (swipe + pinch-to-zoom + double-tap + pan)
-  const onTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      // Pinch start
-      e.preventDefault();
-      wasPinch.current = true;
-      initialPinchDist.current = getTouchDistance(e.touches);
-      initialScale.current = zoomScale;
-    } else if (e.touches.length === 1) {
-      touchEndX.current = null;
-      touchStartX.current = e.touches[0].clientX;
-
-      // Double-tap detection
-      const now = Date.now();
-      if (now - lastTap.current < 300) {
-        // Double tap: toggle zoom
-        if (zoomScale > 1) {
-          setZoomScale(1);
-          setPanOffset({ x: 0, y: 0 });
-        } else {
-          setZoomScale(2.5);
-        }
-        lastTap.current = 0;
-        return;
-      }
-      lastTap.current = now;
-
-      // Pan start (when zoomed)
-      if (zoomScale > 1) {
-        panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        initialOffset.current = { ...panOffset };
-      }
-    }
-  };
-
-  const onTouchMove = (e) => {
-    if (e.touches.length === 2 && initialPinchDist.current) {
-      // Pinch zoom
-      e.preventDefault();
-      const currentDist = getTouchDistance(e.touches);
-      const scaleFactor = currentDist / initialPinchDist.current;
-      const newScale = Math.min(Math.max(initialScale.current * scaleFactor, 1), 5);
-      setZoomScale(newScale);
-      if (newScale <= 1) setPanOffset({ x: 0, y: 0 });
-    } else if (e.touches.length === 1) {
-      touchEndX.current = e.touches[0].clientX;
-
-      // Pan when zoomed
-      if (zoomScale > 1 && panStart.current) {
-        e.preventDefault();
-        const dx = e.touches[0].clientX - panStart.current.x;
-        const dy = e.touches[0].clientY - panStart.current.y;
-        setPanOffset({
-          x: initialOffset.current.x + dx,
-          y: initialOffset.current.y + dy,
-        });
-      }
-    }
-  };
-
-  const onTouchEnd = (e) => {
-    initialPinchDist.current = null;
-    panStart.current = null;
-    if (wasPinch.current) { wasPinch.current = false; return; }
-
-    // Only swipe navigate when NOT zoomed
-    if (zoomScale <= 1) {
-      if (!touchStartX.current || !touchEndX.current) return;
-      const distance = touchStartX.current - touchEndX.current;
-      if (distance > 50) handleNext();
-      if (distance < -50) handlePrev();
-    }
-  };
-
-  const years = [2024, 2025, 2026, 2027];
+  // Years that have artwork (plus this year, the default filter), newest first
+  const years = [...new Set([
+    new Date().getFullYear(),
+    ...artwork.map((a) => a.dateCreated && new Date(a.dateCreated).getFullYear()).filter(Boolean),
+  ])].sort((x, y) => y - x);
   const months = [
     "January",
     "February",
@@ -550,8 +419,6 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     "November",
     "December",
   ];
-
-  const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
 
   return (
     <div className="form-wrapper gallery-wrapper">
@@ -796,7 +663,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
             <p className="gallery-empty-sub">Upload some artwork or adjust filters</p>
           </div>
         ) : (
-          filteredArtwork.map((art, index) => (
+          visibleArtwork.map((art, index) => (
             <div
               key={art._id}
               className={`gal-card${selectMode && selectedIds.includes(art._id) ? " gal-selected" : ""}`}
@@ -807,11 +674,11 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   {selectedIds.includes(art._id) && "✓"}
                 </div>
               )}
-              <img
+              <ArtThumb
                 src={art.imageUrl}
                 alt={art.title}
                 className="gal-card-img"
-                style={{ opacity: selectMode && selectedIds.includes(art._id) ? 0.8 : 1 }}
+                style={selectMode && selectedIds.includes(art._id) ? { filter: "brightness(0.85)" } : undefined}
               />
               <div className="gal-card-overlay">
                 {selectedStudent === "all" && art.studentId && (
@@ -831,60 +698,37 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
           ))
         )}
       </div>
+      {!loadingGallery && hasMoreArt && <GridSentinel key={visibleArtwork.length} onVisible={showMoreArt} />}
 
-      {/* LIGHTBOX (Pinch-to-Zoom + Action Bar) */}
+      {/* Full-screen viewer: swipe, swipe down to close, pinch / double-tap zoom */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
-        <div
-          className="lightbox-overlay"
-          onClick={closeLightbox}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          style={{ touchAction: "none" }}
-        >
-          <button className="lightbox-close" onClick={closeLightbox}>×</button>
-          <button className="lightbox-nav-btn prev" onClick={handlePrev}>‹</button>
-          <div
-            className="lightbox-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
-              transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
-            }}
-          >
-            <img src={filteredArtwork[lightboxIndex].imageUrl} alt={filteredArtwork[lightboxIndex].title} className="lightbox-img" draggable="false" />
-          </div>
-          <button className="lightbox-nav-btn next" onClick={handleNext}>›</button>
-
-          {/* Action bar */}
-          <div className="lightbox-action-bar">
-            <div className="lightbox-zoom-pill">
-              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.max(s - 0.5, 1)); }}>−</button>
-              <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
-              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
-            </div>
-            <button className="lightbox-action-pill" onClick={(e) => openEditDate(e, filteredArtwork[lightboxIndex])}>
-              <IconCalendar /> Change Date
-            </button>
-            <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              <IconDownload /> Download
-            </button>
-            <button className="lightbox-action-pill danger" onClick={(e) => handleDelete(e, filteredArtwork[lightboxIndex]._id)}>
-              <IconTrash /> Delete
-            </button>
-          </div>
-
-          <div className="lightbox-caption">
-            {selectedStudent === "all" && (
-              <h2 style={{ margin: "0 0 5px 0", fontSize: "1.2rem" }}>
-                {filteredArtwork[lightboxIndex].studentId?.childName}
-              </h2>
-            )}
-            <strong>{filteredArtwork[lightboxIndex].title || "Untitled"}</strong>
-            <span>{filteredArtwork[lightboxIndex].medium} • {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}</span>
-          </div>
-          <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
-        </div>
+        <ArtworkViewer
+          items={filteredArtwork}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          showStudent={selectedStudent === "all"}
+          renderActions={(art) => (
+            <>
+              <button
+                type="button"
+                className="av-action"
+                onClick={(e) => {
+                  setLightboxIndex(null); // the date form opens on the gallery, not under the viewer
+                  openEditDate(e, art);
+                }}
+              >
+                <IconCalendar /> Date
+              </button>
+              <button type="button" className="av-action" onClick={(e) => handleDownload(e, art.imageUrl, art.title)}>
+                <IconDownload /> Download
+              </button>
+              <button type="button" className="av-action danger" onClick={(e) => handleDelete(e, art._id)}>
+                <IconTrash /> Delete
+              </button>
+            </>
+          )}
+        />
       )}
 
       {/* EDIT DATE MODAL — single artwork or bulk-selected */}
@@ -3482,9 +3326,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   <div className="history-header-row">
                     <h3>Sent History</h3>
                     <div className="month-nav-mini">
-                      <button onClick={() => changeHistoryMonth(-1)}>‹</button>
+                      <button type="button" aria-label="Previous month" onClick={() => changeHistoryMonth(-1)}>‹</button>
                       <span>{formatMonthName(historyMonth)}</span>
-                      <button onClick={() => changeHistoryMonth(1)}>›</button>
+                      <button type="button" aria-label="Next month" onClick={() => changeHistoryMonth(1)}>›</button>
                     </div>
                   </div>
                   <div className="history-list">

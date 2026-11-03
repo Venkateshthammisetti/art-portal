@@ -24,6 +24,7 @@ import BirthdayNotificationBell from "./BirthdayNotifications";
 import { SpotlightPublishTab, SpotlightHistoryTab } from "./ArtistSpotlight";
 import { subscribeDeviceToPush } from "../pushSubscribe";
 import ListCountHeader from "./ListCountHeader";
+import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 
 import {
   IconGallery as IconGalleryShared,
@@ -5718,15 +5719,8 @@ const SlotManagementTab = () => {
     return (
       <div
         key={assignedClass._id}
-        className="detail-card slot-class-card"
-        style={{
-          margin: 0,
-          borderLeft: isFull ? "4px solid #ef4444" : "4px solid #3b82f6",
-          minHeight: "100px",
-          flex: totalInSlot === 1 ? "1 1 100%" : "1 1 220px",
-          minWidth: totalInSlot === 1 ? "100%" : "200px",
-          maxWidth: totalInSlot === 1 ? "none" : "320px",
-        }}
+        className={`detail-card slot-class-card${totalInSlot === 1 ? " single" : ""}`}
+        style={{ borderLeft: isFull ? "4px solid #ef4444" : "4px solid #3b82f6" }}
       >
         <div
           style={{
@@ -5798,17 +5792,7 @@ const SlotManagementTab = () => {
         <div
           key={slot.id}
           className="slot-empty-card"
-          style={{
-            background: "#f1f5f9",
-            border: "1px dashed #cbd5e1",
-            borderRadius: "8px",
-            padding: "15px",
-            opacity: 0.6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100px",
-          }}
+          style={{ background: "#f1f5f9", opacity: 0.6 }}
         >
           <span style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
             available
@@ -5819,15 +5803,7 @@ const SlotManagementTab = () => {
 
     if (assignedClasses.length > 0) {
       return (
-        <div
-          key={slot.id}
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "12px",
-            alignItems: "stretch",
-          }}
-        >
+        <div key={slot.id} className="slot-cards">
           {assignedClasses.map((cls) => renderClassCard(cls, assignedClasses.length))}
         </div>
       );
@@ -5837,16 +5813,6 @@ const SlotManagementTab = () => {
       <div
         key={slot.id}
         className="slot-empty-card"
-        style={{
-          background: "#f8fafc",
-          border: "1px dashed #cbd5e1",
-          borderRadius: "8px",
-          padding: "15px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100px",
-        }}
       >
         <div style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
           No class scheduled
@@ -5855,125 +5821,70 @@ const SlotManagementTab = () => {
     );
   };
 
+  // Classes per day, shown on the day tabs
+  const classCountByDay = days.reduce((acc, day) => {
+    acc[day] = classes.filter((cls) => (cls.schedule || []).some((s) => s.day === day)).length;
+    return acc;
+  }, {});
+
+  const renderSection = (title, icon, tone, slots, blocked) => (
+    <section className="slot-section">
+      <h3 className={`slot-section-title ${tone}`}>
+        {icon} {title}
+      </h3>
+      <div className="slot-rows">
+        {slots.map((slot) => {
+          const n = getClassesForSlot(slot.start).length;
+          return (
+            <div className="slot-row" key={slot.id}>
+              <div className="slot-time-label">
+                <span>{slot.label}</span>
+                {n > 0 && <span className="slot-time-count">{n} class{n === 1 ? "" : "es"}</span>}
+              </div>
+              {renderSlotCard(slot, blocked)}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
   return (
     <>
-      <div className="table-wrapper">
-        <div
-          className="filter-bar"
-          style={{ display: "flex", flexWrap: "wrap", rowGap: "8px", paddingBottom: "5px" }}
-        >
+      <div className="table-wrapper slot-manager">
+        {/* Day tabs: one swipeable row on phones (short names), full names on desktop */}
+        <div className="slot-day-tabs" role="tablist" aria-label="Day of the week">
           {days.map((day) => (
             <button
               key={day}
+              type="button"
+              role="tab"
+              aria-selected={selectedDay === day}
               onClick={() => setSelectedDay(day)}
-              className={selectedDay === day ? "save-btn" : "cancel-btn"}
-              style={{
-                borderRadius: "20px",
-                padding: "8px 16px",
-                marginRight: "10px",
-                background: selectedDay === day ? "#0284c7" : "#f1f5f9",
-                color: selectedDay === day ? "#fff" : "#64748b",
-                border: "none",
-                cursor: "pointer",
-              }}
+              className={`slot-day-tab${selectedDay === day ? " active" : ""}`}
             >
-              {day}
+              <span className="slot-day-full">{day}</span>
+              <span className="slot-day-short" aria-hidden="true">{day.slice(0, 3)}</span>
+              {classCountByDay[day] > 0 && (
+                <span className="slot-day-count" aria-label={`${classCountByDay[day]} classes`}>
+                  {classCountByDay[day]}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        <div style={{ padding: "25px" }}>
-          <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                background: "#ffedd5",
-                color: "#c2410c",
-                padding: "10px 15px",
-                borderRadius: "6px",
-                display: "inline-block",
-                margin: "0 0 15px 0",
-                fontSize: "1rem",
-              }}
-            >
-              <IconSun /> Morning Slots (IST)
-            </h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "200px 1fr",
-                gap: "20px",
-                alignItems: "start",
-              }}
-            >
-              {TIME_SLOTS.morning.map((slot) => (
-                <React.Fragment key={slot.id}>
-                  <div
-                    className="slot-time-label"
-                    style={{
-                      padding: "15px",
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      fontWeight: "bold",
-                      color: "#334155",
-                      display: "flex",
-                      alignItems: "center",
-                      height: "100px",
-                    }}
-                  >
-                    {slot.label}
-                  </div>
-                  {renderSlotCard(slot, false)}
-                </React.Fragment>
-              ))}
+        <div className="slot-body">
+          {loading ? (
+            <div className="slot-loading" role="status">
+              <span className="slot-loading-dot" aria-hidden="true" /> Loading schedule…
             </div>
-          </div>
-
-          <div>
-            <h3
-              style={{
-                background: "#e0e7ff",
-                color: "#4338ca",
-                padding: "10px 15px",
-                borderRadius: "6px",
-                display: "inline-block",
-                margin: "0 0 15px 0",
-                fontSize: "1rem",
-              }}
-            >
-              <IconMoon /> Evening Slots (IST)
-            </h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "200px 1fr",
-                gap: "20px",
-                alignItems: "start",
-              }}
-            >
-              {TIME_SLOTS.evening.map((slot) => (
-                <React.Fragment key={slot.id}>
-                  <div
-                    className="slot-time-label"
-                    style={{
-                      padding: "15px",
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      fontWeight: "bold",
-                      color: "#334155",
-                      display: "flex",
-                      alignItems: "center",
-                      height: "100px",
-                    }}
-                  >
-                    {slot.label}
-                  </div>
-                  {renderSlotCard(slot, isEveningBlocked)}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
+          ) : (
+            <>
+              {renderSection("Morning Slots (IST)", <IconSun />, "morning", TIME_SLOTS.morning, false)}
+              {renderSection("Evening Slots (IST)", <IconMoon />, "evening", TIME_SLOTS.evening, isEveningBlocked)}
+            </>
+          )}
         </div>
       </div>
 
@@ -6055,6 +5966,15 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     const name = student.childName || student.name || "This student";
     return window.confirm(`${name} is marked as inactive.\n\nAre you sure you want to ${actionLabel} for ${selectedMonth}?`);
   };
+
+  // Paying / un-paying a month is confirmed first (it records or deletes a payment).
+  const [payConfirm, setPayConfirm] = useState(null); // { student, status, amount }
+  useEffect(() => {
+    if (!payConfirm) return undefined;
+    const onKey = (e) => e.key === "Escape" && setPayConfirm(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [payConfirm]);
 
   const handleTogglePayment = async (studentId, currentStatus, feeAmount) => {
     if (currentStatus === "Not Joined") return; // 🔒 Prevent action if not joined
@@ -6904,6 +6824,8 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                               {!isPass && !isInactive && !isNotJoined && (
                                 <button
                                   type="button"
+                                  className="fee-edit-btn"
+                                  aria-label={`Edit fee for ${student.childName || "student"}`}
                                   onClick={() => openEditFeeModal(student)}
                                   title={`Edit fee for ${new Date(selectedMonth + "-01").toLocaleString("default", { month: "long", year: "numeric" })}`}
                                   style={{
@@ -7031,11 +6953,13 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                       backgroundColor: isPaid ? "#ef4444" : "#10b981",
                                     }}
                                     onClick={() =>
-                                      handleTogglePayment(
-                                        student._id,
+                                      setPayConfirm({
+                                        student,
                                         status,
-                                        getFeeForMonth(student, selectedMonth),
-                                      )
+                                        amount: isPaid
+                                          ? (student.payments || []).find((p) => p.month === selectedMonth)?.amount ?? getFeeForMonth(student, selectedMonth)
+                                          : getFeeForMonth(student, selectedMonth),
+                                      })
                                     }
                                   >
                                     {isPaid ? "Mark Unpaid" : "Pay This Month"}
@@ -7249,6 +7173,81 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       )}
 
       {/* ===== EDIT FEE (PER-MONTH) MODAL ===== */}
+      {payConfirm && (() => {
+        const paying = payConfirm.status !== "Paid";
+        const monthLabel = (() => {
+          const [y, m] = selectedMonth.split("-").map(Number);
+          return new Date(y, m - 1, 1).toLocaleString("default", { month: "long", year: "numeric" });
+        })();
+        const name = payConfirm.student.childName || payConfirm.student.fullName || "this student";
+        return (
+          <div
+            style={{
+              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.5)", display: "flex",
+              alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "16px",
+            }}
+            onClick={() => setPayConfirm(null)}
+          >
+            <div
+              className="dark-modal-card"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="pay-confirm-title"
+              aria-describedby="pay-confirm-text"
+              style={{
+                background: "#fff", borderRadius: "16px", padding: "26px 24px",
+                width: "100%", maxWidth: "380px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width: "52px", height: "52px", borderRadius: "50%", margin: "0 auto 14px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: paying ? "#dcfce7" : "#fee2e2", color: paying ? "#15803d" : "#b91c1c",
+                  fontSize: "1.5rem",
+                }}
+              >
+                {paying ? <IconSuccess /> : <IconWarning />}
+              </div>
+              <h3 id="pay-confirm-title" style={{ margin: "0 0 8px 0", color: "#334155", textAlign: "center" }}>
+                {paying ? "Mark fee as paid?" : "Mark fee as unpaid?"}
+              </h3>
+              <p id="pay-confirm-text" style={{ color: "#64748b", fontSize: "0.95rem", margin: "0 0 6px 0", textAlign: "center", lineHeight: 1.5 }}>
+                {paying ? "Record" : "Remove"} the <strong>{monthLabel}</strong> payment for <strong>{name}</strong>
+                {paying ? "." : " and move the month back to Pending."}
+              </p>
+              <p style={{ margin: "0 0 20px 0", textAlign: "center", fontSize: "1.6rem", fontWeight: 800, color: paying ? "#15803d" : "#b91c1c" }}>
+                ₹{Number(payConfirm.amount || 0).toLocaleString()}
+              </p>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  className="save-btn"
+                  autoFocus
+                  style={{ flex: 1, minHeight: "46px", fontSize: "0.95rem", backgroundColor: "#64748b" }}
+                  onClick={() => setPayConfirm(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="save-btn"
+                  style={{ flex: 1, minHeight: "46px", fontSize: "0.95rem", backgroundColor: paying ? "#10b981" : "#ef4444" }}
+                  onClick={() => {
+                    const { student, status, amount } = payConfirm;
+                    setPayConfirm(null);
+                    handleTogglePayment(student._id, status, amount);
+                  }}
+                >
+                  {paying ? "Yes, mark paid" : "Yes, mark unpaid"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {editFeeModal.show && (
         <div
           style={{
@@ -7336,17 +7335,6 @@ const GalleryRepositoryTab = () => {
   const [filterYear, setFilterYear] = useState("all"); // Default to All Years
   const [filterMonth, setFilterMonth] = useState("all"); // Default to All Months
 
-  // Lightbox zoom + pan
-  const [zoomScale, setZoomScale] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const touchStartX = useRef(null);
-  const touchEndX = useRef(null);
-  const initialPinchDist = useRef(null);
-  const initialScale = useRef(1);
-  const lastTap = useRef(0);
-  const panStart = useRef(null);
-  const initialOffset = useRef({ x: 0, y: 0 });
-  const wasPinch = useRef(false);
 
   useEffect(() => {
     // 1. Fetch all students
@@ -7389,6 +7377,8 @@ const GalleryRepositoryTab = () => {
 
     return yearMatch && monthMatch;
   });
+  // Long galleries render in batches as you scroll (1,000+ artworks in "All")
+  const { visible: visibleArtwork, hasMore: hasMoreArt, showMore: showMoreArt } = useIncrementalList(filteredArtwork);
 
   const handleDelete = async (e, artId) => {
     e.stopPropagation();
@@ -7441,91 +7431,8 @@ const GalleryRepositoryTab = () => {
     }
   };
 
-  // Lightbox Navigation
-  const handleNext = (e) => {
-    if (e) e.stopPropagation();
-    setLightboxIndex((prev) => (prev + 1) % filteredArtwork.length);
-  };
-  const handlePrev = (e) => {
-    if (e) e.stopPropagation();
-    setLightboxIndex(
-      (prev) => (prev - 1 + filteredArtwork.length) % filteredArtwork.length,
-    );
-  };
-
-  // Reset zoom when image changes
-  useEffect(() => {
-    setZoomScale(1);
-    setPanOffset({ x: 0, y: 0 });
-  }, [lightboxIndex]);
-
-  // Keyboard + scroll lock
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (lightboxIndex === null) return;
-      if (e.key === "ArrowRight") handleNext();
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Escape") { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
-      if (e.key === "+" || e.key === "=") setZoomScale(s => Math.min(s + 0.5, 5));
-      if (e.key === "-") setZoomScale(s => Math.max(s - 0.5, 1));
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    if (lightboxIndex !== null) { document.body.style.overflow = "hidden"; }
-    else { document.body.style.overflow = ""; }
-    return () => { window.removeEventListener("keydown", handleKeyDown); document.body.style.overflow = ""; };
-  }, [lightboxIndex, filteredArtwork]);
-
-  // Touch helpers for pinch-to-zoom + swipe
-  const getTouchDistance = (touches) => {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-  const onTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      wasPinch.current = true;
-      initialPinchDist.current = getTouchDistance(e.touches);
-      initialScale.current = zoomScale;
-    } else if (e.touches.length === 1) {
-      touchEndX.current = null;
-      touchStartX.current = e.touches[0].clientX;
-      const now = Date.now();
-      if (now - lastTap.current < 300) {
-        if (zoomScale > 1) { setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
-        else setZoomScale(2.5);
-        lastTap.current = 0; return;
-      }
-      lastTap.current = now;
-      if (zoomScale > 1) { panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; initialOffset.current = { ...panOffset }; }
-    }
-  };
-  const onTouchMove = (e) => {
-    if (e.touches.length === 2 && initialPinchDist.current) {
-      e.preventDefault();
-      const newScale = Math.min(Math.max(initialScale.current * (getTouchDistance(e.touches) / initialPinchDist.current), 1), 5);
-      setZoomScale(newScale);
-      if (newScale <= 1) setPanOffset({ x: 0, y: 0 });
-    } else if (e.touches.length === 1) {
-      touchEndX.current = e.touches[0].clientX;
-      if (zoomScale > 1 && panStart.current) {
-        e.preventDefault();
-        setPanOffset({ x: initialOffset.current.x + (e.touches[0].clientX - panStart.current.x), y: initialOffset.current.y + (e.touches[0].clientY - panStart.current.y) });
-      }
-    }
-  };
-  const onTouchEnd = () => {
-    initialPinchDist.current = null; panStart.current = null;
-    if (wasPinch.current) { wasPinch.current = false; return; }
-    if (zoomScale <= 1 && touchStartX.current && touchEndX.current) {
-      const d = touchStartX.current - touchEndX.current;
-      if (d > 50) handleNext();
-      if (d < -50) handlePrev();
-    }
-  };
-
-  // Constants
-  const years = [2024, 2025, 2026, 2027];
+  // Years that actually have artwork, newest first
+  const years = [...new Set(artwork.map((a) => a.dateCreated && new Date(a.dateCreated).getFullYear()).filter(Boolean))].sort((x, y) => y - x);
   const months = [
     "January",
     "February",
@@ -7540,8 +7447,6 @@ const GalleryRepositoryTab = () => {
     "November",
     "December",
   ];
-
-  const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
 
   return (
     <div className="form-wrapper gallery-wrapper">
@@ -7605,9 +7510,9 @@ const GalleryRepositoryTab = () => {
             <p className="gallery-empty-sub">Try adjusting the filters above</p>
           </div>
         ) : (
-          filteredArtwork.map((art, index) => (
+          visibleArtwork.map((art, index) => (
             <div key={art._id} className="gal-card" onClick={() => setLightboxIndex(index)}>
-              <img src={art.imageUrl} alt={art.title} className="gal-card-img" />
+              <ArtThumb src={art.imageUrl} alt={art.title} className="gal-card-img" />
               <div className="gal-card-overlay">
                 {selectedStudent === "all" && (
                   <div className="gal-card-overlay-student">{art.studentId?.childName || "Unknown"}</div>
@@ -7624,68 +7529,30 @@ const GalleryRepositoryTab = () => {
           ))
         )}
       </div>
+      {!loading && hasMoreArt && <GridSentinel key={visibleArtwork.length} onVisible={showMoreArt} />}
 
-      {/* LIGHTBOX OVERLAY */}
+      {/* Full-screen viewer: swipe, swipe down to close, pinch / double-tap zoom */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
-        <div
-          className="lightbox-overlay"
-          onClick={closeLightbox}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          style={{ touchAction: "none" }}
-        >
-          <button className="lightbox-close" onClick={closeLightbox}>×</button>
-          <button className="lightbox-nav-btn prev" onClick={handlePrev}>‹</button>
-          <div
-            className="lightbox-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
-              transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
-            }}
-          >
-            <img
-              src={filteredArtwork[lightboxIndex].imageUrl}
-              alt={filteredArtwork[lightboxIndex].title}
-              className="lightbox-img"
-              draggable="false"
-            />
-          </div>
-          <button className="lightbox-nav-btn next" onClick={handleNext}>›</button>
-
-          {/* Action bar */}
-          <div className="lightbox-action-bar">
-            <div className="lightbox-zoom-pill">
-              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.max(s - 0.5, 1)); }}>−</button>
-              <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
-              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
-            </div>
-            <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              <IconDownload /> Download
-            </button>
-            <button className="lightbox-action-pill share" onClick={(e) => handleShare(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              <IconShare /> Share
-            </button>
-            <button className="lightbox-action-pill danger" onClick={(e) => handleDelete(e, filteredArtwork[lightboxIndex]._id)}>
-              <IconTrash /> Delete
-            </button>
-          </div>
-
-          <div className="lightbox-caption">
-            {selectedStudent === "all" && (
-              <h2 style={{ margin: "0 0 5px 0", fontSize: "1.2rem" }}>
-                {filteredArtwork[lightboxIndex].studentId?.childName}
-              </h2>
-            )}
-            <strong>{filteredArtwork[lightboxIndex].title || "Untitled"}</strong>
-            <span>
-              {filteredArtwork[lightboxIndex].medium} •{" "}
-              {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}
-            </span>
-          </div>
-          <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
-        </div>
+        <ArtworkViewer
+          items={filteredArtwork}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          showStudent={selectedStudent === "all"}
+          renderActions={(art) => (
+            <>
+              <button type="button" className="av-action" onClick={(e) => handleDownload(e, art.imageUrl, art.title)}>
+                <IconDownload /> Download
+              </button>
+              <button type="button" className="av-action share" onClick={(e) => handleShare(e, art.imageUrl, art.title)}>
+                <IconShare /> Share
+              </button>
+              <button type="button" className="av-action danger" onClick={(e) => handleDelete(e, art._id)}>
+                <IconTrash /> Delete
+              </button>
+            </>
+          )}
+        />
       )}
     </div>
   );

@@ -1,0 +1,259 @@
+/* Shared artwork viewer (Admin / Teacher / Parent galleries). Always dark, like a
+   photo app. All selectors are prefixed .av- so the three dashboards' older
+   .lightbox-* styles can't collide with it. */
+
+.av-root {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  color: #f8fafc;
+  overscroll-behavior: contain;
+  animation: av-fade-in 0.2s ease-out;
+}
+@keyframes av-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.av-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #05060a;
+}
+
+/* ---------- stage + track ---------- */
+.av-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none; /* gestures are handled in JS */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.av-track {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.av-slide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+.av-slide-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* room for the bars so the artwork isn't hidden behind them */
+  padding: calc(64px + env(safe-area-inset-top, 0px)) 12px calc(120px + var(--nav-safe-bottom, 0px));
+}
+.av-root.av-chrome-hidden .av-slide-inner,
+.av-root.is-zoomed .av-slide-inner {
+  padding: env(safe-area-inset-top, 0px) 0 var(--nav-safe-bottom, 0px);
+}
+.av-zoom {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  will-change: transform;
+}
+.av-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 4px;
+  pointer-events: auto;
+}
+.av-img-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  filter: blur(6px);
+  transform: scale(1.01);
+}
+.av-img-full {
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.av-img-full.is-loaded { opacity: 1; }
+
+.av-spinner {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #ffffff;
+  animation: av-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+@keyframes av-spin { to { transform: rotate(360deg); } }
+
+/* ---------- chrome (bars + arrows) ---------- */
+.av-topbar,
+.av-bottombar,
+.av-nav {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.av-root.av-chrome-hidden .av-topbar,
+.av-root.av-chrome-hidden .av-bottombar,
+.av-root.av-chrome-hidden .av-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+.av-root.av-chrome-hidden .av-topbar { transform: translateY(-8px); }
+.av-root.av-chrome-hidden .av-bottombar { transform: translateY(8px); }
+
+.av-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px 18px;
+  background: linear-gradient(to bottom, rgba(5, 6, 10, 0.75), rgba(5, 6, 10, 0));
+}
+.av-counter {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(248, 250, 252, 0.9);
+}
+.av-topbar-actions { display: flex; gap: 6px; }
+
+.av-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.av-icon-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
+.av-icon-btn:disabled { opacity: 0.35; cursor: default; }
+/* Phones zoom by pinch / double-tap; the buttons are for mouse users */
+@media (hover: none) {
+  .av-zoom-btn { display: none; }
+}
+
+.av-nav {
+  position: absolute;
+  top: 50%;
+  margin-top: -26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.2s ease;
+}
+.av-nav:hover { background: rgba(255, 255, 255, 0.24); }
+.av-nav-prev { left: 16px; }
+.av-nav-next { right: 16px; }
+/* Phones swipe; keep the arrows out of the way of the artwork */
+@media (hover: none) and (max-width: 768px) {
+  .av-nav { display: none; }
+}
+
+.av-bottombar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 16px calc(14px + var(--nav-safe-bottom, 0px));
+  background: linear-gradient(to top, rgba(5, 6, 10, 0.85) 30%, rgba(5, 6, 10, 0));
+}
+.av-caption { text-align: center; }
+.av-caption p { margin: 0; }
+.av-caption-student {
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 2px !important;
+}
+.av-caption-title { font-size: 1.05rem; font-weight: 700; color: #ffffff; }
+.av-caption-sub { font-size: 0.85rem; color: rgba(248, 250, 252, 0.75); margin-top: 2px !important; }
+
+.av-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.av-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.av-action:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
+.av-action:disabled { opacity: 0.55; cursor: progress; }
+.av-action.share { background: #0e7a5f; border-color: #0e7a5f; }
+.av-action.danger { background: rgba(220, 38, 38, 0.85); border-color: transparent; }
+
+.av-icon-btn:focus-visible,
+.av-nav:focus-visible,
+.av-action:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .av-action { padding: 0 14px; font-size: 0.85rem; }
+  .av-actions { gap: 6px; }
+}
+
+/* ---------- grid thumbnails ---------- */
+.av-thumb { opacity: 0; transition: opacity 0.3s ease; }
+.av-thumb.is-loaded { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .av-root, .av-spinner { animation: none; }
+  .av-img-full, .av-thumb, .av-topbar, .av-bottombar, .av-nav { transition: none; }
+}
+
+/* Phones: keep gallery tiles clean for browsing — tapping a tile opens the
+   viewer, which carries every action (download, share, date, delete). */
+@media (hover: none) and (max-width: 768px) {
+  .gal-card .gal-card-actions { display: none; }
+}

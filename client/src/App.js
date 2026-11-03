@@ -1,16 +1,40 @@
 // src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import axios from 'axios';
 import './App.css'; 
 
 // Import Components
 import Login from './components/Login';
-import AdminDashboard from './components/AdminDashboard';
-import TeacherDashboard from './components/TeacherDashboard';
-import ParentDashboard from './components/ParentDashboard';
+// Stylesheets stay global, in the same order as before: the dashboards share
+// classes with each other (e.g. the Parent gallery uses grid/card styles from the
+// Teacher and Admin sheets), so only their JavaScript is loaded on demand.
+import './components/AdminDashboard.css';
+import './components/BirthdayNotifications.css';
+import './components/Icons.css';
+import './components/ArtistSpotlight.css';
+import './components/ListCountHeader.css';
+import './components/ArtworkViewer.css';
+import './components/TeacherDashboard.css';
+import './components/ParentDashboard.css';
 import SplashScreen from './components/SplashScreen';
 import ChatbotWidget from './components/ChatbotWidget';
 import { useMobileTableLabels } from './utils/mobileTableLabels';
+
+// Each role downloads only its own dashboard (the bundle used to ship all three).
+const loadAdmin = () => import('./components/AdminDashboard');
+const loadTeacher = () => import('./components/TeacherDashboard');
+const loadParent = () => import('./components/ParentDashboard');
+const AdminDashboard = lazy(loadAdmin);
+const TeacherDashboard = lazy(loadTeacher);
+const ParentDashboard = lazy(loadParent);
+const PRELOAD = { admin: loadAdmin, teacher: loadTeacher, parent: loadParent };
+
+const DashboardLoading = () => (
+  <div className="app-loading" role="status" aria-live="polite">
+    <span className="app-loading-spinner" aria-hidden="true" />
+    <span className="app-loading-text">Loading…</span>
+  </div>
+);
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -27,6 +51,12 @@ function App() {
   });
 
   const [error, setError] = useState('');
+
+  // Start downloading this user's dashboard straight away (during the splash
+  // screen, or right after login), so it's ready by the time it's shown.
+  useEffect(() => {
+    if (user?.role) PRELOAD[user.role]?.();
+  }, [user?.role]);
 
   // 2. Persist to LocalStorage
   useEffect(() => {
@@ -74,11 +104,13 @@ function App() {
       ) : (
         <>
           {/* PASS USER PROP TO ALL DASHBOARDS */}
-          {user.role === 'admin' && <AdminDashboard user={user} onLogout={handleLogout} />}
-          
-          {user.role === 'teacher' && <TeacherDashboard user={user} onLogout={handleLogout} />}
-          
-          {user.role === 'parent' && <ParentDashboard user={user} onLogout={handleLogout} />}
+          <Suspense fallback={<DashboardLoading />}>
+            {user.role === 'admin' && <AdminDashboard user={user} onLogout={handleLogout} />}
+
+            {user.role === 'teacher' && <TeacherDashboard user={user} onLogout={handleLogout} />}
+
+            {user.role === 'parent' && <ParentDashboard user={user} onLogout={handleLogout} />}
+          </Suspense>
 
           <ChatbotWidget user={user} />
         </>

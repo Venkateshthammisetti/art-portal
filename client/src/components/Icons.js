@@ -106,6 +106,10 @@ import {
   FiVolume2,
   FiVolumeX,
   FiMoreHorizontal,
+  FiChevronLeft,
+  FiChevronRight,
+  FiZoomIn,
+  FiZoomOut,
   FiPhone,
   FiMic,
   FiSend,
@@ -211,6 +215,10 @@ export const IconEyeOff = icon(FiEyeOff);
 export const IconLogout = icon(FiLogOut);
 export const IconSettings = icon(FiSettings);
 export const IconMore = icon(FiMoreHorizontal);
+export const IconChevronLeft = icon(FiChevronLeft);
+export const IconChevronRight = icon(FiChevronRight);
+export const IconZoomIn = icon(FiZoomIn);
+export const IconZoomOut = icon(FiZoomOut);
 export const IconTool = icon(FiTool);
 export const IconLock = icon(FiLock);
 export const IconLaunch = icon(FiZap);
