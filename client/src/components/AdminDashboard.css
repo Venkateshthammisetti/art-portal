@@ -4277,3 +4277,128 @@ body {
 .admin-sidebar.mobile-open {
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
 }
+
+/* ---------- Phone "More" sheet (opened from the bottom nav) ---------- */
+.admin-container .more-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(15, 23, 42, 0.45);
+  animation: moreSheetFade 0.2s ease-out;
+}
+.admin-container .more-sheet {
+  --ms-card: #ffffff;
+  --ms-text: #0f172a;
+  --ms-muted: #64748b;
+  --ms-tile: #f1f5f9;
+  --ms-tile-active: #dbeafe;
+  --ms-icon: #2563eb;
+  --ms-border: #e2e8f0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2501;
+  max-height: 82vh;
+  max-height: 82dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 16px calc(16px + var(--nav-safe-bottom));
+  background: var(--ms-card);
+  color: var(--ms-text);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.18);
+  animation: moreSheetUp 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.admin-container[data-theme="dark"] .more-sheet {
+  --ms-card: #1e293b;
+  --ms-text: #f1f5f9;
+  --ms-muted: #94a3b8;
+  --ms-tile: #0f172a;
+  --ms-tile-active: #1e3a5f;
+  --ms-icon: #60a5fa;
+  --ms-border: #334155;
+}
+.admin-container .more-sheet-handle {
+  width: 40px;
+  height: 5px;
+  margin: 2px auto 10px;
+  border-radius: 3px;
+  background: var(--ms-border);
+}
+.admin-container .more-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.admin-container .more-sheet-head h3 { margin: 0; font-size: 1.15rem; color: var(--ms-text); }
+.admin-container .more-sheet-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ms-tile);
+  color: var(--ms-text);
+  cursor: pointer;
+}
+.admin-container .more-sheet-section { margin-top: 14px; }
+.admin-container .more-sheet-section-title {
+  margin: 0 0 8px;
+  color: var(--ms-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.admin-container .more-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.admin-container .more-sheet-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 84px;
+  padding: 12px 6px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: var(--ms-tile);
+  color: var(--ms-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.admin-container .more-sheet-item.active {
+  background: var(--ms-tile-active);
+  border-color: var(--ms-icon);
+}
+.admin-container .more-sheet-item:focus-visible,
+.admin-container .more-sheet-close:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
+}
+.admin-container .more-sheet-icon {
+  display: inline-flex;
+  color: var(--ms-icon);
+  font-size: 1.35rem;
+}
+.admin-container .more-sheet-icon svg { width: 24px; height: 24px; }
+.admin-container .more-sheet-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+@keyframes moreSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes moreSheetFade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .admin-container .more-sheet,
+  .admin-container .more-sheet-backdrop { animation: none; }
+}

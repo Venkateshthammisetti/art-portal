@@ -65,8 +65,9 @@ a:active {
   -webkit-touch-callout: none;
 }
 
-/* Keep the page still behind an open slide-in menu (the backdrop only exists while open) */
-body:has(.mobile-menu-backdrop) {
+/* Keep the page still behind an open slide-in menu or sheet (their backdrops only exist while open) */
+body:has(.mobile-menu-backdrop),
+body:has(.more-sheet-backdrop) {
   overflow: hidden;
 }
 
