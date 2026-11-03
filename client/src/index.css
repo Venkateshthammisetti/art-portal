@@ -67,8 +67,36 @@ a:active {
 
 /* Keep the page still behind an open slide-in menu or sheet (their backdrops only exist while open) */
 body:has(.mobile-menu-backdrop),
-body:has(.more-sheet-backdrop) {
+body:has(.more-sheet-backdrop),
+body:has(.av-root) {
   overflow: hidden;
+}
+
+/* Touch screens: lift the small, frequently used controls to a comfortable tap size
+   (iOS guidance is 44pt). Desktop keeps its compact sizing. */
+@media (hover: none) and (pointer: coarse) {
+  .month-nav-mini button,
+  .refresh-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .admin-container .save-btn,
+  .admin-container .cancel-btn,
+  .status-btn,
+  .edit-feedback-btn,
+  .delete-feedback-btn,
+  .rc-action-btn {
+    min-height: 40px;
+  }
+  /* The pencil stays small visually but gets a 40px tap area */
+  .fee-edit-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    margin: -11px -10px !important;
+  }
 }
 
 /* iOS Safari auto-zooms into any field under 16px on focus — keep fields at 16px on phones */

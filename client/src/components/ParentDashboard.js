@@ -6,12 +6,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 import { AttendanceAnalysisPanel } from "./AttendanceAnalysisPanel";
 import ListCountHeader from "./ListCountHeader";
+import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 
 // Ensure these image paths are correct in your project
 import logoImg from "./new-logo.png";
 import titleImg from "./logo-title-copy.png";
-import bannerImg from "./banner4.png";
+import bannerImg from "./banner4.jpg";
 import bannerMobile from "./banner-001.png";
 import qrCodeImg from "./qrcode.jpeg";
 
@@ -137,20 +138,6 @@ const ParentGalleryTab = ({ studentId }) => {
   const [filterYear, setFilterYear] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
 
-  // Zoom + pan state
-  const [zoomScale, setZoomScale] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-
-  // Touch refs (swipe + pinch-to-zoom + pan)
-  const touchStartX = useRef(null);
-  const touchEndX = useRef(null);
-  const initialPinchDist = useRef(null);
-  const initialScale = useRef(1);
-  const lastTap = useRef(0);
-  const panStart = useRef(null);
-  const initialOffset = useRef({ x: 0, y: 0 });
-  const wasPinch = useRef(false);
-
   useEffect(() => {
     setLoading(true);
     const baseUrl = "https://art-portal-7n6r.onrender.com";
@@ -172,6 +159,8 @@ const ParentGalleryTab = ({ studentId }) => {
       (filterMonth === "all" || artMonth === parseInt(filterMonth))
     );
   });
+  // Long galleries render in batches as you scroll (1,000+ artworks in "All")
+  const { visible: visibleArtwork, hasMore: hasMoreArt, showMore: showMoreArt } = useIncrementalList(filteredArtwork);
 
   // 🎨 HELPER: Generates the Branded Image
   const generateBrandedImage = async (artworkUrl, title) => {
@@ -314,91 +303,8 @@ const ParentGalleryTab = ({ studentId }) => {
     }
   };
 
-  // Navigation Helpers
-  const handleNext = (e) => {
-    if (e) e.stopPropagation();
-    setLightboxIndex((prev) => (prev + 1) % filteredArtwork.length);
-  };
-
-  const handlePrev = (e) => {
-    if (e) e.stopPropagation();
-    setLightboxIndex(
-      (prev) => (prev - 1 + filteredArtwork.length) % filteredArtwork.length,
-    );
-  };
-
-  // Reset zoom when image changes
-  useEffect(() => {
-    setZoomScale(1);
-    setPanOffset({ x: 0, y: 0 });
-  }, [lightboxIndex]);
-
-  // KEYBOARD NAVIGATION + scroll lock
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (lightboxIndex === null) return;
-      if (e.key === "ArrowRight") handleNext();
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Escape") { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
-      if (e.key === "+" || e.key === "=") setZoomScale(s => Math.min(s + 0.5, 5));
-      if (e.key === "-") setZoomScale(s => Math.max(s - 0.5, 1));
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    if (lightboxIndex !== null) { document.body.style.overflow = "hidden"; document.body.style.touchAction = "none"; }
-    else { document.body.style.overflow = ""; document.body.style.touchAction = ""; }
-    return () => { window.removeEventListener("keydown", handleKeyDown); document.body.style.overflow = ""; document.body.style.touchAction = ""; };
-  }, [lightboxIndex, filteredArtwork]);
-
-  // TOUCH HANDLERS (swipe + pinch-to-zoom + double-tap + pan)
-  const getTouchDistance = (touches) => {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-  const onTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      wasPinch.current = true;
-      initialPinchDist.current = getTouchDistance(e.touches);
-      initialScale.current = zoomScale;
-    } else if (e.touches.length === 1) {
-      touchEndX.current = null;
-      touchStartX.current = e.touches[0].clientX;
-      const now = Date.now();
-      if (now - lastTap.current < 300) {
-        if (zoomScale > 1) { setZoomScale(1); setPanOffset({ x: 0, y: 0 }); }
-        else setZoomScale(2.5);
-        lastTap.current = 0; return;
-      }
-      lastTap.current = now;
-      if (zoomScale > 1) { panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; initialOffset.current = { ...panOffset }; }
-    }
-  };
-  const onTouchMove = (e) => {
-    if (e.touches.length === 2 && initialPinchDist.current) {
-      e.preventDefault();
-      const newScale = Math.min(Math.max(initialScale.current * (getTouchDistance(e.touches) / initialPinchDist.current), 1), 5);
-      setZoomScale(newScale);
-      if (newScale <= 1) setPanOffset({ x: 0, y: 0 });
-    } else if (e.touches.length === 1) {
-      touchEndX.current = e.touches[0].clientX;
-      if (zoomScale > 1 && panStart.current) {
-        e.preventDefault();
-        setPanOffset({ x: initialOffset.current.x + (e.touches[0].clientX - panStart.current.x), y: initialOffset.current.y + (e.touches[0].clientY - panStart.current.y) });
-      }
-    }
-  };
-  const onTouchEnd = () => {
-    initialPinchDist.current = null; panStart.current = null;
-    if (wasPinch.current) { wasPinch.current = false; return; }
-    if (zoomScale <= 1 && touchStartX.current && touchEndX.current) {
-      const d = touchStartX.current - touchEndX.current;
-      if (d > 50) handleNext();
-      if (d < -50) handlePrev();
-    }
-  };
-
-  const years = [2024, 2025, 2026, 2027];
+  // Years that actually have artwork, newest first
+  const years = [...new Set(artwork.map((a) => a.dateCreated && new Date(a.dateCreated).getFullYear()).filter(Boolean))].sort((x, y) => y - x);
   const months = [
     "January",
     "February",
@@ -413,8 +319,6 @@ const ParentGalleryTab = ({ studentId }) => {
     "November",
     "December",
   ];
-
-  const closeLightbox = () => { setLightboxIndex(null); setZoomScale(1); setPanOffset({ x: 0, y: 0 }); };
 
   return (
     // `gallery-wrapper` lifts the 800px cap that .form-wrapper otherwise
@@ -464,9 +368,9 @@ const ParentGalleryTab = ({ studentId }) => {
             <p className="gallery-empty-sub">Your child's artwork will appear here</p>
           </div>
         ) : (
-          filteredArtwork.map((art, index) => (
+          visibleArtwork.map((art, index) => (
             <div key={art._id} className="gal-card" onClick={() => setLightboxIndex(index)}>
-              <img src={art.imageUrl} alt={art.title} className="gal-card-img" />
+              <ArtThumb src={art.imageUrl} alt={art.title} className="gal-card-img" />
               <div className="gal-card-overlay">
                 <div className="gal-card-overlay-title">{art.title || "Untitled"}</div>
                 <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
@@ -481,56 +385,26 @@ const ParentGalleryTab = ({ studentId }) => {
           ))
         )}
       </div>
+      {!loading && hasMoreArt && <GridSentinel key={visibleArtwork.length} onVisible={showMoreArt} />}
 
-      {/* LIGHTBOX */}
+      {/* Full-screen viewer: swipe, swipe down to close, pinch / double-tap zoom */}
       {lightboxIndex !== null && filteredArtwork[lightboxIndex] && (
-        <div
-          className="lightbox-overlay"
-          onClick={closeLightbox}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          style={{ touchAction: "none" }}
-        >
-          <button className="lightbox-close" onClick={closeLightbox}>×</button>
-          <button className="lightbox-nav-btn prev" onClick={handlePrev}>‹</button>
-          <div
-            className="lightbox-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
-              transition: zoomScale === 1 ? "transform 0.3s ease" : "none",
-            }}
-          >
-            <img src={filteredArtwork[lightboxIndex].imageUrl} alt={filteredArtwork[lightboxIndex].title} className="lightbox-img" draggable="false" />
-          </div>
-          <button className="lightbox-nav-btn next" onClick={handleNext}>›</button>
-
-          {/* Action bar */}
-          <div className="lightbox-action-bar">
-            <div className="lightbox-zoom-pill">
-              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.max(s - 0.5, 1)); }}>−</button>
-              <span className="lightbox-zoom-val">{Math.round(zoomScale * 100)}%</span>
-              <button onClick={(e) => { e.stopPropagation(); setZoomScale(s => Math.min(s + 0.5, 5)); }}>+</button>
-            </div>
-            <button className="lightbox-action-pill" onClick={(e) => handleDownload(e, filteredArtwork[lightboxIndex].imageUrl, filteredArtwork[lightboxIndex].title)}>
-              <IconDownload /> Download
-            </button>
-            <button
-              className="lightbox-action-pill share"
-              onClick={(e) => handleWhatsAppStatus(e, filteredArtwork[lightboxIndex])}
-              disabled={shareLoading}
-            >
-              {shareLoading ? "Processing…" : <><IconShare /> Share</>}
-            </button>
-          </div>
-
-          <div className="lightbox-caption">
-            <strong>{filteredArtwork[lightboxIndex].title || "Untitled"}</strong>
-            <span>{filteredArtwork[lightboxIndex].medium} • {new Date(filteredArtwork[lightboxIndex].dateCreated).toLocaleDateString()}</span>
-          </div>
-          <div className="lightbox-counter">{lightboxIndex + 1} / {filteredArtwork.length}</div>
-        </div>
+        <ArtworkViewer
+          items={filteredArtwork}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          renderActions={(art) => (
+            <>
+              <button type="button" className="av-action" onClick={(e) => handleDownload(e, art.imageUrl, art.title)}>
+                <IconDownload /> Download
+              </button>
+              <button type="button" className="av-action share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={shareLoading}>
+                {shareLoading ? "Preparing…" : <><IconShare /> Share</>}
+              </button>
+            </>
+          )}
+        />
       )}
     </div>
   );
@@ -1775,11 +1649,11 @@ const ParentDashboard = ({ user, onLogout }) => {
               <div className="att-header-row">
                 <h3>Academic Reports</h3>
                 <div className="month-nav-mini">
-                  <button onClick={() => changeReportQuarter(-1)}>‹</button>
+                  <button type="button" aria-label="Previous quarter" onClick={() => changeReportQuarter(-1)}>‹</button>
                   <span>
                     Q{reportQuarter} {reportYear}
                   </span>
-                  <button onClick={() => changeReportQuarter(1)}>›</button>
+                  <button type="button" aria-label="Next quarter" onClick={() => changeReportQuarter(1)}>›</button>
                 </div>
               </div>
               <ListCountHeader
@@ -1887,9 +1761,9 @@ const ParentDashboard = ({ user, onLogout }) => {
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", justifyContent: "flex-end" }}>
                   {!showAttendanceAnalysis && (
                     <div className="month-nav-mini">
-                      <button onClick={() => changeAttendanceMonth(-1)}>‹</button>
+                      <button type="button" aria-label="Previous month" onClick={() => changeAttendanceMonth(-1)}>‹</button>
                       <span>{formatMonthName(attendanceMonth)}</span>
-                      <button onClick={() => changeAttendanceMonth(1)}>›</button>
+                      <button type="button" aria-label="Next month" onClick={() => changeAttendanceMonth(1)}>›</button>
                     </div>
                   )}
                   <button
