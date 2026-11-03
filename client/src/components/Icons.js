@@ -105,6 +105,7 @@ import {
   FiInbox,
   FiVolume2,
   FiVolumeX,
+  FiMoreHorizontal,
   FiPhone,
   FiMic,
   FiSend,
@@ -209,6 +210,7 @@ export const IconEye = icon(FiEye);
 export const IconEyeOff = icon(FiEyeOff);
 export const IconLogout = icon(FiLogOut);
 export const IconSettings = icon(FiSettings);
+export const IconMore = icon(FiMoreHorizontal);
 export const IconTool = icon(FiTool);
 export const IconLock = icon(FiLock);
 export const IconLaunch = icon(FiZap);

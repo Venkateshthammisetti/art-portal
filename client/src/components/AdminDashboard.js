@@ -67,6 +67,7 @@ import {
   IconEdit,
   IconWhatsApp,
   IconTrophy,
+  IconMore,
 } from "./Icons";
 import {
   StudentAttendanceAnalysis,
@@ -8600,6 +8601,9 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [feeMenuOpen, setFeeMenuOpen] = useState(false);
   const [expenseMenuOpen, setExpenseMenuOpen] = useState(false);
   const [spotlightMenuOpen, setSpotlightMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false); // phone bottom-nav "More" sheet
+  const moreBtnRef = useRef(null);
+  const moreSheetRef = useRef(null);
   const [stats, setStats] = useState({ students: 0, teachers: 0, revenue: 0 });
   const [overviewUsers, setOverviewUsers] = useState([]);
   const [overviewClasses, setOverviewClasses] = useState([]);
@@ -8816,6 +8820,22 @@ const AdminDashboard = ({ user, onLogout }) => {
     if (user?._id) subscribeDeviceToPush(user._id);
   }, [user?._id]);
 
+  // "More" sheet: focus its first item on open, close on Escape, and hand focus
+  // back to the More button when it closes.
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const moreBtn = moreBtnRef.current;
+    moreSheetRef.current?.querySelector("button.more-sheet-item")?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      moreBtn?.focus();
+    };
+  }, [moreOpen]);
+
   // Keeps the Overview tab's stats/expenses in sync the moment fees or
   // expenses change elsewhere in the app, instead of only on first load.
   const refreshOverview = () => {
@@ -8850,6 +8870,7 @@ const AdminDashboard = ({ user, onLogout }) => {
     if (tab === "spotlight-publish" || tab === "spotlight-history") setSpotlightMenuOpen(true);
     setActiveTab(tab);
     setMobileMenuOpen(false);
+    setMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -8869,6 +8890,7 @@ const AdminDashboard = ({ user, onLogout }) => {
     if (tab === "spotlight-publish" || tab === "spotlight-history") setSpotlightMenuOpen(true);
     setActiveTab(tab);
     setMobileMenuOpen(false);
+    setMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -9195,54 +9217,124 @@ const AdminDashboard = ({ user, onLogout }) => {
         </div>
       </main>
 
-      <nav className="mobile-bottom-nav">
-        <button
-          className={activeTab === "overview" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("overview")}
-        >
-          <IconHome />
-        </button>
-        <button
-          className={activeTab === "users" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("users")}
-        >
-          <IconUsers />
-        </button>
-        <button
-          className={activeTab === "classes" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("classes")}
-        >
-          <IconClasses />
-        </button>
-        <button
-          className={activeTab === "fees" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("fees")}
-        >
-          <IconFee />
-        </button>
-        <button
-          className={activeTab === "slots" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("slots")}
-        >
-          <IconClock />
-        </button>
-        <button
-          className={activeTab === "gallery" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("gallery")}
-        >
-          <IconGallery />
-        </button>
-        <button
-          className={
-            activeTab === "expense-add" || activeTab === "expense-history" || activeTab === "expense-analysis"
-              ? "nav-item active"
-              : "nav-item"
-          }
-          onClick={() => handleNavClick("expense-add")}
-        >
-          <IconExpense />
-        </button>
-      </nav>
+      {/* Phone bottom nav: the four most-used screens + "More" (iOS/Android tab bars
+          stay at five or fewer). Everything else lives in the More sheet and the menu. */}
+      {(() => {
+        const FEE_TABS = ["fees", "online-fees", "offline-fees"];
+        const moreSections = [
+          {
+            title: "Fees",
+            items: [
+              { tab: "online-fees", label: "Online Students", Icon: IconFee },
+              { tab: "offline-fees", label: "Offline Students", Icon: IconOfflineFee },
+            ],
+          },
+          {
+            title: "Manage",
+            items: [
+              { tab: "add-user", label: "Register User", Icon: IconAdd },
+              { tab: "slots", label: "Slot Manager", Icon: IconClock },
+              { tab: "gallery", label: "Gallery", Icon: IconGallery },
+            ],
+          },
+          {
+            title: "Spotlight & Posters",
+            items: [
+              { tab: "spotlight-publish", label: "Publish Poster", Icon: IconPlus },
+              { tab: "spotlight-history", label: "Poster History", Icon: IconTrophy },
+            ],
+          },
+          {
+            title: "Expenses",
+            items: [
+              { tab: "expense-add", label: "Add Expense", Icon: IconExpense },
+              { tab: "expense-history", label: "Expense History", Icon: IconClock },
+              { tab: "expense-analysis", label: "Collection Analysis", Icon: IconChart },
+            ],
+          },
+        ];
+        const moreActive =
+          !FEE_TABS.includes(activeTab) &&
+          moreSections.some((sec) => sec.items.some((it) => it.tab === activeTab));
+        const tabs = [
+          { key: "overview", label: "Dashboard", Icon: IconHome, active: activeTab === "overview" || activeTab === "revenue-analytics" },
+          { key: "users", label: "Users", Icon: IconUsers, active: activeTab === "users" },
+          { key: "classes", label: "Classes", Icon: IconClasses, active: activeTab === "classes" },
+          { key: "fees", label: "Fees", Icon: IconFee, active: FEE_TABS.includes(activeTab) },
+        ];
+        return (
+          <>
+            <nav className="mobile-bottom-nav" aria-label="Main">
+              {tabs.map(({ key, label, Icon, active }) => (
+                <button
+                  key={key}
+                  className={active && !moreOpen ? "nav-item active" : "nav-item"}
+                  onClick={() => handleNavClick(key)}
+                  aria-label={label}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon />
+                </button>
+              ))}
+              <button
+                ref={moreBtnRef}
+                className={moreOpen || moreActive ? "nav-item active" : "nav-item"}
+                onClick={() => setMoreOpen((o) => !o)}
+                aria-label="More"
+                aria-haspopup="dialog"
+                aria-expanded={moreOpen}
+              >
+                <IconMore size={22} />
+              </button>
+            </nav>
+
+            {moreOpen && (
+              <>
+                <div className="more-sheet-backdrop" onClick={() => setMoreOpen(false)} />
+                <div
+                  ref={moreSheetRef}
+                  className="more-sheet"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="more-sheet-title"
+                >
+                  <div className="more-sheet-handle" aria-hidden="true" />
+                  <div className="more-sheet-head">
+                    <h3 id="more-sheet-title">More</h3>
+                    <button
+                      type="button"
+                      className="more-sheet-close"
+                      onClick={() => setMoreOpen(false)}
+                      aria-label="Close"
+                    >
+                      <IconClose />
+                    </button>
+                  </div>
+                  {moreSections.map((sec) => (
+                    <section key={sec.title} className="more-sheet-section" aria-label={sec.title}>
+                      <p className="more-sheet-section-title">{sec.title}</p>
+                      <div className="more-sheet-grid">
+                        {sec.items.map(({ tab, label, Icon }) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            className={`more-sheet-item${activeTab === tab ? " active" : ""}`}
+                            aria-current={activeTab === tab ? "page" : undefined}
+                            onClick={() => handleNavClick(tab)}
+                          >
+                            <span className="more-sheet-icon" aria-hidden="true"><Icon /></span>
+                            <span className="more-sheet-label">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 };
