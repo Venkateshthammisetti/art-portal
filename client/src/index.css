@@ -13,6 +13,63 @@ html {
   text-size-adjust: 100%;
 }
 
+/* ---------- Native-app feel (Home Screen app and phones) ---------- */
+
+:root {
+  /* Clearance kept above the iPhone home indicator for every bottom bar and
+     floating button (bottom navs, chatbot, gallery action bar). iOS reports ~34px;
+     8px less keeps the bars compact while keeping taps out of the swipe-home zone.
+     0 on phones without a home indicator and on desktop. */
+  --nav-safe-bottom: max(calc(env(safe-area-inset-bottom, 0px) - 8px), 0px);
+}
+
+html,
+body {
+  overscroll-behavior-y: none; /* no rubber-band bounce exposing blank space at the edges */
+  overflow-x: clip;            /* no sideways wobble from anything a few px too wide */
+}
+
+/* No grey web-style flash on tap; pressed feedback is given below instead */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Instant taps: no double-tap-to-zoom delay on controls (pinch zoom still works) */
+button,
+a,
+[role="button"],
+summary,
+label,
+select,
+input[type="checkbox"],
+input[type="radio"] {
+  touch-action: manipulation;
+}
+
+/* Pressed state — opacity only, so nothing shifts under the finger */
+button:not(:disabled):active,
+[role="button"]:active,
+a:active {
+  opacity: 0.72;
+}
+
+/* App chrome: long-press shouldn't select text or open the iOS callout menu */
+.mobile-bottom-nav,
+.sidebar-nav,
+.admin-sidebar,
+.teacher-sidebar,
+.parent-sidebar,
+.hamburger-btn {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Keep the page still behind an open slide-in menu (the backdrop only exists while open) */
+body:has(.mobile-menu-backdrop) {
+  overflow: hidden;
+}
+
 /* iOS Safari auto-zooms into any field under 16px on focus — keep fields at 16px on phones */
 @media (max-width: 768px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),

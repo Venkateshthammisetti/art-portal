@@ -12,12 +12,21 @@
   
   <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Opaque status bar on purpose. With "black-translucent" + viewport-fit=cover,
+       iOS 26 Home Screen apps get a web view one status-bar height too short
+       (WebKit bug 301108): a blank strip under the bottom nav, plus a blurred
+       status bar over the header. "default" lets iOS draw its own solid bar
+       and run the app to the real bottom edge. Installed apps only pick this
+       up after being removed and re-added to the Home Screen. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="VenkyArt">
 
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   
-  <meta name="theme-color" content="#0f172a" />
+  <!-- Status/toolbar colour: white to match the app's white headers (and keep the
+       opaque iOS status bar's dark icons readable); navy when the phone is in dark mode. -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a" />
   
   <meta name="description" content="Venky Art Academy Portal" />
   <title>Thevenkyart Art Academy</title>
