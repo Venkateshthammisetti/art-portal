@@ -238,9 +238,10 @@ app.delete("/api/users/:id", async (req, res) => {
 
 app.get("/api/dashboard/stats", async (req, res) => {
   try {
-    const totalStudents = await User.countDocuments({ role: "parent" });
+    // Only active students count towards the dashboard totals
+    const totalStudents = await User.countDocuments({ role: "parent", isActive: { $ne: false } });
     const totalTeachers = await User.countDocuments({ role: "teacher" });
-    const offlineStudents = await User.countDocuments({ role: "parent", classMode: "offline" });
+    const offlineStudents = await User.countDocuments({ role: "parent", isActive: { $ne: false }, classMode: "offline" });
     const onlineStudents = totalStudents - offlineStudents;
     const revenueResult = await User.aggregate([
       { $match: { role: "parent", isActive: { $ne: false } } }, // inactive students owe no fee

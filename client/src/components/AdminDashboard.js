@@ -2651,6 +2651,8 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     .slice(0, 3);
 
   const activeStudents = students.filter((s) => s.isActive !== false);
+  const activeOfflineCount = activeStudents.filter((s) => s.classMode === "offline").length;
+  const activeOnlineCount = activeStudents.length - activeOfflineCount;
   const maleCount = students.filter((s) => s.gender === "Male").length;
   const femaleCount = students.filter((s) => s.gender === "Female").length;
   const otherGenderCount = students.filter(
@@ -2845,6 +2847,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
             }}
           >
             <div
+              className="donut-total"
               style={{
                 fontSize: "1.2rem",
                 fontWeight: "800",
@@ -2882,10 +2885,11 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                   background: entry.color,
                 }}
               ></div>
-              <div style={{ fontSize: "0.85rem", color: "#64748b", flex: 1 }}>
+              <div className="donut-legend-name" style={{ fontSize: "0.85rem", color: "#64748b", flex: 1 }}>
                 {entry.name}
               </div>
               <div
+                className="donut-legend-value"
                 style={{
                   fontWeight: "700",
                   color: "#334155",
@@ -2976,47 +2980,36 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
             </span>
           </div>
           <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", lineHeight: 1 }}>
-            {stats.students}
+            {activeStudents.length}
           </div>
           <div style={{ color: "#64748b", fontSize: "0.9rem", fontWeight: "500", marginBottom: "12px" }}>
-            Total Students
+            Active Students
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <div
-              className="stat-mini-tile"
+              className="stat-mini-tile sc-tile sc-tile-online"
               onClick={(e) => { e.stopPropagation(); onNavigate("users", { roleFilter: "parent", modeFilter: "online" }); }}
-              style={{ flex: 1, background: "#ecfdf5", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
               title="View online students"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#059669", fontWeight: "700", marginBottom: "2px" }}><IconOnlineClass /> Online</div>
-              <div className="stat-mini-value" style={{ fontSize: "1.2rem", fontWeight: "800", color: "#065f46" }}>
-                {(stats.students || 0) - (stats.offlineStudents || 0)}
-              </div>
+              <div className="stat-mini-label sc-tile-label"><IconOnlineClass /> Active Online</div>
+              <div className="stat-mini-value sc-tile-value">{activeOnlineCount}</div>
             </div>
             <div
-              className="stat-mini-tile"
+              className="stat-mini-tile sc-tile sc-tile-offline"
               onClick={(e) => { e.stopPropagation(); onNavigate("users", { roleFilter: "parent", modeFilter: "offline" }); }}
-              style={{ flex: 1, background: "#fef3c7", borderRadius: "8px", padding: "8px 10px", cursor: "pointer" }}
               title="View offline students"
             >
-              <div className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: "700", marginBottom: "2px" }}><IconOfflineClass /> Offline</div>
-              <div className="stat-mini-value" style={{ fontSize: "1.2rem", fontWeight: "800", color: "#92400e" }}>
-                {stats.offlineStudents ?? 0}
-              </div>
+              <div className="stat-mini-label sc-tile-label"><IconOfflineClass /> Active Offline</div>
+              <div className="stat-mini-value sc-tile-value">{activeOfflineCount}</div>
             </div>
           </div>
           <div
-            className="stat-mini-tile"
+            className="stat-mini-tile sc-tile sc-tile-teachers"
             onClick={(e) => { e.stopPropagation(); onNavigate("users", { roleFilter: "teacher" }); }}
-            style={{ background: "#f0fdf4", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", marginBottom: "12px" }}
             title="View teachers"
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px"}}>
-              <span className="stat-mini-label" style={{ fontSize: "0.7rem", color: "#16a34a", fontWeight: "700"}}><IconTeacher /> Expert Teachers</span>
-              <span className="stat-mini-value" style={{ fontSize: "1.05rem", fontWeight: "800", color: "#166534" }}>
-                {stats.teachers}
-              </span>
-            </div>
+            <span className="stat-mini-label sc-tile-label"><IconTeacher /> Expert Teachers</span>
+            <span className="stat-mini-value sc-tile-value">{teachers.length}</span>
           </div>
           <div className="stat-card-nav-hint">View Students →</div>
         </div>
