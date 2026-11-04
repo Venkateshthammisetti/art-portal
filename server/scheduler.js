@@ -390,10 +390,14 @@ const startScheduler = () => {
   // Clear in-memory dedup set at midnight
   cron.schedule('0 0 * * *', clearSentSet);
 
+  // Admissions CRM: morning summary of follow-ups and demos, 9:00 AM India time
+  cron.schedule('0 9 * * *', require('./leads').sendCrmDailySummary, { timezone: 'Asia/Kolkata' });
+
   console.log('⏰ Fee Scheduler started (Checks daily at 10:00 AM)');
   console.log('⏰ Teacher Reminder Scheduler started (Checks daily at 9:00 AM)');
   console.log('⏰ Birthday Reminder Scheduler started (Checks daily at 8:00 AM)');
   console.log('⏰ Attendance Reminder Scheduler started (Checks every minute)');
+  console.log('⏰ CRM Summary Scheduler started (Daily at 9:00 AM IST)');
 };
 
 module.exports = startScheduler;

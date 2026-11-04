@@ -287,7 +287,7 @@ const ClassModal = ({
       else setDuplicateError("");
     };
     checkDuplicate();
-  }, [formData.className, existingClasses, initialData]);
+  }, [formData.className, existingClasses, initialData, isEdit]);
 
   const handleScheduleChange = (index, field, value) => {
     setFormData(prev => {
@@ -4080,6 +4080,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
                   <option value="parent">Students</option>
                   <option value="teacher">Teachers</option>
                   <option value="admin">Admins</option>
+                  <option value="crm">Admissions</option>
                 </select>
               </div>
               <div className="filter-dropdown">
@@ -4667,6 +4668,7 @@ const AddUserTab = ({ onRefresh }) => {
               <option value="parent">Student</option>
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
+              <option value="crm">Admissions (CRM)</option>
             </select>
           </div>
         </div>

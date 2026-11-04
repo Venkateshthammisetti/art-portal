@@ -24,10 +24,12 @@ import { useMobileTableLabels } from './utils/mobileTableLabels';
 const loadAdmin = () => import('./components/AdminDashboard');
 const loadTeacher = () => import('./components/TeacherDashboard');
 const loadParent = () => import('./components/ParentDashboard');
+const loadCRM = () => import('./components/CRMDashboard');
 const AdminDashboard = lazy(loadAdmin);
 const TeacherDashboard = lazy(loadTeacher);
 const ParentDashboard = lazy(loadParent);
-const PRELOAD = { admin: loadAdmin, teacher: loadTeacher, parent: loadParent };
+const CRMDashboard = lazy(loadCRM);
+const PRELOAD = { admin: loadAdmin, teacher: loadTeacher, parent: loadParent, crm: loadCRM };
 
 const DashboardLoading = () => (
   <div className="app-loading" role="status" aria-live="polite">
@@ -110,9 +112,13 @@ function App() {
             {user.role === 'teacher' && <TeacherDashboard user={user} onLogout={handleLogout} />}
 
             {user.role === 'parent' && <ParentDashboard user={user} onLogout={handleLogout} />}
+
+            {/* Admissions staff: enquiries → demo class → enrolment */}
+            {user.role === 'crm' && <CRMDashboard user={user} onLogout={handleLogout} />}
           </Suspense>
 
-          <ChatbotWidget user={user} />
+          {/* The assistant answers from academy data for the other roles only */}
+          {user.role !== 'crm' && <ChatbotWidget user={user} />}
         </>
       )}
     </div>
