@@ -595,7 +595,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#94a3b8",
+                    color: "var(--muted-ui, #64748b)",
                   }}
                 >
                   Preview Area
