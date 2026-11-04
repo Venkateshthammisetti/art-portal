@@ -172,8 +172,8 @@ body.dark .logout-btn { background: #450a0a; border-color: #7f1d1d; color: #fca5
 .detail-row .val, .nc-val { font-weight: 600; color: var(--p-text); }
 .detail-row .val.tag { background: #f3e8ff; color: #7e22ce; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
 .mode-badge { padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
-.mode-badge.online { background: #dcfce7; color: #16a34a; }
-.mode-badge.offline { background: #fef3c7; color: #d97706; }
+.mode-badge.online { background: #dcfce7; color: #15803d; }
+.mode-badge.offline { background: #fef3c7; color: #b45309; }
 .highlight { color: var(--p-primary); }
 .join-btn { display: block; width: 100%; text-align: center; padding: 10px; background: var(--p-primary); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: auto; }
 .join-btn.disabled { background: #cbd5e1; cursor: not-allowed; }
@@ -331,7 +331,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
 .code-display { font-size: 1.5rem; font-weight: 800; color: var(--p-text); letter-spacing: 1px; }
 .share-buttons { display: flex; flex-direction: column; gap: 15px; }
 .share-btn { border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s; }
-.share-btn.whatsapp { background: #25d366; color: white; }
+.share-btn.whatsapp { background: #0e7a5f; color: white; } /* dark enough for white text */
 .share-btn.copy { background: var(--p-bg); color: var(--p-text); border: 1px solid var(--p-border); }
 
 /* DESKTOP HOVER */
@@ -1171,4 +1171,19 @@ body.dark .gallery-skeleton-line {
 }
 .parent-sidebar.mobile-open {
   padding-top: calc(25px + env(safe-area-inset-top, 0px));
+}
+
+/* Dark mode readability */
+body.dark .nc-val.highlight,
+body.dark .highlight { color: #93c5fd; }
+body.dark .mode-badge.online { background: rgba(34, 197, 94, 0.16); color: #86efac; }
+body.dark .mode-badge.offline { background: rgba(245, 158, 11, 0.16); color: #fcd34d; }
+body.dark .recharts-cartesian-axis-tick-value,
+body.dark .recharts-cartesian-axis-tick text { fill: #94a3b8 !important; }
+/* Shared .form-wrapper panels (e.g. My Gallery) are styled white in the Admin
+   sheet; give them the parent dark surface */
+body.dark .form-wrapper {
+  background: var(--p-card);
+  color: var(--p-text);
+  border-color: var(--p-border);
 }

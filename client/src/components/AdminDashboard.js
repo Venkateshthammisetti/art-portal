@@ -453,7 +453,7 @@ const ClassModal = ({
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div className="schedule-slot-row" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                   <select
                     value={slot.day}
                     onChange={(e) =>
@@ -1143,7 +1143,7 @@ const EditUserModal = ({ user, onClose, onSave }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: "600px" }}>
+      <div className="modal-content edit-user-modal" style={{ maxWidth: "600px" }}>
         <div className="modal-header">
           <h3>Edit Details: {user.username}</h3>
           <button
@@ -1223,15 +1223,7 @@ const EditUserModal = ({ user, onClose, onSave }) => {
             )}
           </div>
 
-          <div
-            style={{
-              background: "#f8fafc",
-              padding: "15px",
-              borderRadius: "8px",
-              marginBottom: "20px",
-              marginTop: "15px",
-            }}
-          >
+          <div className="edit-form-section">
             {user.role === "parent" ? (
               <div className="edit-form-grid">
                 <div className="form-group">
@@ -1823,7 +1815,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
                 ) : user.role === "teacher" ? (
                   <div className="info-row">
                     <label>Monthly Salary:</label>
-                    <span style={{ color: "#9333ea", fontWeight: "bold", fontSize: "16px" }}>
+                    <span className="salary-amount" style={{ color: "#9333ea", fontWeight: "bold", fontSize: "16px" }}>
                       ₹{user.monthlyFee || 0}
                     </span>
                   </div>
@@ -3158,7 +3150,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
           >
             Revenue Trend ({revenueTrendYear})
           </h3>
-          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#0f766e", whiteSpace: "nowrap" }}>
+          <span className="view-analytics-link">
             View Analytics →
           </span>
         </div>
@@ -4230,7 +4222,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
                                 <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>₹0 (Starts {user.registeredDate})</span>
                               )
                             ) : user.role === "teacher" ? (
-                              <span style={{ color: "#9333ea", fontWeight: "bold" }}>₹{user.monthlyFee || 0}</span>
+                              <span className="salary-amount" style={{ color: "#9333ea", fontWeight: "bold" }}>₹{user.monthlyFee || 0}</span>
                             ) : "-"}
                           </td>
                         )}
@@ -4962,6 +4954,7 @@ const AddUserTab = ({ onRefresh }) => {
 
         {formData.role === "parent" && (
           <div
+            className="sibling-toggle-box"
             style={{
               marginBottom: "20px",
               padding: "15px",
@@ -5522,7 +5515,7 @@ const ClassManagementTab = () => {
                         </span>
                       </td>
                       <td>
-                        <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                        <span className="view-details-link">
                           View Details →
                         </span>
                       </td>
@@ -6943,7 +6936,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                       width: "auto",
                                       padding: "6px 12px",
                                       fontSize: "0.85rem",
-                                      backgroundColor: isPaid ? "#ef4444" : "#10b981",
+                                      backgroundColor: isPaid ? "#dc2626" : "#047857",
                                     }}
                                     onClick={() =>
                                       setPayConfirm({
@@ -6982,7 +6975,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                           width: "auto",
                                           padding: "6px 12px",
                                           fontSize: "0.85rem",
-                                          backgroundColor: "#25D366",
+                                          backgroundColor: "#0e7a5f", /* WhatsApp-style green dark enough for white text */
                                           display: "inline-flex",
                                           alignItems: "center",
                                           gap: "6px",
@@ -7586,7 +7579,15 @@ const ExpenseCollectionTooltip = ({ active, payload, label }) => {
         </div>
       )}
       {payload.map((entry) => (
-        <div key={entry.dataKey || entry.name} style={{ color: entry.color || entry.payload?.color, fontWeight: 600 }}>
+        <div
+          key={entry.dataKey || entry.name}
+          style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text, #1e293b)", fontWeight: 600 }}
+        >
+          {/* series colour as a dot; text stays readable in both themes */}
+          <span
+            aria-hidden="true"
+            style={{ width: "8px", height: "8px", borderRadius: "50%", flexShrink: 0, background: entry.color || entry.payload?.color }}
+          />
           {entry.name}: ₹{Number(entry.value || 0).toLocaleString()}
         </div>
       ))}
