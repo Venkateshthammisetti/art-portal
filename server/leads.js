@@ -464,6 +464,29 @@ router.post("/:id/convert", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// CLIENTS (enrolled parents): log a follow-up so the team can see when a family
+// was last contacted — used by the Clients page in the CRM dashboard.
+// ---------------------------------------------------------------------------
+router.post("/clients/:id/contact", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ message: "Client not found" });
+    const { channel = "note", note = "", by = "" } = req.body;
+    if (!["call", "whatsapp", "note"].includes(channel)) return res.status(400).json({ message: "Unknown channel" });
+    if (channel === "note" && !String(note).trim()) return res.status(400).json({ message: "Write a note first" });
+    const client = await User.findById(req.params.id);
+    if (!client || client.role !== "parent") return res.status(404).json({ message: "Client not found" });
+    client.crmContacts.push({ at: new Date(), by, channel, note: String(note).slice(0, 500) });
+    // keep the log bounded
+    if (client.crmContacts.length > 100) client.crmContacts = client.crmContacts.slice(-100);
+    await client.save();
+    res.json({ crmContacts: client.crmContacts });
+  } catch (err) {
+    console.error("Client contact log error:", err);
+    res.status(500).json({ message: "Error saving follow-up" });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Morning summary push for admissions staff (called by the scheduler)
 // ---------------------------------------------------------------------------
 const sendCrmDailySummary = async () => {
