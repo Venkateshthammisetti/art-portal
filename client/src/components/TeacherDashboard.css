@@ -3878,3 +3878,5 @@
 }
 .teacher-container[data-theme="dark"] .recharts-cartesian-axis-tick-value,
 .teacher-container[data-theme="dark"] .recharts-cartesian-axis-tick text { fill: #94a3b8 !important; }
+.teacher-container { --muted-ui: #64748b; }
+.teacher-container[data-theme="dark"] { --muted-ui: #94a3b8; }

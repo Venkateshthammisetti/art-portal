@@ -4762,3 +4762,10 @@ body {
   .admin-container .schedule-slot-row select { flex: 1.4 1 0 !important; min-width: 0; padding-left: 10px; padding-right: 6px; }
   .admin-container .schedule-slot-row input[type="time"] { flex: 1 1 0 !important; min-width: 0; padding-left: 8px; padding-right: 8px; }
 }
+.admin-container .slot-section-title.afternoon { background: #fef9c3; color: #854d0e; }
+.admin-container[data-theme="dark"] .slot-section-title.afternoon { background: rgba(250, 204, 21, 0.14); color: #fde68a; }
+
+/* Muted helper text ("No expenses found.", "—", empty states): readable grey in
+   light mode, the softer grey in dark mode. Used by inline styles as var(--muted-ui). */
+.admin-container { --muted-ui: #64748b; }
+.admin-container[data-theme="dark"] { --muted-ui: #94a3b8; }

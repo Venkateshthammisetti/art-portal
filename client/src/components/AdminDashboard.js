@@ -725,7 +725,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
                 style={{
                   textAlign: "center",
                   padding: "30px",
-                  color: "#94a3b8",
+                  color: "var(--muted-ui, #64748b)",
                 }}
               >
                 <p>No students found in this category.</p>
@@ -957,7 +957,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
                   );
                 })
               ) : (
-                <span style={{ color: "#94a3b8" }}>No schedule set</span>
+                <span style={{ color: "var(--muted-ui, #64748b)" }}>No schedule set</span>
               )}
             </div>
             {/* legacy fallback — only shown if no per-slot links exist and meetingLink is set */}
@@ -1049,7 +1049,7 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
           </div>
           {cls.students.length === 0 ? (
             <p
-              style={{ color: "#94a3b8", padding: "20px", textAlign: "center" }}
+              style={{ color: "var(--muted-ui, #64748b)", padding: "20px", textAlign: "center" }}
             >
               No students assigned.
             </p>
@@ -1866,7 +1866,7 @@ const UserDetailsView = ({ user, onBack, onDelete, onEdit }) => {
             </div>
 
             {feeHistory.length === 0 ? (
-              <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>No fee history available.</p>
+              <p style={{ color: "var(--muted-ui, #64748b)", textAlign: "center", padding: "20px 0" }}>No fee history available.</p>
             ) : (
               <div className="table-container sticky-head" style={{ maxHeight: "360px", overflowY: "auto" }}>
                 <table className="custom-table">
@@ -2254,9 +2254,9 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
       </div>
 
       {loading && students.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>Loading revenue data…</div>
+        <div style={{ textAlign: "center", padding: "60px", color: "var(--muted-ui, #64748b)" }}>Loading revenue data…</div>
       ) : students.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>No student data available.</div>
+        <div style={{ textAlign: "center", padding: "60px", color: "var(--muted-ui, #64748b)" }}>No student data available.</div>
       ) : (
         <>
           {/* KPI ROW */}
@@ -2380,7 +2380,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
+              <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "var(--muted-ui, #64748b)" }}>
                 Hover a bar to see the students who joined that month.
                 {bestJoinMonth && bestJoinMonth.joined > 0 && (
                   <>
@@ -2411,7 +2411,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
             <div className="overview-chart-head" style={{ flexWrap: "wrap", gap: "10px" }}>
               <div>
                 <h3 className="att-chart-title" style={{ margin: 0 }}>Revenue by Class</h3>
-                <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "2px" }}>
+                <div style={{ fontSize: "0.78rem", color: "var(--muted-ui, #64748b)", marginTop: "2px" }}>
                   {classPeriodLabel}
                   {classTeacher !== "all" && classTeacherName ? ` · ${classTeacherName}` : ""}
                   {" · "}{fmt(classTotalCollected)} collected of {fmt(classTotalExpected)}
@@ -2442,7 +2442,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
             </div>
 
             {classRevenue.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>No class data for this period.</div>
+              <div style={{ textAlign: "center", padding: "30px", color: "var(--muted-ui, #64748b)" }}>No class data for this period.</div>
             ) : (
               <>
                 <div style={{ width: "100%", height: Math.max(180, classRevenue.length * 44 + 40), fontSize: "0.75rem", marginTop: "10px" }}>
@@ -2481,7 +2481,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
                             <td style={{ color: "#64748b" }}>{r.teacher}</td>
                             <td>{r.students}</td>
                             <td style={{ color: "#16a34a", fontWeight: 700 }}>{fmt(r.collected)}</td>
-                            <td style={{ color: "#94a3b8" }}>{fmt(r.expected)}</td>
+                            <td style={{ color: "var(--muted-ui, #64748b)" }}>{fmt(r.expected)}</td>
                             <td style={{ color: r.pending > 0 ? "#dc2626" : "#94a3b8" }}>{fmt(r.pending)}</td>
                             <td style={{ fontWeight: 700, color: r.rate >= 80 ? "#16a34a" : r.rate >= 50 ? "#d97706" : "#dc2626" }}>
                               {r.expected > 0 ? `${r.rate}%` : "—"}
@@ -2498,7 +2498,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
                           <td>—</td>
                           <td>{classTotalStudents}</td>
                           <td style={{ color: "#16a34a" }}>{fmt(classTotalCollected)}</td>
-                          <td style={{ color: "#94a3b8" }}>{fmt(classTotalExpected)}</td>
+                          <td style={{ color: "var(--muted-ui, #64748b)" }}>{fmt(classTotalExpected)}</td>
                           <td style={{ color: "#dc2626" }}>{fmt(classTotalPending)}</td>
                           <td>{classTotalExpected > 0 ? `${classTotalRate}%` : "—"}</td>
                           <td>{classTotalCollected > 0 ? "100%" : "—"}</td>
@@ -2530,7 +2530,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
                     <tr key={r.monthStr}>
                       <td style={{ fontWeight: 700 }}>{r.name}</td>
                       <td>{fmt(r.collected)}</td>
-                      <td style={{ color: "#94a3b8" }}>{fmt(r.expected)}</td>
+                      <td style={{ color: "var(--muted-ui, #64748b)" }}>{fmt(r.expected)}</td>
                       <td style={{ fontWeight: 700, color: r.rate >= 80 ? "#16a34a" : r.rate >= 50 ? "#d97706" : "#dc2626" }}>
                         {r.expected > 0 ? `${r.rate}%` : "—"}
                       </td>
@@ -2549,7 +2549,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
                   <tr style={{ fontWeight: 800 }}>
                     <td>Total</td>
                     <td>{fmt(totalCollected)}</td>
-                    <td style={{ color: "#94a3b8" }}>{fmt(totalExpected)}</td>
+                    <td style={{ color: "var(--muted-ui, #64748b)" }}>{fmt(totalExpected)}</td>
                     <td>{collectionRate}%</td>
                     <td>—</td>
                     <td style={{ color: "#d97706" }}>{totalJoins}</td>
@@ -2658,7 +2658,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
   ].filter((d) => d.value > 0);
   const statusData = [
     { name: "Active", value: activeStudents.length, color: "#22c55e" },
-    { name: "Inactive", value: inactiveCount, color: "#94a3b8" },
+    { name: "Inactive", value: inactiveCount, color: "var(--muted-ui, #64748b)" },
   ].filter((d) => d.value > 0);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -2785,7 +2785,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     const total = data.reduce((a, b) => a + b.value, 0);
     if (total === 0)
       return (
-        <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px" }}>
+        <p style={{ color: "var(--muted-ui, #64748b)", textAlign: "center", padding: "20px" }}>
           No data yet.
         </p>
       );
@@ -3321,7 +3321,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
           }}
         >
           {recentStudents.length === 0 ? (
-            <p style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
+            <p style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.9rem" }}>
               No recent registrations.
             </p>
           ) : (
@@ -3416,12 +3416,12 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
         </div>
 
         {!attSelectedClass ? (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted-ui, #64748b)" }}>
             <div style={{ marginBottom: "10px" }}><IconChart size={32} /></div>
             <p style={{ margin: 0, fontWeight: 500 }}>Select a class to view attendance details</p>
           </div>
         ) : attLoading ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>Loading attendance data...</div>
+          <div style={{ textAlign: "center", padding: "40px", color: "var(--muted-ui, #64748b)" }}>Loading attendance data...</div>
         ) : (
           <>
             {/* Summary Stats */}
@@ -3455,7 +3455,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 <div className="att-chart-card">
                   <h4 className="att-chart-title">Overall Attendance</h4>
                   {attTotalRecords === 0 ? (
-                    <p style={{ color: "#94a3b8", textAlign: "center", padding: "30px" }}>No attendance data for this month</p>
+                    <p style={{ color: "var(--muted-ui, #64748b)", textAlign: "center", padding: "30px" }}>No attendance data for this month</p>
                   ) : (
                     <div style={{ width: "100%", height: 220, position: "relative" }}>
                       <ResponsiveContainer>
@@ -3507,7 +3507,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                 <div className="att-chart-card">
                   <h4 className="att-chart-title">Student-wise Breakdown</h4>
                   {attSheetData.length === 0 ? (
-                    <p style={{ color: "#94a3b8", textAlign: "center", padding: "30px" }}>No student data</p>
+                    <p style={{ color: "var(--muted-ui, #64748b)", textAlign: "center", padding: "30px" }}>No student data</p>
                   ) : (
                     <div style={{ width: "100%", height: Math.max(220, attSheetData.length * 40), fontSize: "0.75rem" }}>
                       <ResponsiveContainer>
@@ -3552,7 +3552,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
                   </thead>
                   <tbody>
                     {attSheetData.length === 0 ? (
-                      <tr><td colSpan={attMonthDays.length + 3} style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>No students in this class</td></tr>
+                      <tr><td colSpan={attMonthDays.length + 3} style={{ textAlign: "center", padding: "20px", color: "var(--muted-ui, #64748b)" }}>No students in this class</td></tr>
                     ) : (
                       attSheetData.map((s) => {
                         const pCount = s.history.filter(h => h === "P").length;
@@ -3718,7 +3718,7 @@ const UserChartsView = ({ users }) => {
       </div>
 
       {total === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>No students in this view.</div>
+        <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--muted-ui, #64748b)" }}>No students in this view.</div>
       ) : (
         <>
           <div className="um-charts-grid">
@@ -4195,7 +4195,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
                                 {user.classMode === "offline" ? <><IconOfflineClass /> Offline</> : <><IconOnlineClass /> Online</>}
                               </span>
                             ) : (
-                              <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
+                              <span style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.8rem" }}>—</span>
                             )}
                           </td>
                         )}
@@ -4209,7 +4209,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
                                 )}
                               </>
                             ) : (
-                              <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>
+                              <span style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.8rem" }}>—</span>
                             )}
                           </td>
                         )}
@@ -4219,7 +4219,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
                               isRegisteredInOrBefore(user.registeredDate, new Date().toISOString().slice(0, 7)) ? (
                                 <span style={{ color: "#16a34a", fontWeight: "bold" }}>₹{user.monthlyFee || 0}</span>
                               ) : (
-                                <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>₹0 (Starts {user.registeredDate})</span>
+                                <span style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.85rem" }}>₹0 (Starts {user.registeredDate})</span>
                               )
                             ) : user.role === "teacher" ? (
                               <span className="salary-amount" style={{ color: "#9333ea", fontWeight: "bold" }}>₹{user.monthlyFee || 0}</span>
@@ -4276,7 +4276,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
                 style={{ padding: "0 0 12px" }}
               />
               {sortedInactive.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--muted-ui, #64748b)" }}>
                   <div style={{ marginBottom: "12px" }}><IconSuccess size={56} /></div>
                   <p style={{ fontWeight: "700", fontSize: "1.1rem", color: "#334155", marginBottom: "4px" }}>No inactive students</p>
                   <p style={{ fontSize: "0.85rem" }}>All filtered students are currently active.</p>
@@ -5467,7 +5467,7 @@ const ClassManagementTab = () => {
                       style={{
                         textAlign: "center",
                         padding: "30px",
-                        color: "#94a3b8",
+                        color: "var(--muted-ui, #64748b)",
                       }}
                     >
                       No classes found matching "{searchTerm}".
@@ -5689,11 +5689,51 @@ const SlotManagementTab = () => {
     alert("Schedule updated successfully!");
   };
 
+  // Class times are typed free-form ("8:00", "08:00"); compare them normalised.
+  const normTime = (t) => {
+    const [h, m = "0"] = String(t || "").trim().split(":");
+    if (h === "" || isNaN(+h)) return "";
+    return `${String(+h).padStart(2, "0")}:${String(+m || 0).padStart(2, "0")}`;
+  };
+
   const getClassesForSlot = (timeStart) => {
+    const t = normTime(timeStart);
     return classes.filter((cls) =>
-      cls.schedule.some((s) => s.day === selectedDay && s.time === timeStart),
+      (cls.schedule || []).some((s) => s.day === selectedDay && normTime(s.time) === t),
     );
   };
+
+  // Rows for the selected day: the academy's standard slots plus a row for every
+  // class time actually scheduled that day (classes run 60 min, as the reminders
+  // assume), so no class is ever hidden because its time isn't a standard slot.
+  const CLASS_MINUTES = 60;
+  const to12 = (mins) => {
+    const h24 = Math.floor(mins / 60) % 24;
+    const m = mins % 60;
+    const h12 = h24 % 12 || 12;
+    return { text: `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")}`, ap: h24 < 12 ? "am" : "pm" };
+  };
+  const slotLabel = (start) => {
+    const [h, m] = start.split(":").map(Number);
+    const s0 = to12(h * 60 + m);
+    const s1 = to12(h * 60 + m + CLASS_MINUTES);
+    return s0.ap === s1.ap ? `${s0.text} - ${s1.text} ${s1.ap}` : `${s0.text} ${s0.ap} - ${s1.text} ${s1.ap}`;
+  };
+  const daySlots = (() => {
+    const starts = new Set([...TIME_SLOTS.morning, ...TIME_SLOTS.evening].map((sl) => sl.start));
+    classes.forEach((cls) =>
+      (cls.schedule || []).forEach((s) => {
+        const t = normTime(s.time);
+        if (s.day === selectedDay && t) starts.add(t);
+      }),
+    );
+    const rows = [...starts].sort().map((start) => ({ id: start, start, label: slotLabel(start) }));
+    return {
+      morning: rows.filter((r) => r.start < "12:00"),
+      afternoon: rows.filter((r) => r.start >= "12:00" && r.start < "18:00"),
+      evening: rows.filter((r) => r.start >= "18:00"),
+    };
+  })();
 
   const isEveningBlocked = false;
 
@@ -5780,7 +5820,7 @@ const SlotManagementTab = () => {
           className="slot-empty-card"
           style={{ background: "#f1f5f9", opacity: 0.6 }}
         >
-          <span style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
+          <span style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.9rem", fontStyle: "italic" }}>
             available
           </span>
         </div>
@@ -5800,7 +5840,7 @@ const SlotManagementTab = () => {
         key={slot.id}
         className="slot-empty-card"
       >
-        <div style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
+        <div style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.9rem", fontStyle: "italic" }}>
           No class scheduled
         </div>
       </div>
@@ -5867,8 +5907,10 @@ const SlotManagementTab = () => {
             </div>
           ) : (
             <>
-              {renderSection("Morning Slots (IST)", <IconSun />, "morning", TIME_SLOTS.morning, false)}
-              {renderSection("Evening Slots (IST)", <IconMoon />, "evening", TIME_SLOTS.evening, isEveningBlocked)}
+              {renderSection("Morning Slots (IST)", <IconSun />, "morning", daySlots.morning, false)}
+              {daySlots.afternoon.length > 0 &&
+                renderSection("Afternoon Slots (IST)", <IconSun />, "afternoon", daySlots.afternoon, false)}
+              {renderSection("Evening Slots (IST)", <IconMoon />, "evening", daySlots.evening, isEveningBlocked)}
             </>
           )}
         </div>
@@ -6398,7 +6440,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
           </div>
           <div
             className="donut-chart-total"
-            style={{ fontSize: "0.8rem", color: "#94a3b8" }}
+            style={{ fontSize: "0.8rem", color: "var(--muted-ui, #64748b)" }}
           >
             out of ₹{total.toLocaleString()}
           </div>
@@ -6801,7 +6843,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                               {isPass ? (
                                 <span style={{ color: "#7c3aed" }}>₹0 (Pass)</span>
                               ) : isInactive ? (
-                                <span style={{ color: "#94a3b8" }}>₹0 (Inactive)</span>
+                                <span style={{ color: "var(--muted-ui, #64748b)" }}>₹0 (Inactive)</span>
                               ) : isPaid ? (
                                 <>₹{(student.payments || []).find(p => p.month === selectedMonth)?.amount ?? student.monthlyFee}</>
                               ) : (
@@ -6819,7 +6861,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                     border: "none",
                                     cursor: "pointer",
                                     padding: "2px",
-                                    color: "#94a3b8",
+                                    color: "var(--muted-ui, #64748b)",
                                     display: "inline-flex",
                                     lineHeight: 0,
                                   }}
@@ -6912,7 +6954,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                   Not Joined
                                 </button>
                               ) : isInactive ? (
-                                <span style={{ color: "#94a3b8", fontSize: "0.82rem", fontStyle: "italic", padding: "6px 0" }}>
+                                <span style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.82rem", fontStyle: "italic", padding: "6px 0" }}>
                                   No fee — student inactive
                                 </span>
                               ) : isPass ? (
@@ -7115,7 +7157,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
               Total passes: {passHistoryModal.passes.length}
             </p>
             {passHistoryModal.passes.length === 0 ? (
-              <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px" }}>No passes recorded.</p>
+              <p style={{ color: "var(--muted-ui, #64748b)", textAlign: "center", padding: "20px" }}>No passes recorded.</p>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
@@ -7707,7 +7749,7 @@ const ExpenseAnalysisTab = ({ expenses = [], students = [], loading, onBack }) =
       </div>
 
       {loading && students.length === 0 && expenses.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
+        <div style={{ textAlign: "center", padding: "60px", color: "var(--muted-ui, #64748b)" }}>
           Loading analysis…
         </div>
       ) : (
@@ -7818,7 +7860,7 @@ const ExpenseAnalysisTab = ({ expenses = [], students = [], loading, onBack }) =
             <div className="att-chart-card">
               <h3 className="att-chart-title">Expenses by Category ({year})</h3>
               {categoryBreakdown.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontSize: "0.85rem" }}>
+                <div style={{ textAlign: "center", padding: "60px 0", color: "var(--muted-ui, #64748b)", fontSize: "0.85rem" }}>
                   No expenses recorded for {year}.
                 </div>
               ) : (
@@ -7873,7 +7915,7 @@ const ExpenseAnalysisTab = ({ expenses = [], students = [], loading, onBack }) =
           </div>
 
           {monthly.length > 0 && bestMonth && worstMonth && (
-            <p style={{ margin: "12px 2px 0", fontSize: "0.8rem", color: "#94a3b8" }}>
+            <p style={{ margin: "12px 2px 0", fontSize: "0.8rem", color: "var(--muted-ui, #64748b)" }}>
               Best savings month: <strong style={{ color: "#16a34a" }}>{bestMonth.nameLong}</strong> ({fmt(bestMonth.savings)}).{" "}
               Tightest month: <strong style={{ color: "#dc2626" }}>{worstMonth.nameLong}</strong> ({fmt(worstMonth.savings)}).
             </p>
@@ -8272,7 +8314,7 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
           <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#dc2626", lineHeight: 1 }}>
             ₹{totalAmount.toLocaleString()}
           </div>
-          <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "4px" }}>
+          <div style={{ fontSize: "0.78rem", color: "var(--muted-ui, #64748b)", marginTop: "4px" }}>
             {filtered.length} record{filtered.length !== 1 ? "s" : ""}
           </div>
         </div>
@@ -8292,7 +8334,7 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
           <div style={{ fontSize: "1.6rem", fontWeight: "800", color: savings >= 0 ? "#16a34a" : "#dc2626", lineHeight: 1 }}>
             ₹{savings.toLocaleString()}
           </div>
-          <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "4px" }}>
+          <div style={{ fontSize: "0.78rem", color: "var(--muted-ui, #64748b)", marginTop: "4px" }}>
             Collected ₹{collectedForMonth.toLocaleString()} − Expenses ₹{totalAmount.toLocaleString()}
           </div>
         </div>
@@ -8386,13 +8428,13 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                  <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "var(--muted-ui, #64748b)" }}>
                     Loading expenses...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                  <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "var(--muted-ui, #64748b)" }}>
                     No expenses found.
                   </td>
                 </tr>
