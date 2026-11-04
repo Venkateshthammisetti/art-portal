@@ -240,6 +240,9 @@ const ClassModal = ({
   onClose,
   onSuccess,
 }) => {
+  // Pre-filled data without an id (e.g. from an empty Slot Manager slot) starts a
+  // NEW class; only an existing class (with _id) is edited.
+  const isEdit = !!initialData?._id;
   const [formData, setFormData] = useState({
     className: initialData ? initialData.className : "",
     level: initialData ? initialData.level : "",
@@ -276,7 +279,7 @@ const ClassModal = ({
       }
       const normalize = (str) => (str || "").toString().trim().toLowerCase();
       const isDuplicate = existingClasses.some((cls) => {
-        if (initialData && cls._id === initialData._id) return false;
+        if (isEdit && cls._id === initialData._id) return false;
         return normalize(cls.className) === normalize(formData.className);
       });
       if (isDuplicate)
@@ -310,7 +313,7 @@ const ClassModal = ({
     e.preventDefault();
     if (duplicateError) return;
     try {
-      if (initialData)
+      if (isEdit)
         await axios.put(
           `https://art-portal-7n6r.onrender.com/api/classes/${initialData._id}`,
           formData,
@@ -330,7 +333,7 @@ const ClassModal = ({
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: "600px" }}>
         <div className="modal-header">
-          <h3>{initialData ? "Edit Class" : "Create New Class"}</h3>
+          <h3>{isEdit ? "Edit Class" : "Create New Class"}</h3>
           <button className="close-modal" onClick={onClose}>
             ×
           </button>
@@ -453,7 +456,7 @@ const ClassModal = ({
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div className="schedule-slot-row" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                   <select
                     value={slot.day}
                     onChange={(e) =>
@@ -5745,8 +5748,18 @@ const SlotManagementTab = () => {
     return (
       <div
         key={assignedClass._id}
-        className={`detail-card slot-class-card${totalInSlot === 1 ? " single" : ""}`}
+        className={`detail-card slot-class-card is-clickable${totalInSlot === 1 ? " single" : ""}`}
         style={{ borderLeft: isFull ? "4px solid #ef4444" : "4px solid #3b82f6" }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Edit ${assignedClass.className}`}
+        onClick={() => handleEditClick(assignedClass)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleEditClick(assignedClass);
+          }
+        }}
       >
         <div
           style={{
@@ -5831,19 +5844,29 @@ const SlotManagementTab = () => {
       return (
         <div key={slot.id} className="slot-cards">
           {assignedClasses.map((cls) => renderClassCard(cls, assignedClasses.length))}
+          <button
+            type="button"
+            className="slot-add-more"
+            onClick={() => handleSlotClick(slot.start)}
+            aria-label={`Add another class on ${selectedDay} at ${slot.label}`}
+          >
+            + Add another class
+          </button>
         </div>
       );
     }
 
     return (
-      <div
+      <button
+        type="button"
         key={slot.id}
-        className="slot-empty-card"
+        className="slot-empty-card is-clickable"
+        onClick={() => handleSlotClick(slot.start)}
+        aria-label={`Add a class on ${selectedDay} at ${slot.label}`}
       >
-        <div style={{ color: "var(--muted-ui, #64748b)", fontSize: "0.9rem", fontStyle: "italic" }}>
-          No class scheduled
-        </div>
-      </div>
+        <span className="slot-empty-text">No class scheduled</span>
+        <span className="slot-empty-add" aria-hidden="true">+ Add class</span>
+      </button>
     );
   };
 

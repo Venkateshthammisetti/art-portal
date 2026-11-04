@@ -4769,3 +4769,47 @@ body {
    light mode, the softer grey in dark mode. Used by inline styles as var(--muted-ui). */
 .admin-container { --muted-ui: #64748b; }
 .admin-container[data-theme="dark"] { --muted-ui: #94a3b8; }
+
+/* Slot Manager: empty slots add a class, class cards open it for editing */
+.admin-container .slot-manager .is-clickable { cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease; }
+.admin-container .slot-manager .is-clickable:focus-visible,
+.admin-container .slot-add-more:focus-visible {
+  outline: 3px solid rgba(2, 132, 199, 0.5);
+  outline-offset: 2px;
+}
+.admin-container .slot-manager button.slot-empty-card {
+  width: 100%;
+  flex-direction: column;
+  gap: 4px;
+  font: inherit;
+  color: inherit;
+}
+.admin-container .slot-empty-text { color: var(--muted-ui, #64748b); font-size: 0.9rem; font-style: italic; }
+.admin-container .slot-empty-add { color: #0369a1; font-size: 0.85rem; font-weight: 700; }
+.admin-container .slot-manager button.slot-empty-card:hover { border-color: #0284c7; background: #f0f9ff; }
+.admin-container .slot-manager .slot-class-card.is-clickable:hover { box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15); }
+.admin-container .slot-add-more {
+  flex: 1 1 100%;
+  min-height: 40px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: transparent;
+  color: #0369a1;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-container .slot-add-more:hover { border-color: #0284c7; background: #f0f9ff; }
+.admin-container[data-theme="dark"] .slot-empty-add,
+.admin-container[data-theme="dark"] .slot-add-more { color: #7dd3fc; }
+.admin-container[data-theme="dark"] .slot-add-more { border-color: #334155; }
+.admin-container[data-theme="dark"] .slot-manager button.slot-empty-card:hover,
+.admin-container[data-theme="dark"] .slot-add-more:hover { border-color: #0ea5e9; background: rgba(14, 165, 233, 0.08); }
+@media (hover: none) {
+  /* touch: show the press, not a sticky hover */
+  .admin-container .slot-manager .is-clickable:active,
+  .admin-container .slot-add-more:active { opacity: 0.75; }
+}
+.admin-container .slot-manager .slot-empty-card .slot-empty-add { color: #0369a1 !important; }
+.admin-container[data-theme="dark"] .slot-manager .slot-empty-card .slot-empty-add { color: #7dd3fc !important; }
