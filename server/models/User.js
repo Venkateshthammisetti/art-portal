@@ -71,6 +71,14 @@ const UserSchema = new mongoose.Schema({
     amount: Number
   }],
 
+  // Admissions CRM follow-ups with this family (calls / WhatsApp / notes), newest last
+  crmContacts: [{
+    at: { type: Date, default: Date.now },
+    by: { type: String, default: '' },
+    channel: { type: String, enum: ['call', 'whatsapp', 'note'], default: 'note' },
+    note: { type: String, default: '' }
+  }],
+
   // Student Pass History (months where fee is waived)
   passes: [{
     month: String, // Format: "YYYY-MM"

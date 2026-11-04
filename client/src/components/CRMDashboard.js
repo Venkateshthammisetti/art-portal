@@ -1,18 +1,20 @@
 // Admissions CRM dashboard (role "crm"): enquiries → demo class → enrolled parent.
-// Tabs: Today (what to do now), Leads (list + pipeline board), Demos, Reports.
+// Tabs: Today (what to do now), Leads (list + pipeline board), Demos, Clients (enrolled
+// families: status, location, referrals, follow-ups), Reports.
 // The server creates the routine follow-ups automatically (see server/leads.js);
 // this screen is about acting on them quickly: call, WhatsApp, log, move on.
-import React, { useState, useEffect, useMemo, useRef, useId } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import "./CRMDashboard.css";
 import {
-  IconHome, IconUsers, IconCalendar, IconChart, IconPlus, IconSearch, IconX, IconWhatsApp, IconPhone,
+  IconHome, IconUsers, IconCalendar, IconChart, IconPlus, IconSearch, IconWhatsApp, IconPhone,
   IconCheck, IconClock, IconTrash, IconEdit, IconLogout, IconSun, IconMoon, IconNote, IconTrophy,
-  IconWarning, IconRefresh, IconChevronRight, IconMail, IconUser, IconSuccess, IconError,
+  IconWarning, IconRefresh, IconChevronRight, IconMail, IconUser, IconSuccess, IconError, IconInbox,
 } from "./Icons";
 import { subscribeDeviceToPush } from "../pushSubscribe";
+import { Sheet, Field, fmtTime, fmtDate, fmtDateTime, waHref, telHref, firstName } from "./crmShared";
+import { ClientsTab, ClientDetail, ClientMessageSheet, buildClients, logClientContact } from "./CRMClients";
 import logoImg from "./new-logo.png";
 
 const API = "https://art-portal-7n6r.onrender.com/api/leads";
@@ -35,9 +37,6 @@ const CHANNEL_ICON = { call: IconPhone, whatsapp: IconWhatsApp, email: IconMail,
 // ---------------- helpers ----------------
 const DAY = 86400000;
 const startOfDay = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const fmtTime = (d) => new Date(d).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
-const fmtDate = (d) => new Date(d).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-const fmtDateTime = (d) => `${fmtDate(d)}, ${fmtTime(d)}`;
 const dueLabel = (d) => {
   const t = new Date(d);
   const today = startOfDay();
@@ -65,18 +64,6 @@ const QUICK_TIMES = [
   { label: "In 3 days", get: () => at(3, 11) },
   { label: "Next week", get: () => at(7, 11) },
 ];
-// wa.me needs digits only with country code (Indian 10-digit numbers get 91)
-const waNumber = (raw) => {
-  let d = String(raw || "").replace(/\D/g, "").replace(/^0+/, "");
-  if (d.length === 10) d = "91" + d;
-  return d.length >= 11 && d.length <= 15 ? d : null;
-};
-const telHref = (raw) => `tel:${String(raw || "").replace(/[^\d+]/g, "")}`;
-const waHref = (phone, text) => {
-  const n = waNumber(phone);
-  return n ? `https://wa.me/${n}?text=${encodeURIComponent(text)}` : null;
-};
-const firstName = (n) => (n || "").trim().split(/\s+/)[0] || "there";
 // Demo teacher may come populated ({_id, fullName}) or as a bare id
 const teacherIdOf = (demo) => (demo?.teacherId && typeof demo.teacherId === "object" ? demo.teacherId._id : demo?.teacherId) || "";
 const teacherNameOf = (demo, teachers = []) => {
@@ -109,66 +96,6 @@ const TEMPLATES = {
 const StageBadge = ({ stage }) => {
   const s = stageOf(stage);
   return <span className={`crm-badge tone-${s.tone}`}>{s.short}</span>;
-};
-
-const Sheet = ({ title, onClose, children, dark, wide = false, labelledBy = "crm-sheet-title" }) => {
-  const ref = useRef(null);
-  useEffect(() => {
-    const prev = document.activeElement;
-    const first = ref.current?.querySelector("[data-autofocus]");
-    (first || ref.current)?.focus();
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      prev?.focus?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return createPortal(
-    <div className={`crm-root crm-sheet-backdrop${dark ? " crm-dark" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} className={`crm-sheet${wide ? " wide" : ""}`} role="dialog" aria-modal="true" aria-labelledby={labelledBy} tabIndex={-1}>
-        <div className="crm-sheet-head">
-          <h2 id={labelledBy}>{title}</h2>
-          <button type="button" className="crm-icon-btn" onClick={onClose} aria-label="Close">
-            <IconX size={20} />
-          </button>
-        </div>
-        <div className="crm-sheet-body">{children}</div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
-
-// A single control gets a <label for>, so its accessible name is just the label
-// (a wrapping label would also pull in a dropdown's option texts).
-const Field = ({ label, hint, children, required }) => {
-  const autoId = useId();
-  const head = (
-    <>
-      {label}
-      {required && <span className="crm-req" aria-hidden="true"> *</span>}
-    </>
-  );
-  if (React.isValidElement(children)) {
-    const id = children.props.id || autoId;
-    const hintId = hint ? `${id}-hint` : undefined;
-    return (
-      <div className="crm-field">
-        <label className="crm-field-label" htmlFor={id}>{head}</label>
-        {React.cloneElement(children, { id, "aria-describedby": hintId, "aria-required": required || undefined })}
-        {hint && <span id={hintId} className="crm-hint">{hint}</span>}
-      </div>
-    );
-  }
-  return (
-    <label className="crm-field">
-      <span className="crm-field-label">{head}</span>
-      {children}
-      {hint && <span className="crm-hint">{hint}</span>}
-    </label>
-  );
 };
 
 const QuickTimes = ({ onPick }) => (
@@ -927,8 +854,9 @@ const ReportsTab = ({ refreshKey }) => {
 // ---------------- main ----------------
 const TABS = [
   { key: "today", label: "Today", Icon: IconHome },
-  { key: "leads", label: "Leads", Icon: IconUsers },
+  { key: "leads", label: "Leads", Icon: IconInbox },
   { key: "demos", label: "Demos", Icon: IconCalendar },
+  { key: "clients", label: "Clients", Icon: IconUsers },
   { key: "reports", label: "Reports", Icon: IconChart },
 ];
 
@@ -937,9 +865,11 @@ const CRMDashboard = ({ user, onLogout }) => {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [teachers, setTeachers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [openId, setOpenId] = useState(null);
+  const [clientId, setClientId] = useState(null);
+  const [messaging, setMessaging] = useState(null); // { clientId, startWith }
   const [adding, setAdding] = useState(false);
   const [completing, setCompleting] = useState(null); // { leadId, f }
   const [dark, setDark] = useState(() => {
@@ -955,7 +885,7 @@ const CRMDashboard = ({ user, onLogout }) => {
     try {
       const [l, u, c] = await Promise.all([axios.get(API), axios.get(`${BASE}/users`), axios.get(`${BASE}/classes`)]);
       setLeads(l.data || []);
-      setTeachers((u.data || []).filter((x) => x.role === "teacher" && x.isActive !== false));
+      setUsers(u.data || []);
       setClasses(c.data || []);
     } catch {
       setLoadError("Couldn't load leads. Check your connection and try again.");
@@ -979,6 +909,19 @@ const CRMDashboard = ({ user, onLogout }) => {
     setRefreshKey((k) => k + 1);
   };
   const openLead = leads.find((l) => l._id === openId);
+  const teachers = useMemo(() => users.filter((x) => x.role === "teacher" && x.isActive !== false), [users]);
+  const clients = useMemo(() => buildClients(users, leads, classes), [users, leads, classes]);
+  const openClient = clients.find((c) => c.id === clientId);
+  const messagingClient = messaging && clients.find((c) => c.id === messaging.clientId);
+
+  // Every call / WhatsApp / note on a client is logged with the staff name
+  const logContact = async (client, channel, note = "") => {
+    const contacts = await logClientContact(client.id, channel, note, by);
+    setUsers((us) => us.map((x) => (x._id === client.id ? { ...x, crmContacts: contacts } : x)));
+  };
+  const onCall = (client) => { logContact(client, "call").catch(() => setToast("Couldn't log the call")); };
+  const onMessage = (client, startWith) => setMessaging({ clientId: client.id, startWith });
+  const onWhatsAppOpened = (client, label) => { logContact(client, "whatsapp", label).catch(() => setToast("Couldn't log the message")); };
 
   const quickComplete = async (outcome) => {
     const { leadId, f } = completing;
@@ -1032,22 +975,22 @@ const CRMDashboard = ({ user, onLogout }) => {
               {tab === "today" && <TodayTab leads={leads} user={user} teachers={teachers} onOpen={setOpenId} onComplete={(leadId, f) => setCompleting({ leadId, f })} />}
               {tab === "leads" && <LeadsTab leads={leads} onOpen={setOpenId} />}
               {tab === "demos" && <DemosTab leads={leads} teachers={teachers} onOpen={setOpenId} />}
+              {tab === "clients" && <ClientsTab clients={clients} onOpen={setClientId} onCall={onCall} onMessage={onMessage} />}
               {tab === "reports" && <ReportsTab refreshKey={refreshKey} />}
             </>
           )}
         </main>
       </div>
 
-      {/* Phone: four tabs with "New" in the middle */}
+      {/* Phone: five tabs; "New enquiry" floats above them on the screens where it makes sense */}
       <nav className="crm-bottom-nav" aria-label="Main">
-        {TABS.slice(0, 2).map(({ key, label, Icon }) => (
-          <button key={key} type="button" className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}><Icon size={22} /><span>{label}</span></button>
-        ))}
-        <button type="button" className="crm-nav-add" onClick={() => setAdding(true)} aria-label="New enquiry"><IconPlus size={26} /></button>
-        {TABS.slice(2).map(({ key, label, Icon }) => (
+        {TABS.map(({ key, label, Icon }) => (
           <button key={key} type="button" className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}><Icon size={22} /><span>{label}</span></button>
         ))}
       </nav>
+      {["today", "leads", "demos"].includes(tab) && (
+        <button type="button" className="crm-fab" onClick={() => setAdding(true)} aria-label="New enquiry"><IconPlus size={26} /></button>
+      )}
 
       {adding && (
         <AddLeadSheet
@@ -1069,6 +1012,29 @@ const CRMDashboard = ({ user, onLogout }) => {
           onClose={() => setOpenId(null)}
           onUpdated={upsert}
           onDeleted={(id) => { setLeads((ls) => ls.filter((l) => l._id !== id)); setOpenId(null); setToast("Lead deleted"); }}
+        />
+      )}
+      {openClient && (
+        <ClientDetail
+          key={`client-${openClient.id}`}
+          client={openClient}
+          dark={dark}
+          onClose={() => setClientId(null)}
+          onOpenClient={setClientId}
+          onCall={onCall}
+          onMessage={onMessage}
+          onNote={(client, note) => logContact(client, "note", note)}
+        />
+      )}
+      {messagingClient && (
+        <ClientMessageSheet
+          key={`message-${messagingClient.id}-${messaging.startWith || ""}`}
+          client={messagingClient}
+          staff={by}
+          dark={dark}
+          startWith={messaging.startWith}
+          onClose={() => setMessaging(null)}
+          onSent={onWhatsAppOpened}
         />
       )}
       {completing && (
