@@ -108,8 +108,6 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.use("/api/chatbot", chatbotRouter);
-// Admissions CRM (leads → demo class → enrolled parent)
-app.use("/api/leads", require("./leads").router);
 
 app.post("/api/register", async (req, res) => {
   try {

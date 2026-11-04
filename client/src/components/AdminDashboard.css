@@ -4813,7 +4813,3 @@ body {
 }
 .admin-container .slot-manager .slot-empty-card .slot-empty-add { color: #0369a1 !important; }
 .admin-container[data-theme="dark"] .slot-manager .slot-empty-card .slot-empty-add { color: #7dd3fc !important; }
-
-/* Admissions (CRM) staff */
-.role-badge.crm { background: #ccfbf1; color: #0f766e; text-transform: uppercase; }
-.admin-container[data-theme="dark"] .role-badge.crm { background: rgba(20, 184, 166, 0.18); color: #5eead4; }

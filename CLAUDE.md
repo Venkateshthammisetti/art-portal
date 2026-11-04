@@ -54,8 +54,6 @@ Each dashboard is one large component with tabbed navigation, using React Hooks 
 
 **Models** in [server/models/](server/models/): `User`, `Class`, `Attendance`, `Feedback`, `Artwork`.
 
-**Admissions CRM** (role `crm`, created by Admin › Register User): [server/leads.js](server/leads.js) is an Express router mounted at `/api/leads` (model [server/models/Lead.js](server/models/Lead.js)). Leads move `new → contacted → demo_scheduled → demo_done → converted` (or `lost`); every change is appended to `lead.activities`, and routine follow-ups are created automatically (first call on create, confirm the day before a demo, two post-demo follow-ups, reschedule after a no-show). `POST /api/leads/:id/convert` creates the parent `User` (next `TVA` admission number, optional class with two-way `Class.students` sync). The scheduler pushes a 9 AM IST summary to CRM users. Frontend: [client/src/components/CRMDashboard.js](client/src/components/CRMDashboard.js), lazy-loaded in `App.js`.
-
 ### Key Data Relationships
 
 - A `Class` has one `teacher` (User ref) and many `students` (User refs); also stores its own `schedule[]` of `{day, time, link}` slots.
