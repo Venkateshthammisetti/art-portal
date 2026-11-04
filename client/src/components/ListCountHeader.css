@@ -16,9 +16,12 @@
 }
 .list-count-total {
   font-weight: 500;
-  color: #94a3b8;
+  color: #64748b;
 }
 
-[data-theme="dark"] .list-count-label { color: #f1f5f9; }
-[data-theme="dark"] .list-count-value { color: #cbd5e1; }
-[data-theme="dark"] .list-count-total { color: #94a3b8; }
+[data-theme="dark"] .list-count-label,
+body.dark .list-count-label { color: #f1f5f9; }
+[data-theme="dark"] .list-count-value,
+body.dark .list-count-value { color: #cbd5e1; }
+[data-theme="dark"] .list-count-total,
+body.dark .list-count-total { color: #94a3b8; }

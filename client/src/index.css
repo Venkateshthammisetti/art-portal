@@ -130,3 +130,27 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Charts (all roles): axis numbers readable on white, legend text in the normal
+   text colour (the coloured swatch next to it still identifies the series).
+   Dark themes override these in each dashboard's stylesheet. */
+.recharts-cartesian-axis-tick-value,
+.recharts-cartesian-axis-tick text { fill: #64748b; }
+.recharts-legend-item-text { color: #475569 !important; }
+.teacher-container[data-theme="dark"] .recharts-legend-item-text,
+body.dark .recharts-legend-item-text { color: #cbd5e1 !important; }
+
+/* Dark themes: let the browser draw its own controls dark as well (file
+   pickers, date/calendar icons, dropdown arrows, scrollbars). */
+.admin-container[data-theme="dark"],
+.teacher-container[data-theme="dark"],
+body.dark {
+  color-scheme: dark;
+}
+
+/* Popup headers pick up a white background from the shared Admin sheet;
+   in the Teacher and Parent dark themes keep them on the popup's surface. */
+.teacher-container[data-theme="dark"] .modal-header,
+body.dark .modal-header {
+  background: transparent !important;
+}

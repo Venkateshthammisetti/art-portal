@@ -2189,11 +2189,11 @@ body {
 }
 .mode-badge.online {
   background: #dcfce7;
-  color: #16a34a;
+  color: #15803d;
 }
 .mode-badge.offline {
   background: #fef3c7;
-  color: #d97706;
+  color: #b45309;
 }
 
 .action-cell {
@@ -2594,7 +2594,7 @@ body {
    The row buttons set their colour via an inline style, which beats a plain
    class rule — hence !important here so the hover state can still apply. */
 .fee-reminder-btn:hover {
-  background-color: #1da851 !important;
+  background-color: #0b6650 !important;
 }
 
 .modal-overlay {
@@ -4635,4 +4635,130 @@ body {
 .admin-container[data-theme="dark"] .slot-section-title.evening { background: rgba(129, 140, 248, 0.18); color: #c7d2fe; }
 @media (max-width: 768px) {
   .admin-container[data-theme="dark"] .slot-manager .slot-time-label { color: #cbd5e1 !important; }
+}
+
+/* ---------- Edit Details popup + form grids in popups ----------
+   Columns may shrink below their widest input (minmax(0, 1fr)); without that,
+   iPhone date fields forced the grid wider than the popup, which then scrolled
+   sideways. Placed last so the phone rule isn't overridden by the base rule. */
+.admin-container .edit-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-container .edit-form-grid > * { min-width: 0; }
+.admin-container .modal-content input,
+.admin-container .modal-content select,
+.admin-container .modal-content textarea {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.admin-container .modal-content input[type="date"],
+.admin-container .modal-content input[type="month"] {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
+}
+.admin-container .modal-content input[type="date"]::-webkit-date-and-time-value,
+.admin-container .modal-content input[type="month"]::-webkit-date-and-time-value { text-align: left; }
+.admin-container .edit-form-section {
+  margin: 15px 0 20px;
+  padding: 15px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.admin-container[data-theme="dark"] .edit-form-section {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border);
+}
+
+@media (max-width: 768px) {
+  .admin-container .edit-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .admin-container .modal-content {
+    overflow-x: hidden;
+    max-height: calc(100dvh - 32px);
+  }
+  .admin-container .modal-content form { overflow-x: hidden; }
+  .admin-container .modal-content input,
+  .admin-container .modal-content select { min-height: 44px; }
+  .admin-container .edit-user-modal .modal-header h3 {
+    font-size: 1.05rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .admin-container .edit-user-modal .close-modal {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* Cancel + Save share the bottom row and stay clear of the home bar */
+  .admin-container .modal-content form .modal-actions {
+    display: flex;
+    gap: 10px;
+    padding-bottom: calc(10px + var(--nav-safe-bottom, 0px));
+  }
+  .admin-container .modal-content form .modal-actions > button {
+    flex: 1;
+    width: auto !important;
+    margin: 0 !important;
+    min-height: 46px;
+  }
+}
+
+/* ---------- Badges & links readable in both themes ---------- */
+.admin-container .view-details-link { color: #2563eb; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.admin-container[data-theme="dark"] .view-details-link { color: #93c5fd; }
+.admin-container .mode-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+/* Dark theme: tinted backgrounds with light text (the light pastel badges
+   picked up the dark theme's near-white text and became unreadable) */
+.admin-container[data-theme="dark"] .mode-badge.online {
+  background: rgba(34, 197, 94, 0.16) !important;
+  color: #86efac !important;
+}
+.admin-container[data-theme="dark"] .mode-badge.offline {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+.admin-container[data-theme="dark"] .mode-badge .ui-icon,
+.admin-container[data-theme="dark"] .mode-badge svg { color: inherit !important; }
+.admin-container .level-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+.admin-container .view-analytics-link { font-size: 0.8rem; font-weight: 600; color: #0f766e; white-space: nowrap; }
+.admin-container[data-theme="dark"] .view-analytics-link { color: #5eead4; }
+.admin-container[data-theme="dark"] .salary-amount { color: #d8b4fe !important; }
+.admin-container[data-theme="dark"] .sibling-toggle-box {
+  background: rgba(2, 132, 199, 0.14) !important;
+  border-color: #0ea5e9 !important;
+}
+.admin-container[data-theme="dark"] .sibling-toggle-box label { color: #7dd3fc !important; }
+/* KPI values use per-KPI colours inline; in dark mode use the readable text colour */
+.admin-container[data-theme="dark"] .rev-kpi-value { color: var(--text) !important; }
+/* Charts: axis numbers, labels and legends readable on dark cards */
+.admin-container[data-theme="dark"] .recharts-cartesian-axis-tick text,
+.admin-container[data-theme="dark"] .recharts-cartesian-axis-tick-value,
+.admin-container[data-theme="dark"] .recharts-label,
+.admin-container[data-theme="dark"] .recharts-polar-angle-axis-tick text {
+  fill: #94a3b8 !important;
+}
+.admin-container[data-theme="dark"] .recharts-legend-item-text { color: #cbd5e1 !important; }
+
+/* ---------- Light theme: same hues, dark enough to read (WCAG 4.5:1) ---------- */
+.admin-container:not([data-theme="dark"]) .role-badge.admin { color: #b45309; }
+.admin-container:not([data-theme="dark"]) .status-btn.active { color: #047857; border-color: #047857; }
+.admin-container:not([data-theme="dark"]) .fee-pending { color: #b45309 !important; }
+.admin-container:not([data-theme="dark"]) .sc-tile-offline .sc-tile-label { color: #b45309; }
+.admin-container:not([data-theme="dark"]) .sc-tile-online .sc-tile-label { color: #047857; }
+.admin-container:not([data-theme="dark"]) .rev-kpi-label { color: #64748b; }
+.admin-container:not([data-theme="dark"]) .slot-empty-card div,
+.admin-container:not([data-theme="dark"]) .slot-empty-card span { color: #64748b !important; }
+
+/* Popup close (×) buttons had no colour of their own — black on the dark header */
+.admin-container .close-modal { color: #475569; }
+.admin-container[data-theme="dark"] .close-modal { color: var(--text) !important; }
+/* Class schedule rows on phones: give the day name more room than the time */
+@media (max-width: 768px) {
+  .admin-container .schedule-slot-row { gap: 8px !important; }
+  .admin-container .schedule-slot-row select { flex: 1.4 1 0 !important; min-width: 0; padding-left: 10px; padding-right: 6px; }
+  .admin-container .schedule-slot-row input[type="time"] { flex: 1 1 0 !important; min-width: 0; padding-left: 8px; padding-right: 8px; }
 }
