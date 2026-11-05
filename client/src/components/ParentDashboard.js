@@ -69,10 +69,10 @@ function urlBase64ToUint8Array(base64String) {
 
 // Header title for each tab
 const TAB_TITLES = {
-  overview: "My Dashboard",
+  overview: "Home",
   schedule: "Class Schedule",
   gallery: "My Art Gallery",
-  reports: "Progress Reports",
+  reports: "Reports",
   attendance: "Attendance",
   certifications: "My Certificates",
   fees: "Fees",
@@ -612,6 +612,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const contentRef = useRef(null);
 
   // Toast State
   const [showToast, setShowToast] = useState(false);
@@ -689,6 +690,19 @@ const ParentDashboard = ({ user, onLogout }) => {
     try { localStorage.setItem(`parent_tutorial_seen_${currentUser._id}`, "1"); } catch { /* ignore */ }
     maybeShowFeeReminder();
   };
+
+  // Each tab opens at the top (like changing screens in an app), with a short fade
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    const first = el.querySelector(":scope > :not(.load-error-banner)");
+    if (first) {
+      first.classList.remove("tab-enter");
+      void first.offsetWidth; // restart the animation
+      first.classList.add("tab-enter");
+    }
+  }, [activeTab]);
 
   // A tapped notification, while the app is already open, switches to its tab
   useEffect(() => {
@@ -1359,7 +1373,7 @@ const ParentDashboard = ({ user, onLogout }) => {
           </div>
         </header>
 
-        <div className="p-content">
+        <div className="p-content" ref={contentRef}>
           {loadError && (
             <div className="load-error-banner" role="alert">
               <span>Some details couldn't load. What you see may be out of date.</span>
@@ -1379,7 +1393,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <h1>
                     Hello,{" "}
                     <span style={{ textTransform: "capitalize" }}>
-                      {currentUser.fullName}
+                      {(currentUser.fullName || "").trim().split(/\s+/)[0] || "Parent"}
                     </span>
                     !
                   </h1>
