@@ -9026,6 +9026,7 @@ const AdminDashboard = ({ user, onLogout }) => {
             <BirthdayNotificationBell
               students={overviewUsers.filter((u) => u.role === "parent")}
               storageKey="admin_bday_notif_read"
+              showResetRequests
             />
             <label
               className="theme-toggle-label desktop-only"
