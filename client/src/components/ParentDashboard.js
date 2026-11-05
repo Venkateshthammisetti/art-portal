@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { buildFeeHistory, feeRowForMonth, monthKey } from "../utils/fees";
 import { NotificationSettings, WhatsNewCard, MoreSheet } from "./ParentExtras";
+import { RatingTrend, AttendanceCalendar, attendanceStreak, bestStreak, GalleryProgress } from "./ParentProgress";
 import "./ParentDashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -184,7 +185,7 @@ const ParentGalleryTab = ({ studentId }) => {
   const [artwork, setArtwork] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState(null);
-  const [shareLoading, setShareLoading] = useState(false);
+  const [sharingId, setSharingId] = useState(null); // only the artwork being shared shows "…"
 
   // Filters
   const [filterYear, setFilterYear] = useState("all");
@@ -232,40 +233,26 @@ const ParentGalleryTab = ({ studentId }) => {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
 
-            // 1. Set Dimensions (Artwork Height + 160px Footer)
-            const footerHeight = 100;
+            // Footer scales with the artwork so the text stays readable
+            const footerHeight = Math.max(100, Math.round(artImg.width * 0.12));
             canvas.width = artImg.width;
             canvas.height = artImg.height + footerHeight;
-
-            // 2. Draw Artwork
             ctx.drawImage(artImg, 0, 0);
-
-            // 3. Draw White Footer Background
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, artImg.height, canvas.width, footerHeight);
 
-            // 4. Draw Logo (Left side of footer)
-            // Aspect ratio math to keep logo looking good
-            const logoSize = 60;
-            ctx.drawImage(logo, 20, artImg.height + 20, logoSize, logoSize);
+            const logoSize = Math.round(footerHeight * 0.62);
+            const pad = Math.round(footerHeight * 0.2);
+            ctx.drawImage(logo, pad, artImg.height + (footerHeight - logoSize) / 2, logoSize, logoSize);
 
-            // 5. Draw Text (Academy Name & Website)
             ctx.textAlign = "center";
-            const centerX = canvas.width / 2 + 20; // Shift center slightly right to account for logo
-
-            // Academy Name
-            ctx.fillStyle = "#b42d00"; // Your Brand Blue
-            ctx.font = "bold 10px Arial";
-            ctx.fillText(
-              "THEVENKYART ONLINE ART ACADEMY",
-              centerX,
-              artImg.height + 90,
-            );
-
-            // Website & Phone
-            ctx.fillStyle = "#333333"; // Dark Grey
-            ctx.font = "15px Arial";
-            ctx.fillText("www.thevenkyart.com", centerX, artImg.height + 55);
+            const centerX = canvas.width / 2 + logoSize / 2;
+            ctx.fillStyle = "#333333";
+            ctx.font = `600 ${Math.round(footerHeight * 0.2)}px Arial`;
+            ctx.fillText("www.thevenkyart.com", centerX, artImg.height + footerHeight * 0.45);
+            ctx.fillStyle = "#b42d00";
+            ctx.font = `bold ${Math.round(footerHeight * 0.15)}px Arial`;
+            ctx.fillText("THEVENKYART ONLINE ART ACADEMY", centerX, artImg.height + footerHeight * 0.75);
 
             // 6. Convert to Blob
             canvas.toBlob(
@@ -293,7 +280,7 @@ const ParentGalleryTab = ({ studentId }) => {
   // ✨ UPDATED SHARE LOGIC
   const handleWhatsAppStatus = async (e, art) => {
     e.stopPropagation();
-    setShareLoading(true);
+    setSharingId(art._id);
 
     const promoText = `🌟 Proud Moment! My child created this amazing ${art.medium} artwork at *Thevenkyart Art Academy*! 🎨✨`;
 
@@ -332,7 +319,7 @@ const ParentGalleryTab = ({ studentId }) => {
       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(promoText + " " + art.imageUrl)}`;
       window.open(whatsappUrl, "_blank");
     } finally {
-      setShareLoading(false);
+      setSharingId(null);
     }
   };
 
@@ -395,6 +382,13 @@ const ParentGalleryTab = ({ studentId }) => {
         </div>
       </div>
 
+      {!loading && filterYear === "all" && filterMonth === "all" && (
+        <GalleryProgress
+          artwork={artwork}
+          onOpen={(a) => { const i = filteredArtwork.findIndex((x) => x._id === a._id); if (i > -1) setLightboxIndex(i); }}
+        />
+      )}
+
       {!loading && (
         <ListCountHeader label="Artworks" count={filteredArtwork.length} total={artwork.length} style={{ padding: "0 0 12px" }} />
       )}
@@ -425,12 +419,12 @@ const ParentGalleryTab = ({ studentId }) => {
               <ArtThumb src={art.imageUrl} alt={art.title} className="gal-card-img" />
               <div className="gal-card-overlay">
                 <div className="gal-card-overlay-title">{art.title || "Untitled"}</div>
-                <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}</div>
+                <div className="gal-card-overlay-sub">{art.medium} • {new Date(art.dateCreated).toLocaleDateString()}{art.teacherId?.fullName ? ` • ${art.teacherId.fullName}` : ""}</div>
               </div>
               <div className="gal-card-actions">
-                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download"><IconDownload /></button>
-                <button className="gal-action-btn share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={shareLoading} title="Share on WhatsApp">
-                  {shareLoading ? "…" : <IconShare />}
+                <button className="gal-action-btn download" onClick={(e) => handleDownload(e, art.imageUrl, art.title)} title="Download" aria-label="Download"><IconDownload /></button>
+                <button className="gal-action-btn share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={sharingId === art._id} title="Share on WhatsApp" aria-label="Share on WhatsApp">
+                  {sharingId === art._id ? "…" : <IconShare />}
                 </button>
               </div>
             </div>
@@ -451,8 +445,8 @@ const ParentGalleryTab = ({ studentId }) => {
               <button type="button" className="av-action" onClick={(e) => handleDownload(e, art.imageUrl, art.title)}>
                 <IconDownload /> Download
               </button>
-              <button type="button" className="av-action share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={shareLoading}>
-                {shareLoading ? "Preparing…" : <><IconShare /> Share</>}
+              <button type="button" className="av-action share" onClick={(e) => handleWhatsAppStatus(e, art)} disabled={sharingId === art._id}>
+                {sharingId === art._id ? "Preparing…" : <><IconShare /> Share</>}
               </button>
             </>
           )}
@@ -498,6 +492,28 @@ const ParentCertificationsTab = ({ studentId }) => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       alert("Failed to download. Try again.");
+    }
+  };
+
+  // Share the certificate itself (phones) or a WhatsApp message with its link
+  const [sharingCert, setSharingCert] = useState(null);
+  const handleShare = async (cert) => {
+    const text = `🏅 Proud moment! My child received "${cert.title || "a certificate"}" at Thevenkyart Art Academy 🎨`;
+    setSharingCert(cert._id);
+    try {
+      const blob = await (await fetch(cert.fileUrl)).blob();
+      const isPdf = cert.fileUrl.toLowerCase().endsWith(".pdf");
+      const file = new File([blob], `${(cert.title || "certificate").replace(/[^\w -]/g, "")}.${isPdf ? "pdf" : (blob.type.split("/")[1] || "jpg")}`, { type: blob.type || (isPdf ? "application/pdf" : "image/jpeg") });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        return;
+      }
+      throw new Error("file share unsupported");
+    } catch (err) {
+      if (err?.name === "AbortError") return; // parent closed the share sheet
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${cert.fileUrl}`)}`, "_blank", "noopener");
+    } finally {
+      setSharingCert(null);
     }
   };
 
@@ -569,6 +585,14 @@ const ParentCertificationsTab = ({ studentId }) => {
                     }
                   >
                     <IconDownload /> Download
+                  </button>
+                  <button
+                    type="button"
+                    className="rc-action-btn share"
+                    onClick={() => handleShare(cert)}
+                    disabled={sharingCert === cert._id}
+                  >
+                    <IconShare /> {sharingCert === cert._id ? "Preparing…" : "Share"}
                   </button>
                 </div>
               </div>
@@ -1486,6 +1510,12 @@ const ParentDashboard = ({ user, onLogout }) => {
                       <strong className="amber">{attStats.missed} {attStats.missed === 1 ? "Class" : "Classes"}</strong>
                     </div>
                   )}
+                  {attendanceStreak(attendanceHistory) >= 2 && (
+                    <div className="ad-row">
+                      <span>In a row:</span>
+                      <strong className="green">{attendanceStreak(attendanceHistory)} classes</strong>
+                    </div>
+                  )}
                   <div className="ad-row">
                     <span>Classes held:</span>
                     <strong>{attStats.held} of {attStats.target} planned</strong>
@@ -1723,9 +1753,21 @@ const ParentDashboard = ({ user, onLogout }) => {
                 total={reports.length}
                 style={{ padding: "0 0 12px" }}
               />
+              <RatingTrend reports={reports} dark={theme === "dark"} />
               {filteredReports.length === 0 ? (
                 <div className="empty-state">
-                  No reports found for Quarter {reportQuarter}, {reportYear}.
+                  No reports for Quarter {reportQuarter}, {reportYear}.
+                  {reports.some((r) => r.month) && (() => {
+                    const latest = [...reports].filter((r) => r.month).sort((a, b) => b.month.localeCompare(a.month))[0];
+                    const [ly, lm] = latest.month.split("-").map(Number);
+                    return (
+                      <div style={{ marginTop: 12 }}>
+                        <button type="button" className="cia-btn send" onClick={() => { setReportYear(ly); setReportQuarter(Math.ceil(lm / 3)); }}>
+                          Show latest ({formatFullMonthDate(latest.month)})
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="reports-list">
@@ -1781,7 +1823,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
                       <div className="rc-footer">
                         <span className="rc-teacher">
-                          By: Thevenkyart Art Academy
+                          By: {rep.teacherId?.fullName || "Thevenkyart Art Academy"}
                         </span>
                         <div className="rc-footer-actions">
                           {!rep.parentComment && (
@@ -1877,10 +1919,15 @@ const ParentDashboard = ({ user, onLogout }) => {
                       </div>
                     )}
                     <div className="as-item">
+                      <span className="as-label">In a row</span>
+                      <span className="as-val">{attendanceStreak(attendanceHistory)}<small> best {bestStreak(attendanceHistory)}</small></span>
+                    </div>
+                    <div className="as-item">
                       <span className="as-label">Classes held</span>
                       <span className="as-val">{attStats.held}<small> / {attStats.target}</small></span>
                     </div>
                   </div>
+                  <AttendanceCalendar month={attendanceMonth} records={attendanceHistory} />
                   <div className="att-table-wrapper">
                     {attStats.records.length === 0 ? (
                       <div className="empty-state">

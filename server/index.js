@@ -855,7 +855,9 @@ app.get("/api/gallery/student/:studentId", async (req, res) => {
   try {
     const artwork = await Artwork.find({
       studentId: req.params.studentId,
-    }).sort({ dateCreated: -1 }); // Newest first
+    })
+      .populate("teacherId", "fullName") // parents see who taught it
+      .sort({ dateCreated: -1 }); // Newest first
     res.json(artwork);
   } catch (err) {
     res.status(500).json({ message: "Error fetching gallery" });
