@@ -35,11 +35,29 @@ const checkFeeReminders = async () => {
   try {
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
-    const students = await User.find({});
+    // Only active parents who allowed notifications (not teachers, admins,
+    // CRM staff or students on a break)
+    const students = await User.find({
+      role: 'parent',
+      isActive: { $ne: false },
+      pushSubscription: { $ne: null },
+    });
+    const monthLabel = today.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
     let count = 0;
     for (const student of students) {
       if (!student.pushSubscription) continue;
+
+      // Not joined yet this month (same start rule as the dashboards)
+      const startRaw = student.registeredDate || student.joiningDate || student.createdAt;
+      const startMonth = startRaw ? (typeof startRaw === 'string' ? startRaw : new Date(startRaw).toISOString()).slice(0, 7) : currentMonthStr;
+      if (currentMonthStr < startMonth) continue;
+
+      // On a break this month
+      const onBreak = (student.inactiveHistory || []).some(
+        (e) => currentMonthStr >= e.inactiveFrom && (!e.inactiveTo || currentMonthStr <= e.inactiveTo)
+      );
+      if (onBreak) continue;
 
       // Skip students who have a pass for this month
       const hasPass = student.passes && student.passes.some(
@@ -53,8 +71,8 @@ const checkFeeReminders = async () => {
 
       if (!hasPaid) {
         const payload = JSON.stringify({
-          title: `📅 Fee Reminder: ${currentMonthStr}`,
-          body: `Gentle reminder: Fees for your child  ${student.childName} are due.Please pay the fees before 5th of every month.`,
+          title: `📅 Fee Reminder: ${monthLabel}`,
+          body: `Gentle reminder: ${student.childName ? `${student.childName}'s` : 'Your'} fee for ${monthLabel} is due. Please pay before the 5th of every month.`,
           url: "https://art-portal.netlify.app/#fees"
         });
 

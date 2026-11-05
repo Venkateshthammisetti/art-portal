@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { buildFeeHistory, feeRowForMonth, monthKey } from "../utils/fees";
 import "./ParentDashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -553,6 +554,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
   // Modal States
   const [showFeeReminder, setShowFeeReminder] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -602,10 +604,15 @@ const ParentDashboard = ({ user, onLogout }) => {
   }, [theme]);
 
   useEffect(() => {
-    if (studentProfile) {
-      const statusObj = getPaymentStatus();
-      if (statusObj.status === "Pending") {
+    if (studentProfile && getPaymentStatus().status === "Pending") {
+      // at most once a day, not on every open
+      const key = `feeReminderShown_${studentProfile._id || currentUser._id}`;
+      const today = new Date().toDateString();
+      let shownToday = false;
+      try { shownToday = localStorage.getItem(key) === today; } catch { /* ignore */ }
+      if (!shownToday) {
         setShowFeeReminder(true);
+        try { localStorage.setItem(key, today); } catch { /* ignore */ }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -654,29 +661,29 @@ const ParentDashboard = ({ user, onLogout }) => {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
+  // The three requests run in parallel; whatever loads is shown, and a banner
+  // with Retry appears if any of them failed.
   const fetchParentData = async () => {
     setLoading(true);
-    try {
-      const profileRes = await axios.get(
-        `https://art-portal-7n6r.onrender.com/api/student/${currentUser._id}/profile`,
-      );
-      setStudentProfile(profileRes.data.student);
-      setAssignedClass(profileRes.data.classDetails);
-
-      const reportRes = await axios.get(
-        `https://art-portal-7n6r.onrender.com/api/feedback/student/${currentUser._id}`,
-      );
-      setReports(reportRes.data);
-
-      const attRes = await axios.get(
-        `https://art-portal-7n6r.onrender.com/api/attendance/student/${currentUser._id}`,
-      );
-      setAttendanceHistory(attRes.data);
-    } catch (err) {
-      console.error("Error loading parent data:", err);
-    } finally {
-      setLoading(false);
+    setLoadError(false);
+    const base = "https://art-portal-7n6r.onrender.com/api";
+    const [profileRes, reportRes, attRes] = await Promise.allSettled([
+      axios.get(`${base}/student/${currentUser._id}/profile`),
+      axios.get(`${base}/feedback/student/${currentUser._id}`),
+      axios.get(`${base}/attendance/student/${currentUser._id}`),
+    ]);
+    if (profileRes.status === "fulfilled") {
+      setStudentProfile(profileRes.value.data.student);
+      setAssignedClass(profileRes.value.data.classDetails);
     }
+    if (reportRes.status === "fulfilled") setReports(reportRes.value.data || []);
+    if (attRes.status === "fulfilled") setAttendanceHistory(attRes.value.data || []);
+    const failed = [profileRes, reportRes, attRes].filter((r) => r.status === "rejected");
+    if (failed.length) {
+      failed.forEach((r) => console.error("Error loading parent data:", r.reason));
+      setLoadError(true);
+    }
+    setLoading(false);
   };
 
   // --- HELPERS ---
@@ -684,20 +691,21 @@ const ParentDashboard = ({ user, onLogout }) => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
-  const formatMonthName = (isoStr) => {
-    if (!isoStr) return "N/A";
-    if (isoStr.includes("-")) {
-      const parts = isoStr.split("-");
-      if (parts.length >= 2) return `${parts[1]}-${parts[0]}`;
-    }
-    return isoStr;
-  };
-
+  // "2026-11" -> "November 2026"
   const formatFullMonthDate = (isoStr) => {
     if (!isoStr) return "N/A";
     const [year, month] = isoStr.split("-");
+    if (!year || !month) return isoStr;
     const date = new Date(parseInt(year), parseInt(month) - 1);
-    return date.toLocaleString("default", { month: "long" }) + "-" + year;
+    return `${date.toLocaleString("en-US", { month: "long" })} ${year}`;
+  };
+  const formatMonthName = formatFullMonthDate;
+
+  // "12 Nov 2026"
+  const formatPaidDate = (d) => {
+    if (!d) return "";
+    const date = new Date(d);
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   };
 
   const formatDateDDMMYYYY = (isoDate) => {
@@ -752,24 +760,42 @@ const ParentDashboard = ({ user, onLogout }) => {
     );
   };
 
+  // The next class that hasn't finished yet. Slots are stored in IST; a class
+  // stays "next" until CLASS_MINUTES after it starts, so Join keeps working
+  // while it's live.
+  const CLASS_MINUTES = 60;
   const getNextClass = () => {
-    const localSchedule = getLocalSchedule();
-    if (localSchedule.length === 0) return null;
-    const daysMap = {
-      Sunday: 0,
-      Monday: 1,
-      Tuesday: 2,
-      Wednesday: 3,
-      Thursday: 4,
-      Friday: 5,
-      Saturday: 6,
+    const slots = assignedClass?.schedule || [];
+    const daysMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+    const now = Date.now();
+    // today's date in IST, as y/m/d
+    const ist = new Date(now + 330 * 60000);
+    let best = null;
+    slots.forEach((slot) => {
+      const dow = daysMap[slot.day];
+      if (dow === undefined || !slot.time) return;
+      const [hh, mm] = String(slot.time).split(":").map(Number);
+      if (Number.isNaN(hh)) return;
+      for (let add = 0; add <= 7; add++) {
+        const d = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + add));
+        if (d.getUTCDay() !== dow) continue;
+        const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hh, mm || 0) - 330 * 60000;
+        if (start + CLASS_MINUTES * 60000 <= now) continue;
+        if (!best || start < best.start) best = { start, link: slot.link };
+        break;
+      }
+    });
+    if (!best) return null;
+    const startDate = new Date(best.start);
+    const dayDiff = Math.round((new Date(startDate).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86400000);
+    const weekday = startDate.toLocaleDateString([], { weekday: "long" });
+    return {
+      day: dayDiff === 0 ? "Today" : dayDiff === 1 ? "Tomorrow" : weekday,
+      weekday,
+      time: startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true }),
+      link: best.link,
+      live: best.start <= now,
     };
-    const today = new Date().getDay();
-    const sorted = [...localSchedule].sort(
-      (a, b) => daysMap[a.day] - daysMap[b.day],
-    );
-    const next = sorted.find((s) => daysMap[s.day] >= today);
-    return next || sorted[0];
   };
 
   const calculateAttendanceStats = () => {
@@ -783,12 +809,19 @@ const ParentDashboard = ({ user, onLogout }) => {
     const absentCount = currentMonthRecords.filter(
       (r) => r.status === "Absent",
     ).length;
+    const missedCount = currentMonthRecords.filter(
+      (r) => r.status === "Missed",
+    ).length;
+    const held = presentCount + absentCount + missedCount;
     const targetClasses = studentProfile?.monthlyClassesTarget || 8;
-    let percentage = Math.round((presentCount / targetClasses) * 100);
-    if (percentage > 100) percentage = 100;
+    // Attendance % is out of the classes actually held so far (same as the
+    // analysis panel), not the monthly plan.
+    const percentage = held > 0 ? Math.round((presentCount / held) * 100) : 0;
     return {
       present: presentCount,
       absent: absentCount,
+      missed: missedCount,
+      held,
       target: targetClasses,
       percentage,
       records: currentMonthRecords,
@@ -828,97 +861,22 @@ const ParentDashboard = ({ user, onLogout }) => {
       .sort((a, b) => a.month.localeCompare(b.month));
   };
 
+  // Same rules as Admin's Fee Tracker (utils/fees.js): fee changes, one-off
+  // overrides, passes and inactive months are all taken into account.
   const getPaymentStatus = () => {
-    const today = new Date();
-    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-
-    // Check if student has a pass for current month
-    const hasPass = studentProfile?.passes?.some(
-      (p) => p.month === currentMonthStr,
-    );
-    if (hasPass) {
-      return { status: "Pass", color: "purple" };
-    }
-
-    const hasPaidCurrentMonth = studentProfile?.payments?.some(
-      (p) => p.month === currentMonthStr && p.status === "Paid",
-    );
-    if (hasPaidCurrentMonth) {
-      return { status: "Paid", color: "green" };
-    } else {
-      return { status: "Pending", color: "red" };
-    }
+    if (!studentProfile) return { status: "Pending", color: "red" };
+    const row = feeRowForMonth(studentProfile, monthKey());
+    if (row.status === "Pass") return { status: "Pass", color: "pass" };
+    if (row.status === "Paid") return { status: "Paid", color: "green" };
+    if (row.status === "Inactive") return { status: "Inactive", color: "inactive" };
+    if (row.status === "NotJoined") return { status: "Not started", color: "inactive" };
+    return { status: "Pending", color: "red" };
   };
 
-  const getFeeList = () => {
-    const today = new Date();
-    const currentUserPayments = studentProfile?.payments || [];
-    const studentPasses = studentProfile?.passes || [];
+  const getFeeList = () => (studentProfile ? buildFeeHistory(studentProfile).rows : []);
 
-    const rawDate = studentProfile?.registeredDate || studentProfile?.createdAt;
-    if (!rawDate) return currentUserPayments;
-
-    const regDate = new Date(rawDate);
-    // Use UTC year/month to avoid timezone shift: e.g. "2026-06-01T00:00:00Z"
-    // reads as May 31 for USA users if local getMonth() is used instead of UTC.
-    const regYear = regDate.getUTCFullYear();
-    const regMonth = regDate.getUTCMonth(); // 0-indexed
-
-    const historyStartYear = 2026;
-    const historyStartMonth = 0; // January
-
-    let startYear, startMonth;
-    if (regYear > historyStartYear || (regYear === historyStartYear && regMonth >= historyStartMonth)) {
-      startYear = regYear;
-      startMonth = regMonth;
-    } else {
-      startYear = historyStartYear;
-      startMonth = historyStartMonth;
-    }
-
-    let iterDate = new Date(startYear, startMonth, 1);
-    const checkUntil = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const fullHistory = [];
-
-    while (iterDate <= checkUntil) {
-      const monthStr = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, "0")}`;
-      const existingRecord = currentUserPayments.find(
-        (p) => p.month === monthStr,
-      );
-
-      // Check if student has a pass for this month
-      const passRecord = studentPasses.find((p) => p.month === monthStr);
-
-      if (passRecord) {
-        fullHistory.push({
-          month: monthStr,
-          amount: 0,
-          status: "Pass",
-          reason: passRecord.reason || "",
-        });
-      } else if (existingRecord) {
-        fullHistory.push(existingRecord);
-      } else {
-        fullHistory.push({
-          month: monthStr,
-          amount: studentProfile?.monthlyFee || 0,
-          status: "Pending",
-        });
-      }
-      iterDate.setMonth(iterDate.getMonth() + 1);
-    }
-    return fullHistory.sort((a, b) => b.month.localeCompare(a.month));
-  };
-
-  const calculateTotalPending = (list) => {
-    return list
-      .filter((item) => item.status === "Pending") // Pass months are excluded (status is "Pass", not "Pending")
-      .reduce((sum, item) => {
-        const val = parseFloat(item.amount);
-        return sum + (isNaN(val) ? 0 : val);
-      }, 0);
-  };
+  const calculateTotalPending = (list) =>
+    list.reduce((sum, item) => (item.status === "Pending" ? sum + (Number(item.amount) || 0) : sum), 0);
 
   // --- ACTIONS ---
 
@@ -1083,7 +1041,7 @@ const ParentDashboard = ({ user, onLogout }) => {
     handleNavClick("fees");
   };
 
-  if (loading) {
+  if (loading && !studentProfile) {
     return (
       <div className="art-loading-screen">
         <div className="paint-loader">
@@ -1099,6 +1057,16 @@ const ParentDashboard = ({ user, onLogout }) => {
     );
   }
 
+  if (!studentProfile && loadError) {
+    return (
+      <div className="art-loading-screen">
+        <p className="loading-text">We couldn't load your child's details.</p>
+        <p className="load-error-sub">Please check your internet connection and try again.</p>
+        <button type="button" className="pay-now-btn" onClick={fetchParentData}>Retry</button>
+      </div>
+    );
+  }
+
   const attStats = calculateAttendanceStats();
   const filteredReports = getFilteredReports();
   const feeList = getFeeList();
@@ -1106,10 +1074,11 @@ const ParentDashboard = ({ user, onLogout }) => {
   const chartData = [
     { name: "Attended", value: attStats.present, color: "#16a34a" },
     { name: "Absent", value: attStats.absent, color: "#ef4444" },
+    { name: "Missed", value: attStats.missed, color: "#f59e0b" },
     {
-      name: "Remaining",
-      value: Math.max(0, attStats.target - attStats.present - attStats.absent),
-      color: "#e2e8f0",
+      name: "Still to come",
+      value: Math.max(0, attStats.target - attStats.held),
+      color: theme === "dark" ? "#334155" : "#e2e8f0",
     },
   ];
 
@@ -1330,6 +1299,12 @@ const ParentDashboard = ({ user, onLogout }) => {
         </header>
 
         <div className="p-content">
+          {loadError && (
+            <div className="load-error-banner" role="alert">
+              <span>Some details couldn't load. What you see may be out of date.</span>
+              <button type="button" onClick={fetchParentData} disabled={loading}>{loading ? "Loading…" : "Retry"}</button>
+            </div>
+          )}
           {activeTab === "overview" && (
             <div className="overview-grid">
               <div
@@ -1406,7 +1381,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                         color: theme === "dark" ? "#f1f5f9" : "#1e293b",
                       }}
                     >
-                      {attStats.percentage}%
+                      {attStats.held > 0 ? `${attStats.percentage}%` : "—"}
                     </span>
                   </div>
                 </div>
@@ -1414,16 +1389,22 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <div className="ad-row">
                     <span>Attended:</span>
                     <strong className="green">
-                      {attStats.present} Classes
+                      {attStats.present} {attStats.present === 1 ? "Class" : "Classes"}
                     </strong>
                   </div>
                   <div className="ad-row">
                     <span>Absent:</span>
-                    <strong className="red">{attStats.absent} Classes</strong>
+                    <strong className="red">{attStats.absent} {attStats.absent === 1 ? "Class" : "Classes"}</strong>
                   </div>
+                  {attStats.missed > 0 && (
+                    <div className="ad-row">
+                      <span>Missed:</span>
+                      <strong className="amber">{attStats.missed} {attStats.missed === 1 ? "Class" : "Classes"}</strong>
+                    </div>
+                  )}
                   <div className="ad-row">
-                    <span>Total Classes:</span>
-                    <strong>{attStats.target} Classes</strong>
+                    <span>Classes held:</span>
+                    <strong>{attStats.held} of {attStats.target} planned</strong>
                   </div>
                 </div>
               </div>
@@ -1485,7 +1466,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     <div className="nc-row">
                       <span className="nc-label">Time:</span>
                       <span className="nc-val highlight">
-                        {nextClass?.day} @ {nextClass?.time}
+                        {nextClass ? `${nextClass.day} @ ${nextClass.time}${nextClass.live ? " · Live now" : ""}` : "Timetable coming soon"}
                       </span>
                     </div>
                     {(() => {
@@ -1497,7 +1478,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                           rel="noreferrer"
                           className="join-btn"
                         >
-                          Join {nextClass?.day} Class
+                          {nextClass?.live ? "Join Class Now" : nextClass ? `Join ${nextClass.day}'s Class` : "Join Class"}
                         </a>
                       ) : (
                         <button className="join-btn disabled" disabled>
@@ -1519,22 +1500,18 @@ const ParentDashboard = ({ user, onLogout }) => {
                 >
                   <IconFee /> Fee Status
                 </h3>
-                <div
-                  className={`fee-status-badge ${getPaymentStatus().color}`}
-                  style={getPaymentStatus().status === "Pass" ? {
-                    background: "#ede9fe",
-                    color: "#7c3aed",
-                    border: "1px solid #c4b5fd",
-                  } : {}}
-                >
+                <div className={`fee-status-badge ${getPaymentStatus().color}`}>
                   {getPaymentStatus().status}
                 </div>
                 <p className="fee-note">
-                  {getPaymentStatus().status === "Paid"
-                    ? "All caught up!"
-                    : getPaymentStatus().status === "Pass"
-                      ? "No fee this month (Pass)."
-                      : "Please clear dues."}
+                  {(() => {
+                    const st = getPaymentStatus().status;
+                    if (totalPendingAmount > 0 && st !== "Pending") return `Earlier months due: ₹${totalPendingAmount}`;
+                    if (st === "Paid") return "All caught up!";
+                    if (st === "Pass") return "No fee this month (Pass).";
+                    if (st === "Inactive" || st === "Not started") return "No fee this month.";
+                    return totalPendingAmount > 0 ? `Total due: ₹${totalPendingAmount}` : "Please clear dues.";
+                  })()}
                 </p>
               </div>
               <div className="info-card profile-card">
@@ -1809,16 +1786,21 @@ const ParentDashboard = ({ user, onLogout }) => {
                       <span className="as-label">Absent</span>
                       <span className="as-val red">{attStats.absent}</span>
                     </div>
+                    {attStats.missed > 0 && (
+                      <div className="as-item">
+                        <span className="as-label">Missed</span>
+                        <span className="as-val amber">{attStats.missed}</span>
+                      </div>
+                    )}
                     <div className="as-item">
-                      <span className="as-label">Total classes</span>
-                      <span className="as-val">{attStats.target}</span>
+                      <span className="as-label">Classes held</span>
+                      <span className="as-val">{attStats.held}<small> / {attStats.target}</small></span>
                     </div>
                   </div>
                   <div className="att-table-wrapper">
                     {attStats.records.length === 0 ? (
                       <div className="empty-state">
-                        No attendance records for {formatMonthName(attendanceMonth)}
-                        .
+                        No attendance records for {formatMonthName(attendanceMonth)}.
                       </div>
                     ) : (
                       <table className="att-table">
@@ -1884,30 +1866,21 @@ const ParentDashboard = ({ user, onLogout }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {feeList.map((pay, idx) => (
-                      <tr key={idx}>
+                    {feeList.map((pay) => (
+                      <tr key={pay.month}>
                         <td>{formatFullMonthDate(pay.month)}</td>
-                        <td>
-                          {pay.status === "Pass" ? (
-                            <span style={{ color: "#7c3aed", fontWeight: "600" }}>₹0</span>
-                          ) : pay.amount === "---" ? "---" : `₹${pay.amount}`}
+                        <td className={pay.status === "Pass" || pay.status === "Inactive" ? "fee-amt-muted" : undefined}>
+                          ₹{Number(pay.amount) || 0}
                         </td>
                         <td>
-                          <span
-                            className={`fee-pill ${pay.status.toLowerCase()}`}
-                            style={pay.status === "Pass" ? {
-                              background: "#ede9fe",
-                              color: "#7c3aed",
-                              border: "1px solid #c4b5fd",
-                            } : {}}
-                          >
+                          <span className={`fee-pill ${pay.status.toLowerCase()}`}>
                             {pay.status}
                           </span>
-                          {pay.status === "Pass" && pay.reason && (
-                            <div style={{ fontSize: "0.7rem", color: "#7c3aed", marginTop: "2px" }}>
-                              {pay.reason}
-                            </div>
+                          {pay.status === "Paid" && formatPaidDate(pay.paidDate) && (
+                            <div className="fee-sub">Paid on {formatPaidDate(pay.paidDate)}</div>
                           )}
+                          {pay.status === "Inactive" && <div className="fee-sub">No fee while on a break</div>}
+                          {pay.status === "Pass" && pay.reason && <div className="fee-sub">{pay.reason}</div>}
                         </td>
                       </tr>
                     ))}
@@ -2103,17 +2076,17 @@ const ParentDashboard = ({ user, onLogout }) => {
         <div className="logout-modal-overlay">
           <div className="logout-modal fee-modal-alert">
             <div className="fee-icon-circle">!</div>
-            <h3 className="lm-title">Fee Pending Remainder</h3>
+            <h3 className="lm-title">Fee reminder</h3>
             <p className="lm-text">
-              Hello Parent, Your fees for the current month are pending. Please
-              clear them to continue uninterrupted classes.
+              Hello! {studentProfile?.childName || currentUser.childName ? `${studentProfile?.childName || currentUser.childName}'s` : "This month's"} fee for {formatFullMonthDate(monthKey())} is pending
+              {totalPendingAmount > 0 ? ` (total due ₹${totalPendingAmount})` : ""}. Please clear it to continue uninterrupted classes.
             </p>
             <div className="lm-actions">
               <button className="lm-btn cancel" onClick={closeFeeReminder}>
                 Close
               </button>
               <button className="lm-btn confirm" onClick={goToFees}>
-                Pay Now
+                View &amp; Pay
               </button>
             </div>
           </div>
