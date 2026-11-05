@@ -375,3 +375,7 @@
   .crm-toolbar-clients .crm-search { flex: 1 1 100%; }
   .crm-toolbar-clients .crm-select { flex: 1 1 0; min-width: 0; width: auto; }
 }
+
+/* "Needs follow-up" chip: red accent so it reads as a to-do, not a status */
+.crm-chip.crm-chip-due { display: inline-flex; align-items: center; gap: 6px; color: var(--t-red); }
+.crm-chip.crm-chip-due.active { background: var(--t-red-bg); border-color: var(--t-red); color: var(--t-red); }

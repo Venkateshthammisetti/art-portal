@@ -277,11 +277,16 @@ const Actions = ({ client, onCall, onMessage, compact = false }) => (
   </div>
 );
 
+// Inactive / pass clients nobody has contacted in the last FOLLOWUP_DAYS days
+export const FOLLOWUP_DAYS = 7;
+export const needsFollowUp = (c, now = Date.now()) =>
+  c.status !== "active" && (!c.lastContact || now - new Date(c.lastContact.at).getTime() > FOLLOWUP_DAYS * 86400000);
+
 const LastContact = ({ client }) => {
   const needs = client.status !== "active";
   if (client.lastContact) {
     return (
-      <p className="crm-meta">
+      <p className={`crm-meta${needsFollowUp(client) ? " crm-due tone-overdue" : ""}`}>
         <IconClock /> Followed up {timeAgo(client.lastContact.at)} · {({ call: "Call", whatsapp: "WhatsApp", note: "Note" })[client.lastContact.channel]}
       </p>
     );
@@ -334,7 +339,7 @@ const ClientRow = ({ client, onOpen, onCall, onMessage }) => {
         <span className="crm-row-cell crm-row-status"><StatusBadge status={client.status} /></span>
         <span className="crm-row-cell crm-row-ref" title="Referrals made">{client.referrals.count > 0 ? <><IconShare size={13} /> {client.referrals.count}</> : null}</span>
         <span className="crm-row-cell crm-row-last">
-          {client.lastContact ? `Followed up ${timeAgo(client.lastContact.at)}` : client.status !== "active" ? <span className="crm-due tone-overdue">Not followed up</span> : null}
+          {client.lastContact ? <span className={needsFollowUp(client) ? "crm-due tone-overdue" : undefined}>Followed up {timeAgo(client.lastContact.at)}</span> : client.status !== "active" ? <span className="crm-due tone-overdue">Not followed up</span> : null}
         </span>
       </button>
       <Actions client={client} onCall={onCall} onMessage={onMessage} compact />
@@ -388,13 +393,15 @@ export const ClientsTab = ({ clients, onOpen, onCall, onMessage }) => {
   }, [clients, q, loc]);
 
   const counts = useMemo(() => {
-    const c = { all: scoped.length, active: 0, pass: 0, inactive: 0 };
-    scoped.forEach((x) => { c[x.status]++; });
+    const c = { all: scoped.length, active: 0, pass: 0, inactive: 0, followup: 0 };
+    scoped.forEach((x) => { c[x.status]++; if (needsFollowUp(x)) c.followup++; });
     return c;
   }, [scoped]);
 
   const shown = useMemo(() => {
-    const list = status === "all" ? [...scoped] : scoped.filter((c) => c.status === status);
+    const list = status === "all" ? [...scoped]
+      : status === "followup" ? scoped.filter((c) => needsFollowUp(c))
+      : scoped.filter((c) => c.status === status);
     const byName = (a, b) => clientName(a).localeCompare(clientName(b));
     const regDate = (c) => new Date(c.user.registeredDate || c.user.joiningDate || c.user.createdAt || 0).getTime();
     if (sort === "followup") {
@@ -428,7 +435,16 @@ export const ClientsTab = ({ clients, onOpen, onCall, onMessage }) => {
       </div>
 
       <div className="crm-chips" role="group" aria-label="Filter by status">
-        {chips.map(([key, label]) => (
+        {chips.slice(0, 1).map(([key, label]) => (
+          <button key={key} type="button" className={`crm-chip${status === key ? " active" : ""}`} aria-pressed={status === key} onClick={() => setStatus(key)}>
+            {label} <span className="crm-chip-count">{counts[key]}</span>
+          </button>
+        ))}
+        <button type="button" className={`crm-chip crm-chip-due${status === "followup" ? " active" : ""}`} aria-pressed={status === "followup"} onClick={() => setStatus("followup")}
+          title={`Inactive or pass, not contacted in the last ${FOLLOWUP_DAYS} days`}>
+          <IconClock size={14} /> Needs follow-up <span className="crm-chip-count">{counts.followup}</span>
+        </button>
+        {chips.slice(1).map(([key, label]) => (
           <button key={key} type="button" className={`crm-chip${status === key ? " active" : ""}`} aria-pressed={status === key} onClick={() => setStatus(key)}>
             {label} <span className="crm-chip-count">{counts[key]}</span>
           </button>
@@ -436,7 +452,9 @@ export const ClientsTab = ({ clients, onOpen, onCall, onMessage }) => {
       </div>
       <div className="crm-hint-row">
         <p className="crm-hint" aria-live="polite">
-          {shown.length} of {clients.length} · Pass = fee pass for {monthShort(monthKeyOf())}
+          {status === "followup"
+            ? `${shown.length} inactive or pass, not contacted in ${FOLLOWUP_DAYS}+ days`
+            : `${shown.length} of ${clients.length} · Pass = fee pass for ${monthShort(monthKeyOf())}`}
         </p>
         <div className="crm-segment small" role="radiogroup" aria-label="View">
           {[["grid", "Grid"], ["list", "List"]].map(([v, l]) => (
@@ -447,6 +465,8 @@ export const ClientsTab = ({ clients, onOpen, onCall, onMessage }) => {
 
       {clients.length === 0 ? (
         <div className="crm-empty"><IconUsers size={28} /><p>No enrolled students yet. Converted leads appear here.</p></div>
+      ) : shown.length === 0 && status === "followup" && !q.trim() && loc === "all" ? (
+        <div className="crm-empty"><p><strong>All caught up.</strong> Every inactive and pass client was contacted in the last {FOLLOWUP_DAYS} days.</p></div>
       ) : shown.length === 0 ? (
         <div className="crm-empty">
           <p><strong>No clients match.</strong> Try another status or location, or search by a different name or number.</p>
