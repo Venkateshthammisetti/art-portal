@@ -6807,6 +6807,21 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                 View Pass History
                               </button>
                             )}
+                            {/* Payment screenshot the parent sent for this month (until it's marked Paid) */}
+                            {!isPaid && (() => {
+                              const proof = [...(student.paymentProofs || [])].reverse().find((pp) => (pp.months || []).includes(selectedMonth));
+                              return proof ? (
+                                <a
+                                  href={proof.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="proof-sent-badge"
+                                  title={`Sent ${new Date(proof.at).toLocaleDateString("en-GB")}${proof.amount ? ` · ₹${proof.amount}` : ""}${proof.note ? ` · ${proof.note}` : ""}`}
+                                >
+                                  Proof sent{proof.amount ? ` · ₹${proof.amount}` : ""} — view
+                                </a>
+                              ) : null;
+                            })()}
                           </td>
                           <td style={{ fontWeight: "bold" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>

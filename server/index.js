@@ -280,7 +280,7 @@ app.get("/api/classes", async (req, res) => {
   try {
     const classes = await Class.find()
       .populate("teacher", "fullName username")
-      .populate("students", "childName fullName username childAge joiningDate phone");
+      .populate("students", "childName fullName username childAge joiningDate phone absenceNotices");
     res.json(classes);
   } catch (err) {
     res.status(500).json({ message: "Error fetching classes" });
@@ -1090,6 +1090,10 @@ app.put("/api/users/:id/notify-prefs", async (req, res) => {
     res.status(500).json({ message: "Error saving notification settings" });
   }
 });
+
+// Parent self-service: referrals, contact details, forgot password, absence
+// notices, report conversations, payment proof, siblings
+app.use("/api", require("./parentSelf")(upload));
 
 // ✨ SAVE SUBSCRIPTION
 app.post("/api/notifications/subscribe", async (req, res) => {

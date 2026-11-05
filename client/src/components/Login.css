@@ -281,3 +281,15 @@
       transition: background-color 5000s ease-in-out 0s;
   }
 }
+/* Forgot password */
+.forgot-link { text-align: right; margin: -4px 0 14px; }
+.forgot-link .link-text { background: none; border: none; padding: 8px 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 40px; }
+.forgot-panel { margin-top: 16px; padding: 16px; border-radius: 14px; background: #f1f5f9; border: 1px solid #e2e8f0; text-align: left; color: #0f172a; }
+.forgot-panel h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.forgot-panel p { margin: 0 0 12px; font-size: 0.88rem; color: #475569; line-height: 1.45; }
+.forgot-panel input { width: 100%; box-sizing: border-box; min-height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 16px; margin-bottom: 10px; background: #fff; color: #0f172a; }
+.forgot-actions { display: flex; gap: 10px; }
+.forgot-actions .login-btn { flex: 1; margin: 0; }
+.forgot-cancel { min-height: 46px; padding: 0 16px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; font-weight: 600; cursor: pointer; }
+.forgot-wa, .forgot-wa-link { display: inline-block; margin-top: 10px; color: #047857; font-weight: 700; font-size: 0.9rem; }
+.forgot-wa { background: #047857; color: #fff; padding: 12px 16px; border-radius: 10px; text-decoration: none; }

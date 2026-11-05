@@ -3,6 +3,7 @@ import axios from "axios";
 import { buildFeeHistory, feeRowForMonth, monthKey } from "../utils/fees";
 import { NotificationSettings, WhatsNewCard, MoreSheet } from "./ParentExtras";
 import { RatingTrend, AttendanceCalendar, attendanceStreak, bestStreak, GalleryProgress } from "./ParentProgress";
+import { AbsencePanel, downloadCalendar, EditContactSheet, ReportThread, PaymentProofSheet, downloadReceipt, ReferralStats, useFamily, switchToChild } from "./ParentSelf";
 import "./ParentDashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -47,7 +48,6 @@ import {
   IconUser,
   IconOnlineClass,
   IconOfflineClass,
-  IconCheck,
   IconMessage,
   IconMail,
   IconPhone,
@@ -646,9 +646,9 @@ const ParentDashboard = ({ user, onLogout }) => {
   );
 
   // Comment States
-  const [activeCommentId, setActiveCommentId] = useState(null);
-  const [commentText, setCommentText] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
+  const [showEditContact, setShowEditContact] = useState(false);
+  const [showProofSheet, setShowProofSheet] = useState(false);
+  const family = useFamily(currentUser._id);
 
   // Theme State
   const [theme, setTheme] = useState(
@@ -1089,36 +1089,6 @@ const ParentDashboard = ({ user, onLogout }) => {
     }, 3000);
   };
 
-  const handleSubmitComment = async (reportId) => {
-    if (!commentText.trim()) return;
-    setSubmittingComment(true);
-    try {
-      await axios.post(
-        `https://art-portal-7n6r.onrender.com/api/feedback/comment`,
-        {
-          reportId: reportId,
-          comment: commentText,
-          parentId: currentUser._id,
-        },
-      );
-      const updatedReports = reports.map((r) =>
-        r._id === reportId ? { ...r, parentComment: commentText } : r,
-      );
-      setReports(updatedReports);
-      setToastMessage("Comment sent to teacher! 📨");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      setCommentText("");
-      setActiveCommentId(null);
-    } catch (err) {
-      console.error("Failed to post comment", err);
-      setToastMessage("Failed to send comment ❌");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
 
   const handleShare = (method) => {
     const websiteUrl = "https://thevenkyart.com";
@@ -1351,6 +1321,23 @@ const ParentDashboard = ({ user, onLogout }) => {
                   <strong>{currentUser.fullName}</strong>
                   <span>{currentUser.username}</span>
                 </div>
+                {family.length > 1 && (
+                  <div className="pd-family">
+                    <span>Switch child</span>
+                    {family.map((kid) => (
+                      <button
+                        key={kid._id}
+                        type="button"
+                        className={`pd-family-btn${kid._id === currentUser._id ? " current" : ""}`}
+                        aria-current={kid._id === currentUser._id ? "true" : undefined}
+                        onClick={() => kid._id !== currentUser._id && switchToChild(kid)}
+                      >
+                        <span className="avatar-sm">{(kid.childName || "?").charAt(0)}</span>
+                        {kid.childName || kid.username}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="pd-refer-box">
                   <span>Your Referral Code</span>
                   <code>{currentUser.username}</code>
@@ -1629,7 +1616,10 @@ const ParentDashboard = ({ user, onLogout }) => {
                 </p>
               </div>
               <div className="info-card profile-card">
-                <h3><IconUser /> Student Details</h3>
+                <div className="ps-card-title">
+                  <h3><IconUser /> Student Details</h3>
+                  <button type="button" className="ps-link" onClick={() => setShowEditContact(true)}>Edit contact</button>
+                </div>
                 <div className="detail-row">
                   <span className="lbl">Student ID:</span>
                   <span className="val">{currentUser.username}</span>
@@ -1656,6 +1646,12 @@ const ParentDashboard = ({ user, onLogout }) => {
                     {studentProfile?.phone || currentUser.phone}
                   </span>
                 </div>
+                {(studentProfile?.email || studentProfile?.parentEmail) && (
+                  <div className="detail-row">
+                    <span className="lbl">Email:</span>
+                    <span className="val">{studentProfile.email || studentProfile.parentEmail}</span>
+                  </div>
+                )}
                 <div className="detail-row">
                   <span className="lbl">Class Level:</span>
                   <span className="val tag">
@@ -1732,6 +1728,27 @@ const ParentDashboard = ({ user, onLogout }) => {
                   No class assigned. Please contact admin.
                 </div>
               )}
+              {assignedClass?.schedule?.length > 0 && (
+                <>
+                  <div className="ps-cal-row">
+                    <button
+                      type="button"
+                      className="ps-btn-ghost"
+                      onClick={() => { if (!downloadCalendar(assignedClass)) alert("No upcoming classes to add yet."); }}
+                    >
+                      <IconSchedule /> Add classes to my calendar
+                    </button>
+                    <span className="ps-muted">Weekly reminders on your phone, 15 minutes before class</span>
+                  </div>
+                  <AbsencePanel
+                    studentId={currentUser._id}
+                    schedule={assignedClass.schedule}
+                    notices={studentProfile?.absenceNotices}
+                    childName={studentProfile?.childName || currentUser.childName}
+                    onChange={(absenceNotices) => setStudentProfile((p) => ({ ...p, absenceNotices }))}
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -1785,59 +1802,16 @@ const ParentDashboard = ({ user, onLogout }) => {
                         <p>"{rep.feedbackText}"</p>
                       </div>
 
-                      {rep.parentComment && (
-                        <div className="saved-comment-box">
-                          <span className="sc-icon"><IconCheck /></span>
-                          <div className="sc-content">
-                            <strong>Your Feedback:</strong>
-                            <p>{rep.parentComment}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {activeCommentId === rep._id && (
-                        <div className="comment-input-area animate-fade-in">
-                          <textarea
-                            placeholder="Write your feedback to the teacher..."
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            className="rc-textarea"
-                          />
-                          <div className="cia-actions">
-                            <button
-                              className="cia-btn cancel"
-                              onClick={() => setActiveCommentId(null)}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="cia-btn send"
-                              onClick={() => handleSubmitComment(rep._id)}
-                              disabled={submittingComment}
-                            >
-                              {submittingComment ? "Sending..." : "Send"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
+                      <ReportThread
+                        report={rep}
+                        parentId={currentUser._id}
+                        onUpdated={(next) => setReports((list) => list.map((r) => (r._id === next._id ? next : r)))}
+                      />
                       <div className="rc-footer">
                         <span className="rc-teacher">
                           By: {rep.teacherId?.fullName || "Thevenkyart Art Academy"}
                         </span>
                         <div className="rc-footer-actions">
-                          {!rep.parentComment && (
-                            <button
-                              className="rc-action-btn comment"
-                              onClick={() =>
-                                setActiveCommentId(
-                                  activeCommentId === rep._id ? null : rep._id,
-                                )
-                              }
-                            >
-                              <IconMessage /> Comment
-                            </button>
-                          )}
                           {rep.reportFile && (
                             <a
                               href={rep.reportFile}
@@ -1985,8 +1959,20 @@ const ParentDashboard = ({ user, onLogout }) => {
                   >
                     Pay Now
                   </button>
+                  <button type="button" className="ps-btn-ghost" onClick={() => setShowProofSheet(true)}>
+                    Send payment proof
+                  </button>
                 </div>
               </div>
+              {(() => {
+                const paidMonths = new Set(feeList.filter((r) => r.status === "Paid").map((r) => r.month));
+                const waiting = (studentProfile?.paymentProofs || []).filter((pp) => (pp.months || []).some((m) => !paidMonths.has(m)));
+                return waiting.length > 0 ? (
+                  <div className="ps-proof-note" role="status">
+                    <strong>Proof sent</strong> for {waiting.flatMap((pp) => pp.months).filter((m, i, a) => a.indexOf(m) === i).map(formatFullMonthDate).join(", ")} — the academy will mark it as paid after checking.
+                  </div>
+                ) : null;
+              })()}
               <div className="fee-table-wrapper">
                 <table className="fee-table">
                   <thead>
@@ -2009,6 +1995,15 @@ const ParentDashboard = ({ user, onLogout }) => {
                           </span>
                           {pay.status === "Paid" && formatPaidDate(pay.paidDate) && (
                             <div className="fee-sub">Paid on {formatPaidDate(pay.paidDate)}</div>
+                          )}
+                          {pay.status === "Paid" && (
+                            <button
+                              type="button"
+                              className="ps-link"
+                              onClick={() => downloadReceipt({ row: pay, profile: { ...studentProfile, username: currentUser.username }, logoSrc: "/new-logo1.png" })}
+                            >
+                              Receipt
+                            </button>
                           )}
                           {pay.status === "Inactive" && <div className="fee-sub">No fee while on a break</div>}
                           {pay.status === "Pass" && pay.reason && <div className="fee-sub">{pay.reason}</div>}
@@ -2062,10 +2057,10 @@ const ParentDashboard = ({ user, onLogout }) => {
                         </a>
                       </div>
                       <div className="id-row">
-                        <IconMail /> <span>thevenkyart@gmail.com</span>
+                        <IconMail /> <a href="mailto:thevenkyart@gmail.com">thevenkyart@gmail.com</a>
                       </div>
                       <div className="id-row">
-                        <IconPhone /> <span>+91 9963613404</span>
+                        <IconPhone /> <a href="tel:+919963613404">+91 9963613404</a>
                       </div>
                       <div className="id-row">
                         <IconLocation /> <span>Hyderabad, Telangana</span>
@@ -2075,6 +2070,17 @@ const ParentDashboard = ({ user, onLogout }) => {
                       We provide professional art training in Drawing,
                       Sketching, and Painting for students of all ages.
                     </div>
+                    <div className="ps-contact-btns">
+                      <a className="ps-btn-ghost" href="tel:+919963613404"><IconPhone /> Call</a>
+                      <a
+                        className="ps-btn-wa"
+                        href={`https://wa.me/919963613404?text=${encodeURIComponent(`Hello, this is ${currentUser.fullName || "a parent"} (${studentProfile?.childName || currentUser.childName || currentUser.username}). `)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <IconMessage /> WhatsApp
+                      </a>
+                    </div>
                   </div>
                 </div>
                 <div className="referral-card action-card">
@@ -2083,6 +2089,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     Love our classes? Refer a friend or family member and let
                     them experience the joy of art.
                   </p>
+                  <ReferralStats studentId={currentUser._id} />
                   <div className="referral-code-box">
                     <span className="rc-label">Your Referral Code</span>
                     <div className="code-display">{currentUser.username}</div>
@@ -2283,6 +2290,27 @@ const ParentDashboard = ({ user, onLogout }) => {
         </div>
       )}
 
+      {showProofSheet && (
+        <PaymentProofSheet
+          studentId={currentUser._id}
+          pendingRows={feeList.filter((r) => r.status === "Pending").reverse()}
+          onClose={() => setShowProofSheet(false)}
+          onSent={(paymentProofs) => {
+            setStudentProfile((p) => ({ ...p, paymentProofs }));
+            setToastMessage("Payment proof sent to the academy");
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+          }}
+        />
+      )}
+      {showEditContact && (
+        <EditContactSheet
+          studentId={currentUser._id}
+          profile={studentProfile}
+          onClose={() => setShowEditContact(false)}
+          onSaved={(c) => setStudentProfile((p) => ({ ...p, ...c }))}
+        />
+      )}
       {showToast && <div className="fee-toast-message">{toastMessage}</div>}
     </div>
   );

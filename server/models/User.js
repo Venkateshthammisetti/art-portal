@@ -91,6 +91,24 @@ const UserSchema = new mongoose.Schema({
     note: { type: String, default: '' }
   }],
 
+  // "My child can't attend this class" notices from the parent (upcoming only)
+  absenceNotices: [{
+    date: String,            // "YYYY-MM-DD" (IST class date)
+    time: { type: String, default: '' }, // slot time "HH:MM" (IST), '' = whole day
+    reason: { type: String, default: '' },
+    classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
+    at: { type: Date, default: Date.now }
+  }],
+
+  // Payment screenshots the parent uploaded for Admin to check
+  paymentProofs: [{
+    months: [String],        // "YYYY-MM" months the payment covers
+    amount: Number,
+    url: String,             // Cloudinary URL
+    note: { type: String, default: '' },
+    at: { type: Date, default: Date.now }
+  }],
+
   // Student Pass History (months where fee is waived)
   passes: [{
     month: String, // Format: "YYYY-MM"

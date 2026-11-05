@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { TeacherReportThread } from "./ParentSelf";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
@@ -3154,6 +3155,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                     {s.childName.charAt(0)}
                                   </div>
                                   {s.childName}
+                                  {(() => {
+                                    const n = (s.absenceNotices || []).find((x) => x.date === attendanceDate);
+                                    return n ? (
+                                      <span className="informed-chip" title={n.reason ? `Reason: ${n.reason}` : "The parent said they can't attend"}>
+                                        Parent informed{n.reason ? `: ${n.reason}` : ""}
+                                      </span>
+                                    ) : null;
+                                  })()}
                                 </div>
                                 <div className="col-id">{s.className}</div>
                                 <div className="col-status">
@@ -3356,10 +3365,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               </span>
                             </div>
                             <p className="h-text">"{item.feedbackText}"</p>
-                            {item.parentComment && (
+                            {(item.parentComment || item.messages?.length > 0) && (
                               <div className="teacher-reply-view">
-                                <strong><IconInbox /> Parent Reply:</strong>
-                                <p>{item.parentComment}</p>
+                                <strong><IconInbox /> Conversation with the parent</strong>
+                                <TeacherReportThread
+                                  report={item}
+                                  teacherId={currentUser._id}
+                                  onUpdated={(next) => setFeedbackHistory((list) => list.map((r) => (r._id === next._id ? next : r)))}
+                                />
                               </div>
                             )}
                             <div className="history-actions">
