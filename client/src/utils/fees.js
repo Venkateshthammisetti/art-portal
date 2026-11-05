@@ -51,9 +51,11 @@ export const getFeeForMonth = (user, monthStr) => {
   return Number(earliest?.fee) || Number(user?.monthlyFee) || 0;
 };
 
-// Every month from the student's start month to `until` (inclusive), oldest first.
-export const billableMonths = (user, until = monthKey()) => {
-  const start = getStudentStartMonth(user);
+// Every month from the student's start month to `until` (inclusive), oldest
+// first. `from` ("YYYY-MM") optionally sets an earliest month to show.
+export const billableMonths = (user, until = monthKey(), from = null) => {
+  const own = getStudentStartMonth(user);
+  const start = from && from > own ? from : own;
   const months = [];
   let [y, m] = start.split("-").map(Number);
   const [uy, um] = until.split("-").map(Number);
@@ -81,8 +83,9 @@ export const feeRowForMonth = (user, month) => {
 };
 
 // Full fee history, newest first, and the total still due.
-export const buildFeeHistory = (user, until = monthKey()) => {
-  const rows = billableMonths(user, until).map((m) => feeRowForMonth(user, m)).reverse();
+// Pass { from: "YYYY-MM" } to leave out months before that.
+export const buildFeeHistory = (user, until = monthKey(), { from = null } = {}) => {
+  const rows = billableMonths(user, until, from).map((m) => feeRowForMonth(user, m)).reverse();
   const totalDue = rows.reduce((sum, r) => (r.status === "Pending" ? sum + (Number(r.amount) || 0) : sum), 0);
   return { rows, totalDue, pendingMonths: rows.filter((r) => r.status === "Pending").length };
 };

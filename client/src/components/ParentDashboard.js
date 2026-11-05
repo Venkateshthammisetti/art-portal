@@ -873,7 +873,10 @@ const ParentDashboard = ({ user, onLogout }) => {
     return { status: "Pending", color: "red" };
   };
 
-  const getFeeList = () => (studentProfile ? buildFeeHistory(studentProfile).rows : []);
+  // Parents see fee history from January 2026 onwards (earlier months are
+  // settled offline), even if the student registered before that.
+  const PARENT_FEE_START = "2026-01";
+  const getFeeList = () => (studentProfile ? buildFeeHistory(studentProfile, monthKey(), { from: PARENT_FEE_START }).rows : []);
 
   const calculateTotalPending = (list) =>
     list.reduce((sum, item) => (item.status === "Pending" ? sum + (Number(item.amount) || 0) : sum), 0);
