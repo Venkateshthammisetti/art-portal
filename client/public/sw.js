@@ -7,6 +7,11 @@ self.addEventListener('push', e => {
   if (!e.data) return;
   const data = e.data.json();
 
+  // Let open tabs refresh their notification bell right away
+  self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(list => list.forEach(c => c.postMessage({ type: 'push-received', tag: data.tag || '' })))
+    .catch(() => {});
+
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body:              data.body,

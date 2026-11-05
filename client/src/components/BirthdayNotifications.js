@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import "./BirthdayNotifications.css";
-import { IconBell, IconBirthday } from "./Icons";
+import { IconBell, IconBirthday, IconLock } from "./Icons";
 import { SpotlightViewer, formatPublishedAt, isDarkContext, categoryOf } from "./ArtistSpotlight";
 
 const SPOTLIGHTS_IN_BELL = 10; // most recent posters kept in the bell
@@ -18,6 +18,18 @@ const spotlightLine = (sp) => {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const API = "https://art-portal-7n6r.onrender.com";
+const RESET_POLL_MS = 60 * 1000; // admin bell re-checks password reset requests every minute
+
+const timeAgo = (d) => {
+  const mins = Math.round((Date.now() - new Date(d).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+};
 const REMINDER_OFFSETS = [0, 3, 7]; // days before (0 = today)
 
 // childDob is stored as a plain "YYYY-MM-DD" string, which Date parses as UTC midnight.
@@ -76,7 +88,9 @@ export const getBirthdayNotifications = (students, today = new Date()) => {
  * the last week) by itself when the app opens, once per poster. `holdPopup` delays it while another dialog is showing
  * or the page is still loading, so popups never stack.
  */
-const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, holdPopup = false }) => {
+const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, holdPopup = false, showResetRequests = false }) => {
+  const [resetRequests, setResetRequests] = useState([]);
+  const [resetsLoaded, setResetsLoaded] = useState(!showResetRequests);
   const [open, setOpen] = useState(false);
   const [spotlights, setSpotlights] = useState([]);
   const [spotlightsLoaded, setSpotlightsLoaded] = useState(false);
@@ -103,8 +117,43 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
       type: "spotlight",
       spotlight: sp,
     }));
-    return [...spotlightItems, ...getBirthdayNotifications(students)];
-  }, [students, spotlights]);
+    const resetItems = resetRequests.map((r) => ({ id: `reset-${r._id}-${new Date(r.at).getTime()}`, type: "reset", request: r }));
+    return [...resetItems, ...spotlightItems, ...getBirthdayNotifications(students)];
+  }, [students, spotlights, resetRequests]);
+
+  // Admin only: "forgot password" requests from the login screen
+  const fetchResetRequests = () => {
+    if (!showResetRequests) return;
+    axios
+      .get(`${API}/api/admin/reset-requests`)
+      .then((res) => {
+        setResetRequests(Array.isArray(res.data) ? res.data : []);
+        setResetsLoaded(true);
+      })
+      .catch((err) => console.error("Reset requests fetch failed:", err));
+  };
+  const resolveReset = (r) => {
+    setResetRequests((list) => list.filter((x) => x._id !== r._id));
+    axios.put(`${API}/api/admin/reset-requests/${r._id}/resolve`).catch(() => fetchResetRequests());
+  };
+  useEffect(() => {
+    if (!showResetRequests) return undefined;
+    fetchResetRequests();
+    const timer = setInterval(fetchResetRequests, RESET_POLL_MS);
+    const onFocus = () => fetchResetRequests();
+    window.addEventListener("focus", onFocus);
+    // A push arrived while the app is open — refresh straight away
+    const onSwMessage = (e) => {
+      if (e.data?.type === "push-received" && String(e.data.tag || "").startsWith("reset-")) fetchResetRequests();
+    };
+    if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", onSwMessage);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      if ("serviceWorker" in navigator) navigator.serviceWorker.removeEventListener("message", onSwMessage);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResetRequests]);
 
   const fetchSpotlights = () =>
     axios
@@ -122,7 +171,10 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (open) fetchSpotlights();
+    if (open) {
+      fetchSpotlights();
+      fetchResetRequests();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -199,7 +251,7 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
   // so localStorage doesn't grow forever. Wait for spotlights to load so their read
   // state isn't pruned before they appear.
   useEffect(() => {
-    if (!spotlightsLoaded) return;
+    if (!spotlightsLoaded || !resetsLoaded) return;
     const activeIds = new Set(notifications.map((n) => n.id));
     setReadIds((prev) => {
       const pruned = prev.filter((id) => activeIds.has(id));
@@ -210,7 +262,7 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
       return prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifications, storageKey, spotlightsLoaded]);
+  }, [notifications, storageKey, spotlightsLoaded, resetsLoaded]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -276,7 +328,40 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
               <div className="bday-notif-empty">No notifications yet</div>
             ) : (
               notifications.map((n) =>
-                n.type === "spotlight" ? (
+                n.type === "reset" ? (
+                  <div
+                    key={n.id}
+                    className={`bday-notif-item reset${readIds.includes(n.id) ? "" : " unread"}`}
+                    onClick={() => markRead(n.id)}
+                  >
+                    <div className="bday-notif-icon reset"><IconLock size={18} /></div>
+                    <div className="bday-notif-body">
+                      <p className="bday-notif-title">
+                        <strong>Password reset:</strong>{" "}
+                        {n.request.userId
+                          ? `${n.request.fullName || n.request.username}${n.request.childName ? ` (${n.request.childName})` : ""}`
+                          : `"${n.request.identifier}" (no matching account)`}
+                      </p>
+                      {n.request.userId && (
+                        <p className="bday-notif-sub">
+                          {[n.request.username && `User: ${n.request.username}`, n.request.phone].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      <p className="bday-notif-sub">{timeAgo(n.request.at)}</p>
+                      <button
+                        type="button"
+                        className="bday-notif-resolve"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          resolveReset(n.request);
+                        }}
+                      >
+                        Mark done
+                      </button>
+                    </div>
+                    {!readIds.includes(n.id) && <span className="bday-notif-dot" />}
+                  </div>
+                ) : n.type === "spotlight" ? (
                   <div
                     key={n.id}
                     role="button"

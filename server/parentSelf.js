@@ -7,6 +7,7 @@ const User = require("./models/User");
 const Class = require("./models/Class");
 const Feedback = require("./models/Feedback");
 const Lead = require("./models/Lead");
+const ResetRequest = require("./models/ResetRequest");
 const parentPush = require("./parentPush");
 const { signChatToken } = require("./chatbot");
 
@@ -101,21 +102,61 @@ module.exports = (upload) => {
     try {
       const raw = String(req.body?.identifier || "").trim();
       if (!raw) return res.status(400).json({ message: "Enter your username or phone number" });
+      const identifier = raw.slice(0, 80);
       const digits = last10(raw);
-      const match = await User.findOne(digits.length === 10
+      const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const exact = new RegExp("^" + escaped + "$", "i");
+      const match = await User.findOne(digits.length === 10 && !/[a-z]/i.test(raw)
         ? { role: "parent", phone: { $regex: phoneRegex(digits) } }
-        : { role: "parent", username: raw }).select("username childName fullName");
-      if (match) {
-        parentPush.later("Password reset request", async () => parentPush.pushToUsers(await admins(), {
-          title: "🔑 Password reset request",
-          body: `${match.fullName || "A parent"} (${match.childName || match.username}) can't log in and asked for a new password.`,
-          tag: `reset-${match._id}`,
-          url: `${parentPush.APP_URL}/`,
-        }));
-      }
+        : { role: "parent", $or: [{ username: exact }, { admissionId: exact }] }).select("username childName fullName phone");
+
+      // Keep one open request per account (or per typed text when nothing matched)
+      const key = match ? { userId: match._id, resolved: false } : { userId: null, identifier, resolved: false };
+      await ResetRequest.findOneAndUpdate(key, {
+        $set: {
+          identifier,
+          at: new Date(),
+          fullName: match?.fullName || "",
+          childName: match?.childName || "",
+          username: match?.username || "",
+          phone: match?.phone || "",
+        },
+      }, { upsert: true, setDefaultsOnInsert: true });
+      res.json({ ok: true });
+
+      // Every request reaches the admins, even when no account matched what was typed
+      const who = match
+        ? `${match.fullName || "A parent"} (${match.childName || match.username})`
+        : `Someone typing "${identifier}" (no matching account)`;
+      parentPush.later("Password reset request", async () => parentPush.pushToUsers(await admins(), {
+        title: "🔑 Password reset request",
+        body: `${who} can't log in and asked for a new password.`,
+        tag: `reset-${match?._id || identifier}`,
+        url: `${parentPush.APP_URL}/`,
+        requireInteraction: true,
+      }, { urgency: "high" }));
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      if (!res.headersSent) res.status(500).json({ message: "Please try again" });
+    }
+  });
+
+  // ---------- admin: open password reset requests (notification bell) ----------
+  router.get("/admin/reset-requests", async (req, res) => {
+    try {
+      res.json(await ResetRequest.find({ resolved: false }).sort({ at: -1 }).limit(50).lean());
+    } catch (err) {
+      res.status(500).json({ message: "Error loading reset requests" });
+    }
+  });
+
+  router.put("/admin/reset-requests/:id/resolve", async (req, res) => {
+    try {
+      if (!validId(req.params.id)) return res.status(404).json({ message: "Not found" });
+      await ResetRequest.findByIdAndUpdate(req.params.id, { resolved: true, resolvedAt: new Date() });
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ message: "Please try again" });
+      res.status(500).json({ message: "Couldn't update the request" });
     }
   });
 

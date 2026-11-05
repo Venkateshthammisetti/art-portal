@@ -16,6 +16,7 @@ const Artwork = require("./models/Artwork");
 const Certification = require("./models/Certification");
 const Expense = require("./models/Expense");
 const Spotlight = require("./models/Spotlight");
+const ResetRequest = require("./models/ResetRequest");
 const nodemailer = require("nodemailer");
 const webpush = require("web-push");
 const parentPush = require("./parentPush");
@@ -151,6 +152,12 @@ app.put("/api/users/:id", async (req, res) => {
   try {
     const existing = await User.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: "User not found" });
+
+    // A new password answers any open "forgot password" request for this account
+    if (req.body.password && req.body.password !== existing.password) {
+      ResetRequest.updateMany({ userId: existing._id, resolved: false }, { resolved: true, resolvedAt: new Date() })
+        .catch((e) => console.error("Reset request resolve error:", e.message));
+    }
 
     const newFee = req.body.monthlyFee !== undefined ? Number(req.body.monthlyFee) : null;
     const feeChanged = newFee !== null && newFee !== Number(existing.monthlyFee);

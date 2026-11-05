@@ -206,3 +206,32 @@ body.dark .bday-notif-icon.spotlight.tone-blue { background: rgba(59, 130, 246, 
   outline: 3px solid rgba(37, 99, 235, 0.45);
   outline-offset: 2px;
 }
+
+/* Password reset requests (Admin bell) */
+.bday-notif-icon.reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.admin-container[data-theme="dark"] .bday-notif-icon.reset,
+body.dark .bday-notif-icon.reset { background: rgba(239, 68, 68, 0.16); color: #fca5a5; }
+.bday-notif-resolve {
+  margin-top: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-container[data-theme="dark"] .bday-notif-resolve,
+body.dark .bday-notif-resolve { color: #fca5a5; }
