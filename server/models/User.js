@@ -46,6 +46,18 @@ const UserSchema = new mongoose.Schema({
 
   pushSubscription: { type: Object }, // Stores the device address
 
+  // Which push notifications a parent wants (missing = on). Fee reminders and
+  // birthday wishes are always sent. Keys match server/parentPush.js PREF_KEYS.
+  notifyPrefs: {
+    reports: { type: Boolean, default: true },
+    certificates: { type: Boolean, default: true },
+    attendance: { type: Boolean, default: true },
+    classChanges: { type: Boolean, default: true },
+    classReminders: { type: Boolean, default: true },
+    artwork: { type: Boolean, default: true },
+    posters: { type: Boolean, default: true },
+  },
+
   isActive: { type: Boolean, default: true },
   
   // Payment History

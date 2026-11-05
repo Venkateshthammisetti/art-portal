@@ -136,6 +136,12 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
     navigator.serviceWorker.addEventListener("message", onMessage);
     return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, []);
+  // Other parts of the page (e.g. the parent's "What's new" card) can open a poster too
+  useEffect(() => {
+    const onOpen = (e) => e.detail && setPendingSpotlightId(e.detail);
+    window.addEventListener("open-spotlight", onOpen);
+    return () => window.removeEventListener("open-spotlight", onOpen);
+  }, []);
 
   // Auto popup: newest poster this user hasn't seen, shown once. The short delay
   // lets the dashboard's own load-time dialogs (e.g. fee reminder) claim the screen

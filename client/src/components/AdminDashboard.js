@@ -23,6 +23,7 @@ import { FaFilter } from "react-icons/fa6";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 import { SpotlightPublishTab, SpotlightHistoryTab } from "./ArtistSpotlight";
 import { subscribeDeviceToPush } from "../pushSubscribe";
+import { getStudentStartMonth, isStudentInactiveForMonth, getFeeForMonth } from "../utils/fees";
 import ListCountHeader from "./ListCountHeader";
 import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 
@@ -110,17 +111,6 @@ const isRegisteredInOrBefore = (regDate, currentMonth) => {
   return regYM <= currentMonth;
 };
 
-// Student's first billable month "YYYY-MM": registeredDate, else joiningDate,
-// else createdAt. A record with no date at all is treated as starting the
-// current month. This mirrors FeeTrackerTab.getStudentStartMonth exactly so
-// the Revenue Analytics figures line up with the Fee Tracker summary.
-const getStudentStartMonth = (user) => {
-  const dateStr = user.registeredDate || user.joiningDate || user.createdAt;
-  if (!dateStr) return new Date().toISOString().slice(0, 7);
-  if (typeof dateStr === "string") return dateStr.slice(0, 7);
-  return new Date(dateStr).toISOString().slice(0, 7);
-};
-
 // Month-level payment status for a student, matching FeeTrackerTab.getPaymentStatus
 // (any payment entry for the month counts as Paid — Pending entries are deleted,
 // not stored). Returns "NotJoined" | "Inactive" | "Pass" | "Paid" | "Pending".
@@ -129,51 +119,6 @@ const getMonthPaymentStatus = (user, monthStr) => {
   if (isStudentInactiveForMonth(user, monthStr)) return "Inactive";
   if ((user.passes || []).some((p) => p.month === monthStr)) return "Pass";
   return (user.payments || []).some((p) => p.month === monthStr) ? "Paid" : "Pending";
-};
-
-// Returns true if a student's inactiveHistory covers the given month (fee should be ₹0).
-const isStudentInactiveForMonth = (user, monthStr) => {
-  const history = user.inactiveHistory || [];
-  return history.some(entry => {
-    const from = entry.inactiveFrom;
-    const to = entry.inactiveTo; // null/undefined = still inactive
-    return monthStr >= from && (!to || monthStr <= to);
-  });
-};
-
-// Returns the fee that was in effect for a given month, using feeChangeHistory when available.
-// Falls back to user.monthlyFee if no history exists (backwards compatible).
-// Returns 0 for months where the student was inactive.
-// A feeOverrides entry for the exact month wins over everything else — it's a
-// one-off custom amount for that single still-unpaid month (see Edit Fee in
-// FeeTrackerTab), separate from feeChangeHistory's permanent from-here-onward changes.
-const getFeeForMonth = (user, monthStr) => {
-  if (isStudentInactiveForMonth(user, monthStr)) return 0;
-  const override = (user.feeOverrides || []).find((o) => o.month === monthStr);
-  if (override) return Number(override.amount) || 0;
-
-  const history = user.feeChangeHistory || [];
-  if (history.length === 0) return Number(user.monthlyFee) || 0;
-
-  // Walk the array once: track the best entry (greatest effectiveFrom <= monthStr).
-  // For ties on effectiveFrom, the LAST entry in the array wins (most recently saved).
-  let best = null;
-  let earliest = null;
-  for (const entry of history) {
-    // Track earliest for the fallback below
-    if (!earliest || entry.effectiveFrom < earliest.effectiveFrom) earliest = entry;
-
-    if (entry.effectiveFrom <= monthStr) {
-      if (!best || entry.effectiveFrom >= best.effectiveFrom) {
-        best = entry;
-      }
-    }
-  }
-
-  if (best) return Number(best.fee) || 0;
-
-  // monthStr is before all history entries — use the earliest recorded fee
-  return Number(earliest?.fee) || Number(user.monthlyFee) || 0;
 };
 
 // ==========================================
