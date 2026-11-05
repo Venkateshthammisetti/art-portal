@@ -1,179 +1,224 @@
 /* ========================================= */
-/* MODERN ANIMATED SPLASH SCREEN             */
+/* LAUNCH SPLASH — burst & reassemble        */
+/* (choreography lives in SplashScreen.js)   */
 /* ========================================= */
 
 .splash-container {
   position: fixed;
-  top: 0; left: 0;
+  inset: 0;
   width: 100vw; height: 100vh; height: 100dvh;
   background: #0a0e1a;
   z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-/* --- BACKGROUND PARTICLES --- */
-.splash-particles {
+/* soft depth behind the centre, same dark blue */
+.sp-bg {
   position: absolute;
   inset: 0;
+  background:
+    radial-gradient(60% 45% at 50% 46%, rgba(37, 99, 235, 0.16) 0%, transparent 70%),
+    radial-gradient(40% 30% at 70% 70%, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
   pointer-events: none;
 }
 
-.splash-particle {
+.sp-stage {
+  position: relative;
+  width: 100%; height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+/* Effects layer: every child is positioned at the exact centre */
+.sp-fx {
   position: absolute;
-  border-radius: 50%;
+  left: 50%; top: 46%;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.sp-fx > * {
+  position: absolute;
+  left: 0; top: 0;
   opacity: 0;
-  animation: particleFadeIn 0.8s ease-out forwards;
+  will-change: transform, opacity;
 }
 
-.p-1 { width: 200px; height: 200px; background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%); top: 10%; left: 15%; animation-delay: 0.1s; }
-.p-2 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(147,51,234,0.12) 0%, transparent 70%); bottom: 10%; right: 10%; animation-delay: 0.2s; }
-.p-3 { width: 150px; height: 150px; background: radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%); top: 60%; left: 5%; animation-delay: 0.3s; }
-.p-4 { width: 180px; height: 180px; background: radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 70%); top: 20%; right: 20%; animation-delay: 0.15s; }
-.p-5 { width: 120px; height: 120px; background: radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 70%); bottom: 25%; left: 40%; animation-delay: 0.25s; }
-.p-6 { width: 250px; height: 250px; background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); top: 40%; right: 5%; animation-delay: 0.35s; }
-
-@keyframes particleFadeIn {
-  from { opacity: 0; transform: scale(0.5); }
-  to { opacity: 1; transform: scale(1); }
+.sp-flash {
+  width: 160px; height: 160px;
+  margin: -80px 0 0 -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(147, 197, 253, 0.35) 35%, transparent 70%);
 }
 
-/* --- CENTER GROUP --- */
-.splash-center {
+.sp-ring {
+  width: 100px; height: 100px;
+  margin: -50px 0 0 -50px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(147, 197, 253, 0.55);
+}
+
+.sp-streak {
+  width: 3px; height: 26px;
+  margin: -13px 0 0 -1.5px;
+  border-radius: 3px;
+  background: linear-gradient(to top, rgba(226, 232, 240, 0), rgba(226, 232, 240, 0.9));
+  transform-origin: 50% 50%;
+}
+.sp-streak:nth-child(3n) { height: 18px; }
+.sp-streak:nth-child(4n) { height: 34px; width: 2px; }
+
+.sp-drop {
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  margin: -4px 0 0 -4px;
+}
+
+.sp-icon {
+  color: #e2e8f0;
+  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.25));
+}
+
+.sp-splat {
+  margin: -75px 0 0 -75px;
+  filter: drop-shadow(0 10px 30px rgba(59, 130, 246, 0.35));
+}
+
+.sp-spatter {
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+}
+
+/* ---------- brand ---------- */
+.sp-brand-group {
+  position: absolute;
+  left: 50%; top: 46%;
+  transform: translate(-50%, -55px);
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.sp-logo {
   position: relative;
-  z-index: 2;
-}
-
-/* --- ANIMATED RINGS --- */
-.splash-ring {
-  position: absolute;
-  width: 160px; height: 160px;
-  border: 2px solid rgba(37, 99, 235, 0.2);
-  border-radius: 50%;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  animation: ringExpand 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.splash-ring.ring-2 {
-  width: 200px; height: 200px;
-  border-color: rgba(147, 51, 234, 0.1);
-  animation-delay: 0.15s;
-}
-
-@keyframes ringExpand {
-  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-  60% { opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
-}
-
-/* --- LOGO --- */
-.splash-logo-wrapper {
   width: 110px; height: 110px;
   display: grid;
   place-items: center;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 0 40px rgba(37, 99, 235, 0.15),
-    0 0 80px rgba(37, 99, 235, 0.05);
-  animation: logoReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform: scale(0);
+}
+
+.sp-glow {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, rgba(124, 58, 237, 0.15) 40%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sp-tile {
   position: relative;
-  z-index: 3;
+  width: 110px; height: 110px;
+  border-radius: 30px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 16px 40px rgba(37, 99, 235, 0.35);
+  opacity: 0;
+  will-change: transform, opacity;
 }
 
-.splash-logo {
-  width: 80px; height: auto;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+.sp-logo-img {
+  width: 76px; height: auto;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
 }
 
-@keyframes logoReveal {
-  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-
-/* --- BRAND TEXT --- */
-.splash-brand {
+.sp-brand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 20px;
-  opacity: 0;
-  animation: brandSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  margin-top: 22px;
 }
 
-.splash-brand-text {
+.sp-name {
   font-family: 'Plus Jakarta Sans', 'Poppins', sans-serif;
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   font-weight: 700;
   color: #f1f5f9;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  white-space: nowrap;
+}
+.sp-letter {
+  display: inline-block;
+  opacity: 0;
+  will-change: transform, opacity;
 }
 
-.splash-brand-sub {
+.sp-stroke {
+  width: 168px; height: 12px;
+  margin-top: 2px;
+  overflow: visible;
+}
+.sp-stroke path { stroke-dashoffset: 1000; stroke-dasharray: 1000; }
+
+.sp-sub {
   font-family: 'Plus Jakarta Sans', 'Poppins', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #64748b;
-  letter-spacing: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 4px;
   text-transform: uppercase;
-  margin-top: 4px;
+  margin-top: 8px;
+  padding-left: 4px; /* balance trailing letter-spacing */
+  opacity: 0;
 }
 
-@keyframes brandSlideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+/* loader: three paint drops */
+.sp-loader {
+  display: flex;
+  gap: 8px;
+  margin-top: 34px;
+  opacity: 0;
+}
+.sp-loader i {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: spDrop 0.9s ease-in-out infinite;
+}
+.sp-loader i:nth-child(2) { background: #8b5cf6; animation-delay: 0.15s; }
+.sp-loader i:nth-child(3) { background: #f59e0b; animation-delay: 0.3s; }
+@keyframes spDrop {
+  0%, 100% { transform: translateY(0) scale(0.8); opacity: 0.5; }
+  40% { transform: translateY(-6px) scale(1); opacity: 1; }
 }
 
-/* ========================================= */
-/* ZOOM PHASE — logo scales up, bg fades     */
-/* ========================================= */
-.splash-zoom {
-  animation: splashZoomOut 0.7s cubic-bezier(0.4, 0, 0, 1) forwards;
+/* Static frame: reduced motion, or no Web Animations API */
+.sp-static .sp-fx { display: none; }
+.sp-static .sp-tile,
+.sp-static .sp-letter,
+.sp-static .sp-sub,
+.sp-static .sp-loader { opacity: 1; }
+.sp-static .sp-glow { opacity: 1; }
+.sp-static .sp-stroke path { stroke-dashoffset: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-loader i { animation: none; opacity: 0.8; }
 }
 
-.splash-zoom .splash-center {
-  animation: centerZoomScale 0.7s cubic-bezier(0.4, 0, 0, 1) forwards;
-}
-
-.splash-zoom .splash-particles {
-  animation: particlesFade 0.4s ease-out forwards;
-}
-
-@keyframes splashZoomOut {
-  0% { opacity: 1; }
-  60% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-@keyframes centerZoomScale {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(2.5); opacity: 0; }
-}
-
-@keyframes particlesFade {
-  to { opacity: 0; }
-}
-
-/* ========================================= */
-/* MOBILE ADJUSTMENTS                        */
-/* ========================================= */
 @media (max-width: 768px) {
-  .splash-logo-wrapper {
-    width: 90px; height: 90px;
-    border-radius: 22px;
-  }
-  .splash-logo { width: 65px; }
-  .splash-ring { width: 130px; height: 130px; }
-  .splash-ring.ring-2 { width: 165px; height: 165px; }
-  .splash-brand-text { font-size: 1.3rem; }
-  .splash-brand-sub { font-size: 0.75rem; letter-spacing: 2.5px; }
+  .sp-logo, .sp-tile { width: 92px; height: 92px; }
+  .sp-tile { border-radius: 26px; }
+  .sp-logo-img { width: 64px; }
+  .sp-name { font-size: 1.45rem; }
+  .sp-stroke { width: 146px; }
+  .sp-sub { font-size: 0.72rem; letter-spacing: 3.5px; }
+  .sp-brand-group { transform: translate(-50%, -46px); }
 }
