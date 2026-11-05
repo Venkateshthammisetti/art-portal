@@ -4817,3 +4817,8 @@ body {
 /* Admissions (CRM) staff */
 .role-badge.crm { background: #ccfbf1; color: #0f766e; text-transform: uppercase; }
 .admin-container[data-theme="dark"] .role-badge.crm { background: rgba(20, 184, 166, 0.18); color: #5eead4; }
+
+/* Parent sent a payment screenshot for this month */
+.proof-sent-badge { display: inline-block; margin-top: 4px; font-size: 0.72rem; font-weight: 700; color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 3px 9px; text-decoration: none; }
+.proof-sent-badge:hover { text-decoration: underline; }
+body.dark .proof-sent-badge, .dark .proof-sent-badge { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }

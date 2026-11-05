@@ -1,5 +1,6 @@
 // src/components/Login.js
 import { useState } from 'react';
+import axios from 'axios';
 import './Login.css';
 
 // ✨ Import your assets for the Mobile View
@@ -12,6 +13,22 @@ const Login = ({ onLogin, error }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  // Forgot password: the academy resets it (passwords are never sent out)
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotId, setForgotId] = useState('');
+  const [forgotState, setForgotState] = useState('idle'); // idle | sending | sent | error
+  const sendForgot = async (e) => {
+    e.preventDefault();
+    if (!forgotId.trim()) return;
+    setForgotState('sending');
+    try {
+      await axios.post('https://art-portal-7n6r.onrender.com/api/parent/forgot-password', { identifier: forgotId.trim() });
+      setForgotState('sent');
+    } catch {
+      setForgotState('error');
+    }
+  };
+  const waReset = `https://wa.me/919963613404?text=${encodeURIComponent(`Hello, I can't log in to the Thevenkyart app. Please reset my password. My username / phone: ${forgotId.trim() || username}`)}`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -102,9 +119,11 @@ const Login = ({ onLogin, error }) => {
               />
             </div>
 
-            {/* <div className="forgot-link">
-              <span className="link-text">Forgot password?</span>
-            </div> */}
+            <div className="forgot-link">
+              <button type="button" className="link-text" onClick={() => { setForgotOpen(true); setForgotId(username); setForgotState('idle'); }}>
+                Forgot password?
+              </button>
+            </div>
 
             <button type="submit" className="login-btn" disabled={loading}>
               {loading ? <span className="login-spinner"></span> : 'Sign In'}
@@ -112,6 +131,29 @@ const Login = ({ onLogin, error }) => {
           </form>
 
           {error && <p className="error-msg">{error}</p>}
+
+          {forgotOpen && (
+            <div className="forgot-panel" role="dialog" aria-modal="false" aria-labelledby="forgot-title">
+              <h3 id="forgot-title">Forgot your password?</h3>
+              {forgotState === 'sent' ? (
+                <>
+                  <p>Thanks — we've told the academy. They'll send you a new password soon. For a faster reply, message us on WhatsApp.</p>
+                  <a className="forgot-wa" href={waReset} target="_blank" rel="noreferrer">Message on WhatsApp</a>
+                </>
+              ) : (
+                <form onSubmit={sendForgot}>
+                  <p>Enter your username or the parent phone number. The academy will reset your password.</p>
+                  <input type="text" value={forgotId} onChange={(e) => setForgotId(e.target.value)} placeholder="Username or phone" aria-label="Username or phone" autoComplete="username" />
+                  {forgotState === 'error' && <p className="error-msg">Couldn't send. Please check your internet, or message us on WhatsApp.</p>}
+                  <div className="forgot-actions">
+                    <button type="button" className="forgot-cancel" onClick={() => setForgotOpen(false)}>Cancel</button>
+                    <button type="submit" className="login-btn" disabled={forgotState === 'sending'}>{forgotState === 'sending' ? 'Sending…' : 'Ask for a reset'}</button>
+                  </div>
+                  <a className="forgot-wa-link" href={waReset} target="_blank" rel="noreferrer">or message us on WhatsApp</a>
+                </form>
+              )}
+            </div>
+          )}
 
           <div className="create-account-link">
              {/* Removed empty link to clean up */}
