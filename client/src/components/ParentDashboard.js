@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { buildFeeHistory, feeRowForMonth, monthKey } from "../utils/fees";
+import { NotificationSettings, WhatsNewCard, MoreSheet } from "./ParentExtras";
 import "./ParentDashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -66,6 +67,21 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+// Header title for each tab
+const TAB_TITLES = {
+  overview: "My Dashboard",
+  schedule: "Class Schedule",
+  gallery: "My Art Gallery",
+  reports: "Progress Reports",
+  attendance: "Attendance",
+  certifications: "My Certificates",
+  fees: "Fees",
+  refer: "Refer & Support",
+};
+
+// Tabs reached from "More" in the phone bottom bar
+const MORE_TABS = ["reports", "attendance", "certifications", "refer"];
+
 // --- TUTORIAL STEPS DATA ---
 const TUTORIAL_STEPS = [
   {
@@ -115,14 +131,49 @@ const TUTORIAL_STEPS = [
   },
   {
     id: 5,
+    title: "Gallery & Certificates",
+    desc: (
+      <span>
+        <b>'Gallery'</b> shows every artwork your child makes — tap to zoom,
+        download or share on WhatsApp. <b>'Certificates'</b> (under More on
+        phones) holds certificates to view and download.
+      </span>
+    ),
+    icon: <IconHome />,
+  },
+  {
+    id: 6,
+    title: "Attendance",
+    desc: (
+      <span>
+        <b>'Attendance'</b> (under More on phones) lists every class, month by
+        month, with an analysis view of the whole year.
+      </span>
+    ),
+    icon: <IconTrendingUp />,
+  },
+  {
+    id: 7,
     title: "Manage Fees",
     desc: (
       <span>
-        Visit <b>'Fee Status'</b> to check for pending dues. You can view
+        Visit <b>'Fees'</b> to check for pending dues. You can view
         payment history and get UPI details to pay securely.
       </span>
     ),
     icon: <IconExpense />,
+  },
+  {
+    id: 8,
+    title: "Stay Updated",
+    desc: (
+      <span>
+        Turn on <b>Notifications</b> (profile menu or More) to hear about new
+        reports, artwork, absences and a reminder before each class. Choose
+        exactly which updates you want.
+      </span>
+    ),
+    icon: <IconSchedule />,
   },
 ];
 
@@ -559,11 +610,13 @@ const ParentDashboard = ({ user, onLogout }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   // Toast State
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [pushEnabled, setPushEnabled] = useState(
+  const [, setPushEnabled] = useState(
     typeof Notification !== "undefined" && Notification.permission === "granted",
   );
 
@@ -604,8 +657,22 @@ const ParentDashboard = ({ user, onLogout }) => {
   }, [theme]);
 
   useEffect(() => {
+    if (!studentProfile) return;
+    // First visit: walk the parent through the app (the fee reminder waits
+    // until the tutorial is closed).
+    let tutorialSeen = true;
+    try { tutorialSeen = localStorage.getItem(`parent_tutorial_seen_${currentUser._id}`) === "1"; } catch { /* ignore */ }
+    if (!tutorialSeen) {
+      setShowTutorial(true);
+      return;
+    }
+    maybeShowFeeReminder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentProfile]);
+
+  // Fee reminder popup: only while this month is Pending, at most once a day
+  const maybeShowFeeReminder = () => {
     if (studentProfile && getPaymentStatus().status === "Pending") {
-      // at most once a day, not on every open
       const key = `feeReminderShown_${studentProfile._id || currentUser._id}`;
       const today = new Date().toDateString();
       let shownToday = false;
@@ -615,8 +682,23 @@ const ParentDashboard = ({ user, onLogout }) => {
         try { localStorage.setItem(key, today); } catch { /* ignore */ }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentProfile]);
+  };
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    try { localStorage.setItem(`parent_tutorial_seen_${currentUser._id}`, "1"); } catch { /* ignore */ }
+    maybeShowFeeReminder();
+  };
+
+  // A tapped notification, while the app is already open, switches to its tab
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return undefined;
+    const onMessage = (e) => {
+      if (e.data?.type === "navigate" && e.data.hash) window.location.hash = e.data.hash;
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, []);
 
   useEffect(() => {
     const handleBackButton = (event) => {
@@ -947,7 +1029,7 @@ const ParentDashboard = ({ user, onLogout }) => {
 
       setPushEnabled(true);
       if (!silent) {
-        alert("✅ Notifications Enabled! You will now receive artwork updates.");
+        alert("✅ Notifications are on. Choose which updates you want in Notifications.");
       }
     } catch (err) {
       console.error("Push Error:", err);
@@ -1170,24 +1252,12 @@ const ParentDashboard = ({ user, onLogout }) => {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
             Refer & Support
           </button>
-          <button 
-            onClick={() => subscribeToPush()} 
-            style={{
-              marginTop: '15px', 
-              background: '#10b981', 
-              color: 'white', 
-              border: 'none', 
-              padding: '10px', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
+          <button
+            type="button"
+            className="sidebar-alerts-btn"
+            onClick={() => { setShowNotifSettings(true); setMobileMenuOpen(false); }}
           >
-            <IconBell /> {pushEnabled ? "Alerts On" : "Enable Alerts"}
+            <IconBell /> Notifications
           </button>
 
           <button
@@ -1212,17 +1282,7 @@ const ParentDashboard = ({ user, onLogout }) => {
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            <h2>
-              {activeTab === "overview"
-                ? "My Dashboard"
-                : activeTab === "refer"
-                  ? "Refer a Friend"
-                  : activeTab === "gallery"
-                    ? "My Art Gallery"
-                    : activeTab === "certifications"
-                      ? "My Certifications"
-                      : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-            </h2>
+            <h2>{TAB_TITLES[activeTab] || "My Dashboard"}</h2>
           </div>
           <div className="p-header-right">
             <button
@@ -1238,7 +1298,7 @@ const ParentDashboard = ({ user, onLogout }) => {
               students={[]}
               storageKey={`parent_notif_read_${currentUser._id}`}
               autoPopup
-              holdPopup={loading || showFeeReminder || showTutorial}
+              holdPopup={loading || showFeeReminder || showTutorial || showNotifSettings || showMore}
             />
             <span className="role-badge desktop-only">Parent</span>
             <div
@@ -1275,16 +1335,14 @@ const ParentDashboard = ({ user, onLogout }) => {
                 >
                   <IconAnnounce /> Refer & Support
                 </button>
-                {/* ✨ NEW: Enable Alerts Button for Mobile Menu */}
                 <button
                   className="pd-menu-btn"
                   onClick={() => {
-                    subscribeToPush();
+                    setShowNotifSettings(true);
                     setShowProfileMenu(false);
                   }}
-                  style={{ fontWeight: "bold" }}
                 >
-                  <IconBell /> {pushEnabled ? "Alerts On" : "Enable Alerts"}
+                  <IconBell /> Notifications
                 </button>
                 <button
                   className="pd-menu-btn logout"
@@ -1332,6 +1390,15 @@ const ParentDashboard = ({ user, onLogout }) => {
                   </p>
                 </div>
               </div>
+              <WhatsNewCard
+                userId={currentUser._id}
+                childName={studentProfile?.childName || currentUser.childName}
+                reports={reports}
+                onOpen={(item) => {
+                  if (item.kind === "poster") window.dispatchEvent(new CustomEvent("open-spotlight", { detail: item.poster._id }));
+                  else handleNavClick(item.tab);
+                }}
+              />
               <div className="info-card attendance-card">
                 <h3
                   onClick={() => handleNavClick("attendance")}
@@ -1429,7 +1496,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                       </span>
                     </div>
                     <p className="lrb-text">
-                      "{reports[0].feedbackText.substring(0, 60)}..."
+                      "{(() => { const t = String(reports[0].feedbackText || "").trim(); return t.length > 90 ? `${t.slice(0, 87).trimEnd()}…` : t; })()}"
                     </p>
                     {reports[0].reportFile ? (
                       <a
@@ -1989,71 +2056,72 @@ const ParentDashboard = ({ user, onLogout }) => {
         </div>
       </main>
 
-      <nav className="mobile-bottom-nav">
+      <nav className="mobile-bottom-nav" aria-label="Main">
+        {[
+          { key: "overview", label: "Home", icon: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> },
+          { key: "schedule", label: "Schedule", icon: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></> },
+          { key: "gallery", label: "Gallery", icon: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></> },
+          { key: "fees", label: "Fees", icon: <><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5" /></> },
+        ].map(({ key, label, icon }) => (
+          <button
+            key={key}
+            type="button"
+            className={activeTab === key ? "nav-item active" : "nav-item"}
+            aria-current={activeTab === key ? "page" : undefined}
+            onClick={() => handleNavClick(key)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">{icon}</svg>
+            <span className="nav-label">{label}</span>
+          </button>
+        ))}
         <button
-          className={activeTab === "overview" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("overview")}
+          type="button"
+          className={MORE_TABS.includes(activeTab) || showMore ? "nav-item active" : "nav-item"}
+          aria-haspopup="dialog"
+          onClick={() => setShowMore(true)}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          </svg>
-        </button>
-        <button
-          className={activeTab === "schedule" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("schedule")}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-        </button>
-        <button
-          className={activeTab === "gallery" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("gallery")}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-            <polyline points="21 15 16 10 5 21"></polyline>
-          </svg>
-        </button>
-        <button
-          className={activeTab === "reports" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("reports")}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-          </svg>
-        </button>
-        <button
-          className={activeTab === "fees" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("fees")}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23"></line>
-            <path d="M17 5H9.5a4.5 4.5 0 0 0 0 9H14.5a4.5 4.5 0 0 1 0 9H5"></path>
-          </svg>
-        </button>
-        <button
-          className={
-            activeTab === "certifications" ? "nav-item active" : "nav-item"
-          }
-          onClick={() => handleNavClick("certifications")}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="8" r="6"></circle>
-            <path d="M9 13.5 7 22l5-3 5 3-2-8.5"></path>
-          </svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+          <span className="nav-label">More</span>
         </button>
       </nav>
 
+      {showMore && (
+        <MoreSheet
+          dark={theme === "dark"}
+          active={activeTab}
+          onClose={() => setShowMore(false)}
+          onPick={(key) => {
+            setShowMore(false);
+            if (key === "notifications") setShowNotifSettings(true);
+            else if (key === "tutorial") setShowTutorial(true);
+            else if (key === "theme") toggleTheme();
+            else handleNavClick(key);
+          }}
+          items={[
+            { key: "reports", label: "Progress Reports", hint: "Teacher feedback and report cards", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg> },
+            { key: "attendance", label: "Attendance", hint: "Every class, month by month", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg> },
+            { key: "certifications", label: "Certificates", hint: "View and download", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6" /><path d="M9 13.5 7 22l5-3 5 3-2-8.5" /></svg> },
+            { key: "refer", label: "Refer & Support", hint: "Invite friends, contact the academy", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg> },
+            { key: "notifications", label: "Notifications", hint: "Choose which updates you get", icon: <IconBell /> },
+            { key: "theme", label: theme === "light" ? "Dark mode" : "Light mode", icon: theme === "light" ? <IconMoon /> : <IconSun /> },
+            { key: "tutorial", label: "App tutorial", icon: <IconHelp /> },
+          ]}
+        />
+      )}
+
+      {showNotifSettings && (
+        <NotificationSettings
+          userId={currentUser._id}
+          initialPrefs={studentProfile?.notifyPrefs}
+          dark={theme === "dark"}
+          onClose={() => setShowNotifSettings(false)}
+          onEnableDevice={() => subscribeToPush()}
+          onSaved={(notifyPrefs) => notifyPrefs && setStudentProfile((p) => (p ? { ...p, notifyPrefs } : p))}
+        />
+      )}
+
       {/* ✨ TUTORIAL MODAL COMPONENT */}
-      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+      {showTutorial && <TutorialModal onClose={closeTutorial} />}
 
       {showLogoutModal && (
         <div className="logout-modal-overlay">
