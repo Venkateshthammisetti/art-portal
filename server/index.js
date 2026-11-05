@@ -18,6 +18,7 @@ const Expense = require("./models/Expense");
 const Spotlight = require("./models/Spotlight");
 const nodemailer = require("nodemailer");
 const webpush = require("web-push");
+const parentPush = require("./parentPush");
 
 const startScheduler = require("./scheduler");
 const { router: chatbotRouter, signChatToken } = require("./chatbot");
@@ -307,6 +308,7 @@ app.post("/api/classes", async (req, res) => {
 
 app.put("/api/classes/:id", async (req, res) => {
   try {
+    const before = await Class.findById(req.params.id).lean();
     // Use $set with strict:false so classMode is saved even if schema cache is stale
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
@@ -314,8 +316,23 @@ app.put("/api/classes/:id", async (req, res) => {
       { new: true, strict: false },
     ).populate("teacher");
     res.json(updatedClass);
+
+    // Tell the class's parents when the timetable or joining link changed
+    const timetable = (c) => JSON.stringify({
+      slots: (c?.schedule || []).map((s) => `${s.day}|${s.time}|${s.link || ""}`).sort(),
+      link: c?.meetingLink || "",
+    });
+    if (before && updatedClass && timetable(before) !== timetable(updatedClass)) {
+      parentPush.later("Class change", async () =>
+        parentPush.pushToUsers(await parentPush.classParents(updatedClass._id), (u) => ({
+          title: `🗓️ Class update: ${updatedClass.className}`,
+          body: `${u.childName ? `${u.childName}'s` : "Your"} class timing or joining link has changed. Tap to see the latest schedule.`,
+          tag: `class-${updatedClass._id}`,
+          url: `${parentPush.APP_URL}/#schedule`,
+        }), { pref: "classChanges" }));
+    }
   } catch (err) {
-    res.status(500).json({ message: "Error updating class" });
+    if (!res.headersSent) res.status(500).json({ message: "Error updating class" });
   }
 });
 
@@ -401,6 +418,17 @@ app.post("/api/feedback", upload.single("report"), async (req, res) => {
 
     await newFeedback.save();
     res.json({ success: true, message: "Feedback submitted successfully!" });
+
+    parentPush.later("Report ready", async () => {
+      const student = await User.findById(studentId).select("childName pushSubscription notifyPrefs role");
+      if (!student || student.role !== "parent") return 0;
+      return parentPush.pushToUsers([student], {
+        title: `📝 ${student.childName ? `${student.childName}'s` : "New"} report is ready`,
+        body: `The ${parentPush.monthLabel(month)} progress report from the teacher is ready. Tap to read it.`,
+        tag: `report-${newFeedback._id}`,
+        url: `${parentPush.APP_URL}/#reports`,
+      }, { pref: "reports" });
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error submitting feedback" });
@@ -644,8 +672,32 @@ app.post("/api/attendance", async (req, res) => {
         };
       })
       .filter((op) => op !== null);
+    // Who is newly marked Absent (not already Absent before this save)
+    const absentIds = records.filter((r) => r.status === "Absent" && r.studentId && r.classId).map((r) => String(r.studentId));
+    let newlyAbsent = [];
+    if (absentIds.length) {
+      const prev = await Attendance.find({ date, studentId: { $in: absentIds } }).select("studentId status").lean();
+      const wasAbsent = new Set(prev.filter((p) => p.status === "Absent").map((p) => String(p.studentId)));
+      newlyAbsent = absentIds.filter((id) => !wasAbsent.has(id));
+    }
     if (operations.length > 0) await Attendance.bulkWrite(operations);
     res.json({ success: true });
+
+    // Only for classes in the last two days (not when old registers are tidied up)
+    const istToday = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+    const ageDays = (Date.parse(istToday) - Date.parse(String(date).slice(0, 10))) / 86400000;
+    if (newlyAbsent.length && ageDays >= 0 && ageDays <= 2) {
+      const when = ageDays === 0 ? "today" : ageDays === 1 ? "yesterday" : `on ${new Date(String(date).slice(0, 10)).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+      parentPush.later("Absent", async () => {
+        const parents = await User.find({ _id: { $in: newlyAbsent }, role: "parent" }).select("childName pushSubscription notifyPrefs");
+        return parentPush.pushToUsers(parents, (u) => ({
+          title: `📋 ${u.childName || "Your child"} was marked absent`,
+          body: `${u.childName || "Your child"} was marked absent ${when}. If this wasn't planned, please let us know.`,
+          tag: `absent-${u._id}-${String(date).slice(0, 10)}`,
+          url: `${parentPush.APP_URL}/#attendance`,
+        }), { pref: "attendance" });
+      });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -908,6 +960,17 @@ app.post("/api/certifications/upload", upload.single("file"), async (req, res) =
       message: "Certification uploaded successfully!",
       certification: newCertification,
     });
+
+    parentPush.later("Certificate", async () => {
+      const student = await User.findById(studentId).select("childName pushSubscription notifyPrefs role");
+      if (!student || student.role !== "parent") return 0;
+      return parentPush.pushToUsers([student], {
+        title: `🏅 New certificate for ${student.childName || "your child"}`,
+        body: title ? `"${title}" has been added. Tap to view and download it.` : "A new certificate has been added. Tap to view and download it.",
+        tag: `cert-${newCertification._id}`,
+        url: `${parentPush.APP_URL}/#certifications`,
+      }, { pref: "certificates" });
+    });
   } catch (err) {
     console.error("Certification Upload Error:", err);
     res.status(500).json({ message: "Error uploading certification" });
@@ -988,7 +1051,7 @@ app.post("/api/notifications/batch-alert", async (req, res) => {
     }
 
     // 2. ✨ SEND PUSH NOTIFICATION (New Logic)
-    if (student.pushSubscription) {
+    if (student.pushSubscription && parentPush.wants(student, "artwork")) {
       const payload = JSON.stringify({
         title: `🎨 New Artworks Added!`,
         body: `${student.childName} just has ${count} new photos in the gallery. Tap to view!`,
@@ -1007,6 +1070,22 @@ app.post("/api/notifications/batch-alert", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// NOTIFICATION SETTINGS (Parent) — which kinds of push the parent wants
+app.put("/api/users/:id/notify-prefs", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ message: "User not found" });
+    const incoming = req.body?.prefs || {};
+    const $set = {};
+    parentPush.PREF_KEYS.forEach((k) => { if (typeof incoming[k] === "boolean") $set[`notifyPrefs.${k}`] = incoming[k]; });
+    if (!Object.keys($set).length) return res.status(400).json({ message: "Nothing to update" });
+    const user = await User.findByIdAndUpdate(req.params.id, { $set }, { new: true }).select("notifyPrefs");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ notifyPrefs: user.notifyPrefs });
+  } catch (err) {
+    res.status(500).json({ message: "Error saving notification settings" });
   }
 });
 
@@ -1075,24 +1154,31 @@ app.post("/api/spotlights", upload.single("poster"), async (req, res) => {
     });
     await spotlight.save();
 
-    const recipients = await User.find({
+    const allRecipients = await User.find({
       pushSubscription: { $ne: null },
       isActive: { $ne: false },
-    }).select("pushSubscription");
+    }).select("pushSubscription notifyPrefs childName");
+    // The spotlighted child's family always hears about it; others can turn posters off
+    const featuredId = spotlight.studentId ? String(spotlight.studentId) : null;
+    const recipients = allRecipients.filter((u) => String(u._id) === featuredId || parentPush.wants(u, "posters"));
 
     const { title, body } = spotlightPushText(spotlight);
-    const payload = JSON.stringify({
+    const basePayload = {
       title,
       body,
       image: spotlight.posterUrl, // shown as a large picture on Android
       tag: `spotlight-${spotlight._id}`,
       spotlightId: spotlight._id.toString(),
       url: `https://art-portal.netlify.app/?spotlight=${spotlight._id}`,
-    });
+    };
+    const payload = JSON.stringify(basePayload);
+    const payloadFor = (u) => (String(u._id) === featuredId
+      ? JSON.stringify({ ...basePayload, title: `🌟 ${u.childName || spotlight.studentName} is in the Artist Spotlight!`, body: `${spotlight.achievementTitle} — tap to see the poster and share it.` })
+      : payload);
 
     // urgency "high" asks the push service to wake the phone right away
     const results = await Promise.allSettled(
-      recipients.map((u) => webpush.sendNotification(u.pushSubscription, payload, { urgency: "high", TTL: 86400 })),
+      recipients.map((u) => webpush.sendNotification(u.pushSubscription, payloadFor(u), { urgency: "high", TTL: 86400 })),
     );
     let sent = 0;
     const expiredIds = [];

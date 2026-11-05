@@ -87,6 +87,7 @@ The CRM **Clients** tab ([client/src/components/CRMClients.js](client/src/compon
 - Subscriptions saved to `User.pushSubscription`; the service worker is [client/public/sw.js](client/public/sw.js).
 - Triggered on artwork upload (`/api/notifications/batch-alert`) and by the two cron jobs above.
 - Cron jobs handle expired subscriptions: on `statusCode` 404 or 410 they null out `User.pushSubscription`.
+- Parent pushes go through [server/parentPush.js](server/parentPush.js) (`pushToUsers`, honours `User.notifyPrefs`; missing = on): report ready (`POST /api/feedback`), certificate issued, newly marked Absent (only for the last 2 days), class timetable/link changed (`PUT /api/classes/:id`), and a reminder 30 min before each class (scheduler, every minute, IST). Parents choose types in Notifications (`PUT /api/users/:id/notify-prefs`); fee reminders and birthday wishes are always sent. Fee reminders go only to active parents.
 
 ## Environment Variables
 

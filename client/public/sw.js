@@ -37,6 +37,8 @@ self.addEventListener('notificationclick', e => {
           // Ask the open page to show the spotlight poster it was notified about
           const spotlightId = e.notification.data?.spotlightId;
           if (spotlightId) appTab.postMessage({ type: 'open-spotlight', id: spotlightId });
+          // ...or switch it to the tab the notification is about (#reports, #fees, …)
+          else if (targetUrl.includes('#')) appTab.postMessage({ type: 'navigate', hash: targetUrl.split('#')[1] });
           return appTab.focus();
         }
 

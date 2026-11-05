@@ -3,6 +3,7 @@ const webpush = require('web-push');
 const User = require('./models/User');
 const Class = require('./models/Class');
 const Attendance = require('./models/Attendance');
+const parentPush = require('./parentPush');
 
 const setupVapid = () => {
   try {
@@ -392,6 +393,49 @@ const checkAttendanceReminders = async () => {
 // ==========================================
 // START SCHEDULERS
 // ==========================================
+// ==========================================
+// CLASS REMINDERS (Parents): 30 minutes before each class slot
+// ==========================================
+// Slot times are stored in IST, like the attendance reminders above. Runs every
+// minute; the shared dedup set (cleared at midnight) stops repeats.
+const CLASS_REMINDER_MIN = 30;
+const checkClassReminders = async () => {
+  if (!setupVapid()) return;
+  const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const nowIST = new Date(Date.now() + 330 * 60000);
+  const nowMin = nowIST.getUTCHours() * 60 + nowIST.getUTCMinutes();
+  const todayDay = DAYS_OF_WEEK[nowIST.getUTCDay()];
+  const todayStr = nowIST.toISOString().slice(0, 10);
+  const monthStr = todayStr.slice(0, 7);
+
+  try {
+    const classes = await Class.find({ 'schedule.day': todayDay }).select('className schedule meetingLink');
+    for (const cls of classes) {
+      for (const slot of cls.schedule.filter((x) => x.day === todayDay && x.time)) {
+        const [h, m] = String(slot.time).split(':').map(Number);
+        if (Number.isNaN(h)) continue;
+        const startMin = h * 60 + (m || 0);
+        if (Math.abs(nowMin - (startMin - CLASS_REMINDER_MIN)) > 1) continue;
+        const key = `remind_${cls._id}_${slot.time}_${todayStr}`;
+        if (sentAttendanceNotifs.has(key)) continue;
+        sentAttendanceNotifs.add(key);
+
+        const parents = (await parentPush.classParents(cls._id)).filter((u) =>
+          !(u.inactiveHistory || []).some((e) => monthStr >= e.inactiveFrom && (!e.inactiveTo || monthStr <= e.inactiveTo)));
+        const sent = await parentPush.pushToUsers(parents, (u) => ({
+          title: `⏰ Class in ${CLASS_REMINDER_MIN} minutes`,
+          body: `${u.childName ? `${u.childName}'s` : 'Your'} ${cls.className} class starts soon. Tap to open the app and join.`,
+          tag: `remind-${cls._id}-${todayStr}`,
+          url: `${parentPush.APP_URL}/#overview`,
+        }), { pref: 'classReminders', urgency: 'high', TTL: CLASS_REMINDER_MIN * 60 });
+        if (sent) console.log(`   -> ⏰ Class reminder for ${cls.className} (${slot.time} IST): ${sent} parents`);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Class Reminder Error:', err.message);
+  }
+};
+
 const startScheduler = () => {
   // Fee reminders: daily at 10:00 AM
   cron.schedule('0 10 * * *', checkFeeReminders);
@@ -404,6 +448,9 @@ const startScheduler = () => {
 
   // Attendance reminders: every minute — sends push when class ends without attendance
   cron.schedule('* * * * *', checkAttendanceReminders);
+
+  // Class reminders for parents: every minute — 30 min before each class
+  cron.schedule('* * * * *', checkClassReminders);
 
   // Clear in-memory dedup set at midnight
   cron.schedule('0 0 * * *', clearSentSet);
@@ -419,3 +466,4 @@ const startScheduler = () => {
 };
 
 module.exports = startScheduler;
+startScheduler.checkClassReminders = checkClassReminders; // exposed for tests
