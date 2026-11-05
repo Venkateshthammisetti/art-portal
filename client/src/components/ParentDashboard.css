@@ -147,7 +147,9 @@ body.dark .logout-btn { background: #450a0a; border-color: #7f1d1d; color: #fca5
 
 /* CONTENT */
 .p-content { padding: 30px; overflow-y: auto; flex: 1; }
-.overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; grid-auto-rows: minmax(180px, auto); }
+.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 25px; grid-auto-rows: minmax(180px, auto); }
+/* grid children may shrink below their content width (long names, one-line titles) */
+.overview-grid > * { min-width: 0; }
 
 .welcome-card {
   grid-column: span 3; background-image: var(--desktop-bg); background-size: cover; background-position: center;
@@ -247,7 +249,8 @@ body.dark .logout-btn { background: #450a0a; border-color: #7f1d1d; color: #fca5
 .fee-pill.pending { background: #fee2e2; color: #b91c1c; }
 
 /* ✨ FIXED ATTENDANCE SUMMARY & NAV */
-.att-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.att-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.att-header-row > * { min-width: 0; }
 .att-summary-bar { display: flex; gap: 20px; margin-bottom: 20px; }
 
 .as-item { 
@@ -546,7 +549,7 @@ body.dark .inst-title-img { filter: brightness(0) invert(1); }
   
   .profile-dropdown { right: 10px; top: 55px; width: 200px; }
   .p-content { padding: 15px 15px calc(90px + var(--nav-safe-bottom)) 15px; }
-  .overview-grid { grid-template-columns: 1fr; gap: 15px; }
+  .overview-grid { grid-template-columns: minmax(0, 1fr); gap: 15px; }
   .welcome-card { grid-column: span 1; padding: 30px 20px 90px 20px; background-image: var(--mobile-bg) !important; background-position: bottom center !important; background-size: 100% auto !important; background-repeat: no-repeat !important; }
   .att-summary-bar { flex-direction: column; gap: 10px; }
   .referral-grid { grid-template-columns: 1fr; }
@@ -1228,7 +1231,8 @@ body.dark .load-error-banner { background: rgba(245, 158, 11, 0.14); color: #fde
 .wn-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; }
 .wn-count { background: #dc2626; color: #fff; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; }
 .wn-mark { background: none; border: none; color: var(--p-primary); font-weight: 700; font-size: 0.85rem; cursor: pointer; min-height: 40px; padding: 0 6px; }
-.wn-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; }
+.wn-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; min-width: 0; }
+.wn-list > li { min-width: 0; }
 .wn-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 8px; min-height: 56px; border: none; background: none; border-radius: 10px; cursor: pointer; text-align: left; color: var(--p-text); }
 .wn-item:hover { background: var(--p-button-bg); }
 .wn-item > svg:last-child { color: var(--p-muted); flex-shrink: 0; }
@@ -1255,7 +1259,7 @@ body.dark .wn-item.mine .wn-text strong { color: #c4b5fd; }
 body.dark .wn-dot { background: #60a5fa; }
 body.dark .wn-mark { color: #93c5fd; }
 @media (max-width: 768px) {
-  .wn-list { grid-template-columns: 1fr; }
+  .wn-list { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .wn-skeleton span { animation: none; } }
 
@@ -1341,4 +1345,69 @@ body.dark .pd-more-icon { color: #93c5fd; }
   .mobile-bottom-nav .nav-item { color: #64748b; }
   body.dark .mobile-bottom-nav .nav-item { color: #94a3b8; }
   body.dark .mobile-bottom-nav .nav-item.active { color: #60a5fa; }
+}
+
+/* =========================================================
+   No sideways scrolling + native-app feel (all screens)
+   ========================================================= */
+/* The content area only ever scrolls up and down. Wide things that are
+   meant to scroll (tables, chip rows) keep their own scroll box. */
+.parent-container { overscroll-behavior: none; }
+.p-content {
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;   /* no rubber-band showing the page behind */
+  -webkit-overflow-scrolling: touch;
+  overflow-wrap: break-word;        /* long names/emails wrap instead of pushing out */
+  min-width: 0;
+}
+.p-content img, .p-content video, .p-content canvas { max-width: 100%; }
+.parent-main { min-width: 0; }
+
+/* Taps: no 300ms double-tap-zoom delay, no grey flash, clear pressed state */
+.parent-container button, .parent-container a, .parent-container [role="button"],
+.pd-sheet button, .mobile-bottom-nav button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.parent-container button:not(:disabled):active,
+.parent-container a:active,
+.pd-sheet button:not(:disabled):active { opacity: 0.72; transition: opacity 0.08s; }
+.mobile-bottom-nav .nav-item:active svg { transform: scale(0.9); }
+
+/* Chrome text (nav, header, buttons) can't be accidentally selected */
+.mobile-bottom-nav, .p-header, .parent-sidebar, .parent-container button, .pd-sheet button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* Each tab eases in, like switching screens in an app */
+.p-content > .tab-enter { animation: pdTabIn 0.22s ease-out; }
+@keyframes pdTabIn { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .p-content > .tab-enter { animation: none; }
+  .mobile-bottom-nav .nav-item:active svg { transform: none; }
+}
+
+/* Welcome card text can shrink on the narrowest phones */
+.welcome-card { min-width: 0; }
+.welcome-card .wc-text { min-width: 0; }
+
+/* Header: the title stays on one line and never runs into the buttons */
+.p-header-left { flex: 1 1 auto; }
+.p-header-left h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.p-header-right { flex-shrink: 0; }
+
+/* Next class / student details rows: long class names wrap, values stay readable */
+.detail-row, .nc-row { gap: 10px; }
+.detail-row .lbl, .nc-label { flex-shrink: 0; }
+.detail-row .val, .nc-val { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+
+/* Welcome card: the top of the phone banner continues the same blue, so the
+   greeting is readable however many lines it takes */
+@media (max-width: 767px) {
+  .welcome-card { background-color: #1f3195; }
+  .wc-text h1 { font-size: clamp(1.45rem, 7vw, 2rem); line-height: 1.15; }
+  .p-header-left h2 { font-size: 1.05rem; }
+  .p-header-right { gap: 10px; }
+}
+
+@media (max-width: 380px) {
+  .p-header { padding: 0 10px; }
+  .p-header-left { gap: 6px; }
+  .p-header-right { gap: 4px; }
+  .p-header-left h2 { font-size: 0.95rem; letter-spacing: -0.01em; }
 }
