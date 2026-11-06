@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { TeacherReportThread } from "./ParentSelf";
+import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey } from "./TeacherExtras";
+import notify from "../utils/notify";
+import ToastHost from "./ToastHost";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
@@ -35,6 +38,7 @@ import {
   IconStar,
   IconGreeting,
   IconSchedule as IconScheduleShared,
+  IconMore,
 } from "./Icons";
 
 // IMAGES (same as Admin Dashboard)
@@ -75,6 +79,8 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
   // Handle Arrays for Multiple Files
   const [imageFiles, setImageFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  // per-photo upload state: "queued" | "uploading" | "done" | "failed"
+  const [fileStatus, setFileStatus] = useState([]);
 
   const [uploading, setUploading] = useState(false);
   const [progressMsg, setProgressMsg] = useState("");
@@ -146,6 +152,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
     const newPreviews = files.map((file) => URL.createObjectURL(file));
     setPreviewUrls(newPreviews);
     setImageFiles([]);
+    setFileStatus(files.map(() => "queued"));
 
     const options = {
       maxSizeMB: 0.3,
@@ -164,36 +171,42 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       setImageFiles(compressedBatch);
       setProgressMsg(`${compressedBatch.length} images ready to upload.`);
     } catch (error) {
-      alert("Compression failed for some images. uploading originals.");
+      notify.info("Couldn't shrink some photos, so the originals will be uploaded.");
       setImageFiles(files);
     }
   };
 
-  // 4. Multi-Image Upload (Fixed Date Issue)
+  // 4. Multi-Image Upload. Each photo has its own status; "Retry failed" only
+  // re-sends the photos that did not go through, and the parent is notified
+  // once, when the whole batch is in.
   const handleUpload = async (e) => {
-    e.preventDefault();
-    if (!selectedStudent || selectedStudent === "all")
-      return alert("Please select a specific student.");
-    if (imageFiles.length === 0) return alert("Please choose images.");
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedStudent || selectedStudent === "all") {
+      notify.error("Please select a specific student.");
+      return;
+    }
+    if (imageFiles.length === 0) {
+      notify.error("Please choose images.");
+      return;
+    }
 
     setUploading(true);
-    let successCount = 0;
+    const status = imageFiles.map((_, i) => (fileStatus[i] === "done" ? "done" : "queued"));
+    setFileStatus([...status]);
+    const todo = status.map((st, i) => (st === "done" ? -1 : i)).filter((i) => i >= 0);
 
-    // 1. UPLOAD LOOP
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i];
-      setProgressMsg(`Uploading ${i + 1} of ${imageFiles.length}...`);
+    for (let n = 0; n < todo.length; n++) {
+      const i = todo[n];
+      status[i] = "uploading";
+      setFileStatus([...status]);
+      setProgressMsg(`Uploading ${n + 1} of ${todo.length}...`);
 
       const formData = new FormData();
       formData.append("studentId", selectedStudent);
       formData.append("teacherId", teacherId);
-      formData.append(
-        "title",
-        imageFiles.length > 1 ? `${title} (${i + 1})` : title,
-      );
+      formData.append("title", imageFiles.length > 1 ? `${title} (${i + 1})` : title);
       formData.append("medium", medium);
-      formData.append("image", file);
-
+      formData.append("image", imageFiles[i]);
       // Use the date selected by the teacher (defaults to today)
       formData.append("dateCreated", new Date(`${artworkDate}T12:00:00`).toISOString());
 
@@ -201,46 +214,43 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         const res = await axios.post(
           "https://art-portal-7n6r.onrender.com/api/gallery/upload",
           formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          },
+          { headers: { "Content-Type": "multipart/form-data" } },
         );
         setArtwork((prev) => [res.data.artwork, ...prev]);
-        successCount++;
+        status[i] = "done";
       } catch (err) {
         console.error("Upload failed for one image", err);
+        status[i] = "failed";
       }
+      setFileStatus([...status]);
     }
 
     setUploading(false);
-    setProgressMsg(
-      successCount === imageFiles.length
-        ? "✅ All Uploaded!"
-        : `⚠️ Uploaded ${successCount}/${imageFiles.length}`,
-    );
-
-    // 2. SEND BATCH NOTIFICATION
-    if (successCount === imageFiles.length) {
-      try {
-        await axios.post(
-          "https://art-portal-7n6r.onrender.com/api/notifications/batch-alert",
-          {
-            studentId: selectedStudent,
-            count: successCount,
-          },
-        );
-        alert(`Success! Uploaded ${successCount} images.`);
-      } catch (err) {
-        console.error("Failed to send notification", err);
-      }
-
-      // 3. CLEAN UP
-      setTitle("");
-      setArtworkDate(new Date().toISOString().split("T")[0]);
-      setImageFiles([]);
-      setPreviewUrls([]);
-      setTimeout(() => setProgressMsg(""), 3000);
+    const doneCount = status.filter((st) => st === "done").length;
+    const failedCount = status.length - doneCount;
+    if (failedCount > 0) {
+      setProgressMsg(`⚠️ ${doneCount} of ${status.length} uploaded. ${failedCount} failed.`);
+      notify.error(`${failedCount} photo${failedCount === 1 ? "" : "s"} didn't upload.`, { retry: handleUpload });
+      return;
     }
+
+    setProgressMsg("✅ All uploaded!");
+    try {
+      await axios.post("https://art-portal-7n6r.onrender.com/api/notifications/batch-alert", {
+        studentId: selectedStudent,
+        count: doneCount,
+      });
+      notify.success(`Uploaded ${doneCount} photo${doneCount === 1 ? "" : "s"}. The parent has been told.`);
+    } catch (err) {
+      console.error("Failed to send notification", err);
+      notify.info(`Uploaded ${doneCount} photo${doneCount === 1 ? "" : "s"}, but the parent notification didn't send.`);
+    }
+    setTitle("");
+    setArtworkDate(new Date().toISOString().split("T")[0]);
+    setImageFiles([]);
+    setPreviewUrls([]);
+    setFileStatus([]);
+    setTimeout(() => setProgressMsg(""), 3000);
   };
 
   // 5. Delete Handler
@@ -254,7 +264,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         setArtwork(artwork.filter((art) => art._id !== artId));
         if (lightboxIndex !== null) setLightboxIndex(null);
       } catch (err) {
-        alert("Error deleting.");
+        notify.error("Error deleting.");
       }
     }
   };
@@ -299,7 +309,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       setSelectedIds([]);
       setSelectMode(false);
     } catch (err) {
-      alert("Error deleting artworks.");
+      notify.error("Error deleting artworks.");
     } finally {
       setBulkDeleting(false);
     }
@@ -375,7 +385,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       }
       setDateEditTarget(null);
     } catch (err) {
-      alert("Error updating date.");
+      notify.error("Error updating date.");
     } finally {
       setSavingDate(false);
     }
@@ -397,7 +407,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Failed to download image. It may be blocked by CORS.");
+      notify.error("Couldn't download the image. It may be blocked by the browser.");
     }
   };
 
@@ -473,6 +483,7 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
         >
           <h4 style={{ marginTop: 0, color: "#1e40af" }}><IconUpload /> Batch Upload</h4>
           <div
+            className="gallery-upload-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -541,7 +552,9 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
               >
                 {uploading
                   ? "Processing..."
-                  : `Upload ${imageFiles.length > 0 ? imageFiles.length + " Images" : ""}`}
+                  : fileStatus.some((st) => st === "failed")
+                    ? `Retry ${fileStatus.filter((st) => st === "failed").length} failed`
+                    : `Upload ${imageFiles.length > 0 ? imageFiles.length + " Images" : ""}`}
               </button>
               {progressMsg && (
                 <div
@@ -575,18 +588,24 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
                   }}
                 >
                   {previewUrls.map((url, i) => (
-                    <img
-                      key={i}
-                      src={url}
-                      alt={`Preview ${i}`}
-                      style={{
-                        width: "100%",
-                        height: "80px",
-                        objectFit: "cover",
-                        borderRadius: "4px",
-                        border: "1px solid #e2e8f0",
-                      }}
-                    />
+                    <div key={i} className={`up-thumb ${fileStatus[i] || ""}`}>
+                      <img
+                        src={url}
+                        alt={`Preview ${i + 1}${fileStatus[i] === "failed" ? " (upload failed)" : fileStatus[i] === "done" ? " (uploaded)" : ""}`}
+                        style={{
+                          width: "100%",
+                          height: "80px",
+                          objectFit: "cover",
+                          borderRadius: "4px",
+                          border: "1px solid #e2e8f0",
+                        }}
+                      />
+                      {fileStatus[i] && fileStatus[i] !== "queued" && (
+                        <span className={`up-badge ${fileStatus[i]}`} aria-hidden="true">
+                          {fileStatus[i] === "done" ? "✓" : fileStatus[i] === "failed" ? "!" : "…"}
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -799,7 +818,14 @@ const TeacherGalleryTab = ({ students, teacherId }) => {
 const TeacherDashboard = ({ user, onLogout }) => {
   const currentUser = user;
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const TEACHER_TABS = ["overview", "students", "schedule", "attendance", "feedback", "gallery", "certifications", "report-maker"];
+  // "#feedback/<reportId>" (from a tapped push) opens that tab and conversation
+  const readHash = () => {
+    const [tab, param] = window.location.hash.replace("#", "").split("/");
+    return { tab: TEACHER_TABS.includes(tab) ? tab : null, param: param || null };
+  };
+  const [activeTab, setActiveTab] = useState(() => readHash().tab || "overview");
+  const [hashParam, setHashParam] = useState(() => readHash().param);
   const [classes, setClasses] = useState([]);
   const [myStudents, setMyStudents] = useState([]);
   const [scheduleViewMode, setScheduleViewMode] = useState("grid");
@@ -1016,6 +1042,21 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mobileSelectedDay, setMobileSelectedDay] = useState(new Date());
   const [modalData, setModalData] = useState(null);
+  const [profileStudent, setProfileStudent] = useState(null);
+  const inbox = useTeacherThreads(currentUser._id);
+  useEffect(() => {
+    const onHash = () => { const h = readHash(); if (h.tab) { setActiveTab(h.tab); setHashParam(h.param); } };
+    const onSw = (e) => { if (e.data?.type === "navigate" && e.data.hash) window.location.hash = e.data.hash; };
+    window.addEventListener("hashchange", onHash);
+    if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", onSw);
+    return () => {
+      window.removeEventListener("hashchange", onHash);
+      if ("serviceWorker" in navigator) navigator.serviceWorker.removeEventListener("message", onSw);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [showMore, setShowMore] = useState(false);
+  const [savingLink, setSavingLink] = useState(false);
   const [editingLink, setEditingLink] = useState("");
   const [isLinkInputVisible, setIsLinkInputVisible] = useState(false);
   const [editFeedbackData, setEditFeedbackData] = useState(null);
@@ -1480,6 +1521,15 @@ const TeacherDashboard = ({ user, onLogout }) => {
     setAttendanceStatus(newStatus);
   };
 
+  // Students whose parent said (for this date and class) they can't attend
+  const informedStudents = attendanceList.filter((s) => absenceFor(s, attendanceDate, s.parentClassId));
+  const markInformedAbsent = () => {
+    const next = { ...attendanceStatus };
+    informedStudents.forEach((s) => { if (!next[s._id]) next[s._id] = "Absent"; });
+    setAttendanceStatus(next);
+    notify.info(`Marked ${informedStudents.filter((s) => !attendanceStatus[s._id]).length} as Absent. Check, then Save.`);
+  };
+
   const submitAttendance = async () => {
     if (selectedClassIds.length === 0) return;
     try {
@@ -1541,6 +1591,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setTimeout(() => setMsg(""), 3000);
     } catch (err) {
       console.error(err);
+      notify.error("Couldn't send the report.", { retry: () => sendFeedback({ preventDefault() {} }) });
     }
   };
 
@@ -1670,8 +1721,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   const uploadCertification = async (e) => {
     e.preventDefault();
-    if (!certStudent) return alert("Please select a student.");
-    if (!certFile) return alert("Please choose a certificate file.");
+    if (!certStudent) return notify.error("Please select a student.");
+    if (!certFile) return notify.error("Please choose a certificate file.");
 
     setUploadingCert(true);
     try {
@@ -1930,14 +1981,39 @@ const TeacherDashboard = ({ user, onLogout }) => {
     });
   };
 
-  const handleBlockClick = (cls, t) => {
-    setModalData({ ...cls, time: t });
-    setEditingLink(cls.meetingLink || "");
-    setIsLinkInputVisible(!cls.meetingLink);
+  // Opens a class slot. The joining link belongs to the slot (day + time);
+  // older classes only have one link for the whole class.
+  const handleBlockClick = (cls, t, day) => {
+    const slot =
+      (cls.schedule || []).find((x) => x.time === t && (!day || x.day === day)) ||
+      (cls.schedule || []).find((x) => x.time === t);
+    const link = slot?.link || cls.meetingLink || "";
+    setModalData({ ...cls, time: t, day: slot?.day || day, slotLink: link });
+    setEditingLink(link);
+    setIsLinkInputVisible(!link);
   };
-  const handleSaveLink = () => {
-    setMsg("Link Saved locally (demo)");
-    setTimeout(() => setMsg(""), 3000);
+  const handleSaveLink = async () => {
+    const link = editingLink.trim();
+    if (!/^https?:\/\/\S+$/i.test(link)) {
+      notify.error("Paste the full link, starting with https://");
+      return;
+    }
+    const cls = classes.find((c) => c._id === modalData._id);
+    if (!cls) return;
+    const schedule = (cls.schedule || []).map((x) => (x.time === modalData.time && (!modalData.day || x.day === modalData.day) ? { ...x, link } : x));
+    setSavingLink(true);
+    try {
+      const res = await axios.put(`https://art-portal-7n6r.onrender.com/api/classes/${cls._id}`, { schedule });
+      const nextSchedule = res.data?.schedule || schedule;
+      setClasses((list) => list.map((c) => (c._id === cls._id ? { ...c, schedule: nextSchedule } : c)));
+      setModalData((m) => ({ ...m, schedule: nextSchedule, slotLink: link }));
+      setIsLinkInputVisible(false);
+      notify.success("Class link saved. Parents will be told.");
+    } catch (err) {
+      notify.error("Couldn't save the link.", { retry: handleSaveLink });
+    } finally {
+      setSavingLink(false);
+    }
   };
 
   // --- HELPERS ---
@@ -2063,7 +2139,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     const sessions = [];
     classes.forEach((cls) => {
       cls.schedule.forEach((s) => {
-        if (s.day === dayName) sessions.push({ ...cls, time: s.time });
+        if (s.day === dayName) sessions.push({ ...cls, time: s.time, day: dayName });
       });
     });
     return sessions.sort((a, b) => {
@@ -2199,6 +2275,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             onClick={() => handleNavClick("feedback")}
           >
             <IconFeedback /> <span>Feedback</span>
+            {inbox.unread > 0 && <span className="sidebar-badge" aria-label={`${inbox.unread} new parent messages`}>{inbox.unread}</span>}
           </button>
           {/* ✨ GALLERY LINK */}
           <button
@@ -2467,37 +2544,53 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 <div className="empty-state">No classes scheduled today.</div>
               ) : (
                 <div className="today-grid">
-                  {getTodayClasses().map((cls) => (
-                    <div key={cls._id} className="today-card">
-                      <div className="tc-header">
-                        <span className="tc-time">
-                          {
-                            cls.schedule.find(
-                              (s) =>
-                                s.day === dayNamesFull[new Date().getDay()],
-                            )?.time
-                          }
-                        </span>
-                        <span className="tc-badge">Active</span>
+                  {getTodayClasses().map((cls) => {
+                    const slot = cls.schedule.find((x) => x.day === dayNamesFull[new Date().getDay()]);
+                    const link = slot?.link || cls.meetingLink || "";
+                    // class times are IST: compare with India time
+                    const ist = new Date(Date.now() + 330 * 60000);
+                    const nowMin = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+                    const [sh, sm] = String(slot?.time || "0:0").split(":").map(Number);
+                    const startMin = sh * 60 + (sm || 0);
+                    const until = startMin - nowMin;
+                    const live = until <= 0 && until > -60;
+                    const soon = until > 0 && until <= 30;
+                    const away = (cls.students || []).filter((st) => absenceFor(st, istDateKey(), cls._id, slot?.time));
+                    return (
+                      <div key={cls._id} className="today-card">
+                        <div className="tc-header">
+                          <span className="tc-time">{slot?.time}</span>
+                          <span className={`tc-badge${live || soon ? " live" : ""}`}>{live ? "Live now" : soon ? `In ${until} min` : "Active"}</span>
+                        </div>
+                        <div className="tc-body">
+                          <h4>{cls.className}</h4>
+                          <p>{cls.students.length} Students</p>
+                          {away.length > 0 && (
+                            <p className="tc-away" title={away.map((x) => x.childName).join(", ")}>
+                              {away.length} told us they can't attend: {away.map((x) => String(x.childName || "").split(" ")[0]).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <div className="tc-actions">
+                          {link && (
+                            <a href={link} target="_blank" rel="noreferrer" className={`tc-btn tc-join${live || soon ? " pulse" : ""}`}>
+                              <IconLaunch /> Join class
+                            </a>
+                          )}
+                          <button
+                            onClick={() => {
+                              setActiveTab("attendance");
+                              setSelectedClassIds([cls._id]);
+                              setAttendanceDate(new Date().toISOString().slice(0, 10));
+                            }}
+                            className="tc-btn"
+                          >
+                            Mark Attendance
+                          </button>
+                        </div>
                       </div>
-                      <div className="tc-body">
-                        <h4>{cls.className}</h4>
-                        <p>{cls.students.length} Students</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setActiveTab("attendance");
-                          setSelectedClassIds([cls._id]);
-                          setAttendanceDate(
-                            new Date().toISOString().slice(0, 10),
-                          );
-                        }}
-                        className="tc-btn"
-                      >
-                        Mark Attendance
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <h3 className="section-title" style={{ marginTop: "40px" }}>
@@ -2714,10 +2807,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           {visibleColumns.name && (
                             <td data-label="Name">
                               <div className="std-name-cell">
-                                <div className="s-avatar-sm">
-                                  {s.childName.charAt(0)}
-                                </div>
-                                {s.childName}
+                                <button type="button" className="std-name-btn" onClick={() => setProfileStudent(s)} aria-label={`Open ${s.childName}'s profile`}>
+                                  <span className="s-avatar-sm">{s.childName.charAt(0)}</span>
+                                  <span className="std-name-text">{s.childName}</span>
+                                </button>
                               </div>
                             </td>
                           )}
@@ -2851,7 +2944,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         <div
                           key={`${cls._id}-${i}`}
                           className={`mobile-cal-event ${getClassColor(cls.className)}`}
-                          onClick={() => handleBlockClick(cls, cls.time)}
+                          onClick={() => handleBlockClick(cls, cls.time, cls.day)}
                         >
                           <div className="mce-bar"></div>
                           <div className="mce-body">
@@ -2955,7 +3048,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               key={`${cls._id}-${idx}`}
                               className={`tt-event-block ${getClassColor(cls.className)}`}
                               style={style}
-                              onClick={() => handleBlockClick(cls, sch.time)}
+                              onClick={() => handleBlockClick(cls, sch.time, sch.day)}
                             >
                               <div className="ev-time">{sch.time}</div>
                               <div className="ev-title">{cls.className}</div>
@@ -2988,7 +3081,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         <div className="sli-action">
                           <button
                             className="sli-btn"
-                            onClick={() => handleBlockClick(cls, cls.time)}
+                            onClick={() => handleBlockClick(cls, cls.time, cls.day)}
                           >
                             Details
                           </button>
@@ -3111,6 +3204,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           </div>
                           <div className="dh-actions">
                             <span className="action-label">Quick Actions:</span>
+                            {informedStudents.length > 0 && (
+                              <button className="bulk-btn informed" onClick={markInformedAbsent} title="Parents who said they can't attend">
+                                Mark {informedStudents.length} informed as Absent
+                              </button>
+                            )}
                             <button
                               className="bulk-btn present"
                               onClick={() => markAll("Present")}
@@ -3156,7 +3254,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                   </div>
                                   {s.childName}
                                   {(() => {
-                                    const n = (s.absenceNotices || []).find((x) => x.date === attendanceDate);
+                                    const n = absenceFor(s, attendanceDate, s.parentClassId);
                                     return n ? (
                                       <span className="informed-chip" title={n.reason ? `Reason: ${n.reason}` : "The parent said they can't attend"}>
                                         Parent informed{n.reason ? `: ${n.reason}` : ""}
@@ -3262,6 +3360,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
           {/* FEEDBACK (With History & Upload) */}
           {activeTab === "feedback" && (
             <div className="feedback-view">
+              <TeacherInbox inbox={inbox} teacherId={currentUser._id} openId={hashParam} />
               <div className="feedback-container-grid">
                 <div className="form-card">
                   <h3><IconNote /> New Report</h3>
@@ -3365,16 +3464,29 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               </span>
                             </div>
                             <p className="h-text">"{item.feedbackText}"</p>
-                            {(item.parentComment || item.messages?.length > 0) && (
-                              <div className="teacher-reply-view">
-                                <strong><IconInbox /> Conversation with the parent</strong>
+                            <div className="teacher-reply-view">
+                              <strong><IconInbox /> Conversation with the parent</strong>
+                              {inbox.threads.some((t) => t._id === item._id) ? (
+                                // already listed under "Parent messages" above: open it there, not twice
+                                <button
+                                  type="button"
+                                  className="rc-action-btn comment"
+                                  onClick={() => {
+                                    setHashParam(item._id);
+                                    document.getElementById("parent-messages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                  }}
+                                >
+                                  Open conversation ({inbox.threads.find((t) => t._id === item._id).messages.length})
+                                </button>
+                              ) : (
                                 <TeacherReportThread
                                   report={item}
                                   teacherId={currentUser._id}
-                                  onUpdated={(next) => setFeedbackHistory((list) => list.map((r) => (r._id === next._id ? next : r)))}
+                                  allowStart
+                                  onUpdated={(next) => { setFeedbackHistory((list) => list.map((r) => (r._id === next._id ? { ...r, ...next } : r))); inbox.refresh(); }}
                                 />
-                              </div>
-                            )}
+                              )}
+                            </div>
                             <div className="history-actions">
                               {item.reportFile && (
                                 <a
@@ -3945,50 +4057,58 @@ const TeacherDashboard = ({ user, onLogout }) => {
       </main>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="mobile-bottom-nav">
-        <button
-          className={activeTab === "overview" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("overview")}
-        >
-          <IconHome />
+      <nav className="mobile-bottom-nav" aria-label="Main">
+        <button className={activeTab === "overview" ? "nav-item active" : "nav-item"} onClick={() => handleNavClick("overview")}>
+          <IconHome /><span className="nav-label">Home</span>
+        </button>
+        <button className={activeTab === "schedule" ? "nav-item active" : "nav-item"} onClick={() => handleNavClick("schedule")}>
+          <IconSchedule /><span className="nav-label">Schedule</span>
+        </button>
+        <button className={activeTab === "attendance" ? "nav-item active" : "nav-item"} onClick={() => handleNavClick("attendance")} style={{ position: "relative" }}>
+          <IconAttendance /><span className="nav-label">Attendance</span>
+          {attendanceReminders.length > 0 && <span className="nav-reminder-dot" />}
+        </button>
+        <button className={activeTab === "students" ? "nav-item active" : "nav-item"} onClick={() => handleNavClick("students")}>
+          <IconStudents /><span className="nav-label">Students</span>
         </button>
         <button
-          className={activeTab === "students" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("students")}
-        >
-          <IconStudents />
-        </button>
-        <button
-          className={activeTab === "schedule" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("schedule")}
-        >
-          <IconSchedule />
-        </button>
-        <button
-          className={
-            activeTab === "attendance" ? "nav-item active" : "nav-item"
-          }
-          onClick={() => handleNavClick("attendance")}
+          className={["feedback", "gallery", "certifications", "report-maker"].includes(activeTab) || showMore ? "nav-item active" : "nav-item"}
+          aria-haspopup="dialog"
+          onClick={() => setShowMore(true)}
           style={{ position: "relative" }}
         >
-          <IconAttendance />
-          {attendanceReminders.length > 0 && (
-            <span className="nav-reminder-dot" />
-          )}
-        </button>
-        <button
-          className={activeTab === "feedback" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("feedback")}
-        >
-          <IconFeedback />
-        </button>
-        <button
-          className={activeTab === "gallery" ? "nav-item active" : "nav-item"}
-          onClick={() => handleNavClick("gallery")}
-        >
-          <IconGallery />
+          <IconMore /><span className="nav-label">More</span>
+          {inbox.unread > 0 && <span className="nav-unread-dot" aria-label={`${inbox.unread} new parent messages`}>{inbox.unread}</span>}
         </button>
       </nav>
+
+      {profileStudent && (
+        <StudentProfileSheet
+          student={profileStudent}
+          dark={darkMode}
+          onClose={() => setProfileStudent(null)}
+          onWriteReport={(st) => {
+            setProfileStudent(null);
+            setRmForm((prev) => ({ ...prev, studentId: st._id }));
+            openReportMaker();
+          }}
+        />
+      )}
+      {showMore && (
+        <TMoreSheet
+          dark={darkMode}
+          active={activeTab}
+          onClose={() => setShowMore(false)}
+          onPick={(key) => { setShowMore(false); if (key === "report-maker") openReportMaker(); else handleNavClick(key); }}
+          items={[
+            { key: "feedback", label: inbox.unread > 0 ? `Feedback (${inbox.unread} new)` : "Feedback", hint: "Reports and conversations with parents", icon: <IconFeedback /> },
+            { key: "gallery", label: "Gallery", hint: "Upload and manage artwork", icon: <IconGallery /> },
+            { key: "certifications", label: "Certificates", hint: "Issue certificates", icon: <IconTrophy /> },
+            { key: "report-maker", label: "Report Maker", hint: "Build a monthly report PDF", icon: <IconClipboard /> },
+          ]}
+        />
+      )}
+      <ToastHost />
 
       {/* MODAL */}
       {modalData && (
@@ -4013,11 +4133,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 <span className="value">{modalData.level}</span>
               </div>
               <div className="modal-actions">
-                {modalData.meetingLink ? (
+                {modalData.slotLink ? (
                   !isLinkInputVisible ? (
                     <div className="launch-group">
                       <a
-                        href={modalData.meetingLink}
+                        href={modalData.slotLink}
                         target="_blank"
                         rel="noreferrer"
                         className="launch-btn"
@@ -4042,8 +4162,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       <button
                         className="save-link-btn"
                         onClick={handleSaveLink}
+                        disabled={savingLink}
                       >
-                        Save
+                        {savingLink ? "Saving…" : "Save"}
                       </button>
                     </div>
                   )
@@ -4055,8 +4176,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       value={editingLink}
                       onChange={(e) => setEditingLink(e.target.value)}
                     />
-                    <button className="save-link-btn" onClick={handleSaveLink}>
-                      Save Link
+                    <button className="save-link-btn" onClick={handleSaveLink} disabled={savingLink}>
+                      {savingLink ? "Saving…" : "Save Link"}
                     </button>
                   </div>
                 )}

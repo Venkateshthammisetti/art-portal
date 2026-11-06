@@ -160,6 +160,79 @@ module.exports = (upload) => {
     }
   });
 
+  // ---------- admin: payment proofs waiting for review ----------
+  router.get("/admin/payment-proofs", async (req, res) => {
+    try {
+      const parents = await User.find({ role: "parent", "paymentProofs.0": { $exists: true } })
+        .select("username fullName childName phone monthlyFee payments passes paymentProofs isActive").lean();
+      const out = [];
+      parents.forEach((u) => (u.paymentProofs || []).forEach((p) => {
+        if ((p.status || "pending") !== "pending") return;
+        out.push({
+          userId: u._id, proofId: p._id, username: u.username, fullName: u.fullName, childName: u.childName, phone: u.phone,
+          months: p.months || [], amount: p.amount || 0, url: p.url, note: p.note || "", at: p.at,
+          alreadyPaid: (p.months || []).filter((m) => (u.payments || []).some((x) => x.month === m && x.status === "Paid")),
+        });
+      }));
+      out.sort((a, b) => new Date(b.at) - new Date(a.at));
+      res.json(out.slice(0, 100));
+    } catch (err) {
+      console.error("Proof list error:", err);
+      res.status(500).json({ message: "Error loading payment proofs" });
+    }
+  });
+
+  // approve: records the payment for each month (amounts come from the admin's
+  // fee rules) and marks the proof done; reject: marks it and tells the parent why
+  router.put("/admin/payment-proofs/:userId/:proofId", async (req, res) => {
+    try {
+      const { action, amounts = {}, note = "" } = req.body || {};
+      if (!["approve", "reject"].includes(action)) return res.status(400).json({ message: "Unknown action" });
+      const parent = await loadParent(req.params.userId, res);
+      if (!parent) return;
+      const proof = (parent.paymentProofs || []).find((p) => String(p._id) === req.params.proofId);
+      if (!proof) return res.status(404).json({ message: "Proof not found" });
+      if ((proof.status || "pending") !== "pending") return res.status(409).json({ message: `Already ${proof.status}` });
+      const reason = String(note).trim().slice(0, 200);
+      if (action === "reject" && !reason) return res.status(400).json({ message: "Tell the parent why it wasn't accepted" });
+
+      const recorded = [];
+      if (action === "approve") {
+        const months = (proof.months || []).filter((m) => /^\d{4}-\d{2}$/.test(m));
+        if (!months.length) return res.status(400).json({ message: "This proof has no valid months" });
+        months.forEach((m) => {
+          if ((parent.payments || []).some((x) => x.month === m && x.status === "Paid")) return; // already paid
+          const amt = Number(amounts[m]);
+          parent.payments.push({
+            month: m,
+            status: "Paid",
+            amount: Number.isFinite(amt) && amt >= 0 ? amt : Math.round((proof.amount || parent.monthlyFee || 0) / months.length),
+            paidDate: new Date(),
+          });
+          recorded.push(m);
+        });
+        // a one-off pass for a month that was just paid is replaced by the payment
+        parent.passes = (parent.passes || []).filter((p) => !recorded.includes(p.month));
+      }
+      proof.status = action === "approve" ? "approved" : "rejected";
+      proof.reviewedAt = new Date();
+      proof.reviewNote = reason;
+      await parent.save();
+      res.json({ ok: true, recorded, status: proof.status });
+
+      parentPush.later("Payment review", async () => {
+        const kid = parent.childName ? `${parent.childName}'s` : "Your";
+        const labels = (proof.months || []).map((m) => parentPush.monthLabel(m)).join(", ");
+        return parentPush.pushToUsers([parent], action === "approve"
+          ? { title: "✅ Payment received", body: `${kid} fee for ${labels} is marked as paid. Thank you!`, tag: `paid-${proof._id}`, url: `${parentPush.APP_URL}/#fees` }
+          : { title: "⚠️ Payment proof not accepted", body: `${kid} payment proof for ${labels} couldn't be accepted: ${reason}. Please send it again or contact the academy.`, tag: `proof-no-${proof._id}`, url: `${parentPush.APP_URL}/#fees` });
+      });
+    } catch (err) {
+      console.error("Proof review error:", err);
+      res.status(500).json({ message: "Couldn't save the review" });
+    }
+  });
+
   // ---------- absence notice: "my child can't attend this class" ----------
   router.post("/parent/:id/absence", async (req, res) => {
     try {
@@ -181,7 +254,7 @@ module.exports = (upload) => {
             title: `🙋 ${me.childName || "A student"} can't attend`,
             body: `${me.childName || "A student"} will miss ${cls.className} on ${prettyDate(date)}${reason ? ` — ${String(reason).trim().slice(0, 80)}` : ""}.`,
             tag: `absence-${me._id}-${date}`,
-            url: `${parentPush.APP_URL}/`,
+            url: `${parentPush.APP_URL}/#attendance`,
           });
         });
       }
@@ -219,6 +292,8 @@ module.exports = (upload) => {
       const sender = await User.findById(userId).select("fullName childName");
       report.messages.push({ from, name: sender?.fullName || "", text: body, at: new Date() });
       if (from === "parent" && !report.parentComment) report.parentComment = body; // older screens still show it
+      // sending a message means you have read the conversation
+      if (from === "teacher") report.teacherReadAt = new Date(); else report.parentReadAt = new Date();
       await report.save();
       res.json({ messages: report.messages });
 
@@ -228,13 +303,57 @@ module.exports = (upload) => {
         const student = from === "parent" ? sender : other;
         const month = parentPush.monthLabel(report.month);
         return parentPush.pushToUsers([other], from === "parent"
-          ? { title: `💬 Reply from ${student?.childName ? `${student.childName}'s parent` : "a parent"}`, body: `On the ${month} report: "${body.slice(0, 90)}"`, tag: `msg-${report._id}`, url: `${parentPush.APP_URL}/` }
+          ? { title: `💬 Reply from ${student?.childName ? `${student.childName}'s parent` : "a parent"}`, body: `On the ${month} report: "${body.slice(0, 90)}"`, tag: `msg-${report._id}`, url: `${parentPush.APP_URL}/#feedback/${report._id}` }
           : { title: "💬 The teacher replied", body: `On ${other?.childName ? `${other.childName}'s` : "the"} ${month} report: "${body.slice(0, 90)}"`, tag: `msg-${report._id}`, url: `${parentPush.APP_URL}/#reports` },
         { pref: from === "teacher" ? "reports" : undefined });
       });
     } catch (err) {
       console.error("Report message error:", err);
       res.status(500).json({ message: "Couldn't send. Please try again." });
+    }
+  });
+
+  // ---------- teacher: every report conversation, unread first ----------
+  const lastParentAt = (r) => {
+    const msgs = (r.messages || []).filter((m) => m.from === "parent");
+    if (msgs.length) return new Date(msgs[msgs.length - 1].at);
+    return r.parentComment ? new Date(r.createdAt) : null; // older single comments
+  };
+  router.get("/feedback/teacher/:teacherId/threads", async (req, res) => {
+    try {
+      if (!validId(req.params.teacherId)) return res.status(404).json({ message: "Not found" });
+      const reports = await Feedback.find({
+        teacherId: req.params.teacherId,
+        $or: [{ "messages.0": { $exists: true } }, { parentComment: { $nin: ["", null] } }],
+      }).populate("studentId", "childName").lean();
+      const out = reports.map((r) => {
+        const msgs = r.messages?.length ? r.messages : [{ from: "parent", text: r.parentComment, at: r.createdAt }];
+        const lastAt = new Date(msgs[msgs.length - 1].at);
+        const pAt = lastParentAt(r);
+        return { ...r, messages: msgs, lastAt, unread: !!pAt && (!r.teacherReadAt || new Date(r.teacherReadAt) < pAt) };
+      });
+      out.sort((a, b) => (b.unread - a.unread) || (b.lastAt - a.lastAt));
+      res.json(out.slice(0, 60));
+    } catch (err) {
+      console.error("Threads error:", err);
+      res.status(500).json({ message: "Error loading conversations" });
+    }
+  });
+
+  router.put("/feedback/:id/read", async (req, res) => {
+    try {
+      if (!validId(req.params.id)) return res.status(404).json({ message: "Not found" });
+      const { as, userId } = req.body || {};
+      if (!["parent", "teacher"].includes(as)) return res.status(400).json({ message: "Unknown reader" });
+      const report = await Feedback.findById(req.params.id);
+      if (!report) return res.status(404).json({ message: "Not found" });
+      const expected = as === "parent" ? report.studentId : report.teacherId;
+      if (!userId || String(expected) !== String(userId)) return res.status(403).json({ message: "Not allowed" });
+      if (as === "teacher") report.teacherReadAt = new Date(); else report.parentReadAt = new Date();
+      await report.save();
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: "Couldn't update" });
     }
   });
 

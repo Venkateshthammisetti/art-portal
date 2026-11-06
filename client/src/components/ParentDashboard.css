@@ -1535,3 +1535,5 @@ body.dark .pd-family-btn.current { color: #93c5fd; }
 /* "No Link" (disabled join) must still be readable */
 .join-btn.disabled, .join-btn:disabled { color: #334155 !important; background: #e2e8f0 !important; border-color: #cbd5e1 !important; }
 body.dark .join-btn.disabled, body.dark .join-btn:disabled { color: #cbd5e1 !important; background: #334155 !important; border-color: #475569 !important; }
+.ps-proof-note.rejected { background: #fef2f2; color: #7f1d1d; border-color: #fecaca; }
+body.dark .ps-proof-note.rejected { background: rgba(239, 68, 68, 0.14); color: #fecaca; border-color: rgba(239, 68, 68, 0.35); }

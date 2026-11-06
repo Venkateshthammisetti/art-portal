@@ -24,6 +24,9 @@ import BirthdayNotificationBell from "./BirthdayNotifications";
 import { SpotlightPublishTab, SpotlightHistoryTab } from "./ArtistSpotlight";
 import { subscribeDeviceToPush } from "../pushSubscribe";
 import { getStudentStartMonth, isStudentInactiveForMonth, getFeeForMonth } from "../utils/fees";
+import notify from "../utils/notify";
+import ToastHost from "./ToastHost";
+import { downloadCSV } from "../utils/csv";
 import ListCountHeader from "./ListCountHeader";
 import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 
@@ -270,7 +273,7 @@ const ClassModal = ({
         );
       onSuccess();
     } catch (err) {
-      alert("⚠️ Error saving class");
+      notify.error("Error saving class");
     }
   };
 
@@ -583,7 +586,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
       // Refresh dashboard data in background without closing modal
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert("Failed to assign students");
+      notify.error("Failed to assign students");
     }
   };
 
@@ -1084,10 +1087,81 @@ const EditUserModal = ({ user, onClose, onSave }) => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-  const handleSubmit = (e) => {
+  // A new password is optional. It is only sent when typed (an empty box must
+  // never blank the saved password), and after saving, the admin is offered a
+  // ready WhatsApp message with the new login details.
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [sentPassword, setSentPassword] = useState(null); // set once saved with a new password
+  const [saving, setSaving] = useState(false);
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    const { password: _old, ...rest } = formData;
+    const pw = newPassword.trim();
+    if (newPassword && pw.length < 4) return;
+    setSaving(true);
+    const ok = await onSave(pw ? { ...rest, password: pw } : rest);
+    setSaving(false);
+    if (ok && pw) setSentPassword(pw);
   };
+  const loginMessage = (pw) => {
+    const who = user.role === "parent"
+      ? `Parent of ${user.childName || user.fullName || user.username}`
+      : user.fullName || user.username;
+    return [
+      `Hello ${who},`,
+      ``,
+      `Your new login details for the Art Academy portal:`,
+      ``,
+      `Portal: ${window.location.origin}`,
+      `Username: ${user.username}`,
+      `Password: ${pw}`,
+      ``,
+      `Please keep these details safe and do not share them with anyone.`,
+    ].join("\n");
+  };
+  const waDigits = (() => {
+    let d = String(formData.phone || user.phone || "").replace(/\D/g, "").replace(/^0+/, "");
+    if (d.length === 10) d = "91" + d;
+    return d.length >= 11 && d.length <= 15 ? d : null;
+  })();
+
+  if (sentPassword) {
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content edit-user-modal" style={{ maxWidth: "460px" }} role="dialog" aria-modal="true" aria-labelledby="pw-done-title">
+          <div className="modal-header">
+            <h3 id="pw-done-title">Password changed</h3>
+          </div>
+          <div style={{ padding: "20px" }}>
+            <p style={{ marginTop: 0 }}>
+              {user.fullName || user.username}'s password is now <strong style={{ fontFamily: "monospace" }}>{sentPassword}</strong>.
+              Send them the new login details:
+            </p>
+            <div className="pw-done-actions">
+              {waDigits ? (
+                <a className="pw-wa-btn" href={`https://wa.me/${waDigits}?text=${encodeURIComponent(loginMessage(sentPassword))}`} target="_blank" rel="noreferrer">
+                  Send on WhatsApp
+                </a>
+              ) : (
+                <span className="pw-no-phone">No valid phone number on file for WhatsApp.</span>
+              )}
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => navigator.clipboard?.writeText(loginMessage(sentPassword))}
+              >
+                Copy message
+              </button>
+              <button type="button" className="save-btn" style={{ width: "auto", padding: "10px 22px" }} onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay">
@@ -1332,6 +1406,25 @@ const EditUserModal = ({ user, onClose, onSave }) => {
             )}
           </div>
 
+          <div className="form-group" style={{ margin: "4px 20px 12px" }}>
+            <label htmlFor="edit-new-password">New password <span style={{ fontWeight: 400, opacity: 0.7 }}>(leave empty to keep the current one)</span></label>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                id="edit-new-password"
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={4}
+                placeholder="At least 4 characters"
+                style={{ flex: 1 }}
+              />
+              <button type="button" className="cancel-btn" onClick={() => setShowNewPassword((v) => !v)} aria-pressed={showNewPassword}>
+                {showNewPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </div>
+
           <div className="modal-actions" style={{ justifyContent: "flex-end" }}>
             <button
               type="button"
@@ -1344,9 +1437,10 @@ const EditUserModal = ({ user, onClose, onSave }) => {
             <button
               type="submit"
               className="save-btn"
+              disabled={saving}
               style={{ width: "auto", padding: "10px 25px" }}
             >
-              Save Changes
+              {saving ? "Saving…" : "Save Changes"}
             </button>
           </div>
         </form>
@@ -3763,7 +3857,7 @@ const UserChartsView = ({ users }) => {
 };
 
 // --- TAB 2: USER MANAGEMENT ---
-const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all", initialGenderFilter = "all", initialViewMode = "active" }) => {
+const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all", initialGenderFilter = "all", initialViewMode = "active", openEditUserId = null, onOpenedEdit = () => {} }) => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
@@ -3798,6 +3892,16 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
   });
 
   useEffect(() => { fetchUsers(); }, []);
+
+  // Jump straight to a user's Edit Details (e.g. from a password-reset request)
+  useEffect(() => {
+    if (!openEditUserId || users.length === 0) return;
+    const target = users.find((u) => u._id === openEditUserId);
+    if (target) setEditingUser(target);
+    else showToast("That account was not found.", "error");
+    onOpenedEdit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openEditUserId, users]);
 
   const fetchUsers = () => {
     axios
@@ -3878,13 +3982,16 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
         `https://art-portal-7n6r.onrender.com/api/users/${updatedData._id}`,
         updatedData,
       );
-      const savedUser = res.data;
-      setUsers(users.map((u) => (u._id === savedUser._id ? savedUser : u)));
+      const { password: _pw, ...savedUser } = res.data; // never keep passwords in the list
+      setUsers((list) => list.map((u) => (u._id === savedUser._id ? savedUser : u)));
       if (selectedUser && selectedUser._id === savedUser._id) setSelectedUser(savedUser);
-      setEditingUser(null);
-      showToast("User details updated!", "success");
+      // With a new password the modal stays open to offer the WhatsApp message
+      if (!updatedData.password) setEditingUser(null);
+      showToast(updatedData.password ? "Password changed!" : "User details updated!", "success");
+      return true;
     } catch (err) {
       showToast("Failed to update user.", "error");
+      return false;
     }
   };
   const toggleColumn = (key) => {
@@ -3936,6 +4043,19 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
     if (sortOrder === "fee-low") return (a.monthlyFee || 0) - (b.monthlyFee || 0);
     return 0;
   });
+
+  const exportUsers = () => {
+    const list = viewMode === "inactive" ? sortedInactive : sortedActive;
+    downloadCSV(
+      `${listLabel.toLowerCase()}-${viewMode === "inactive" ? "inactive" : "active"}`,
+      ["Role", "Student", "Parent / Name", "Username", "Phone", "Email", "Location", "Mode", "Monthly fee", "Joined", "Status"],
+      list.map((u) => [
+        u.role, u.childName || "", u.fullName || "", u.username || "", u.phone || "", u.email || u.parentEmail || "",
+        u.location || u.city || "", u.classMode || (u.role === "parent" ? "online" : ""), u.monthlyFee ?? "",
+        u.joiningDate ? new Date(u.joiningDate).toLocaleDateString("en-GB") : "", u.isActive === false ? "Inactive" : "Active",
+      ]),
+    );
+  };
 
   const sortedActive = sortUsers(activeUsers);
   const sortedInactive = sortUsers(inactiveUsers);
@@ -4018,6 +4138,9 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
               />
             </div>
             <div className="filter-actions">
+              <button type="button" className="proof-review-btn" onClick={exportUsers} title="Download the list below as a spreadsheet">
+                Export CSV
+              </button>
               <div className="filter-dropdown">
                 <label>Role:</label>
                 <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
@@ -5636,7 +5759,7 @@ const SlotManagementTab = () => {
   const handleModalSuccess = () => {
     setShowClassModal({ show: false, initialData: null });
     fetchData();
-    alert("Schedule updated successfully!");
+    notify.success("Schedule updated");
   };
 
   // Class times are typed free-form ("8:00", "08:00"); compare them normalised.
@@ -5899,6 +6022,163 @@ const SlotManagementTab = () => {
   );
 };
 
+// --- STEP-THROUGH FEE REMINDERS ---
+// One tap per parent: Send opens WhatsApp with that parent's message, then the
+// queue moves on. Parents already reminded this month are marked and skipped.
+const ReminderQueue = ({ students, monthLabel, reminded, buildReminder, onSent, onClose }) => {
+  const [skipDone, setSkipDone] = useState(true);
+  const list = students.filter((s) => (skipDone ? !reminded[s._id] : true));
+  const [index, setIndex] = useState(0);
+  const total = list.length;
+  const current = list[Math.min(index, Math.max(0, total - 1))];
+  const info = current ? buildReminder(current) : null;
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const send = () => {
+    if (!info?.number) return;
+    window.open(`https://wa.me/${info.number}?text=${encodeURIComponent(info.message)}`, "_blank", "noopener,noreferrer");
+    onSent(current._id);
+    // the sent parent drops out of the list, so the same index is the next one
+    if (!skipDone) setIndex((i) => Math.min(i + 1, total - 1));
+  };
+
+  return (
+    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content queue-panel" role="dialog" aria-modal="true" aria-labelledby="queue-title">
+        <div className="modal-header">
+          <h3 id="queue-title">Fee reminders · {monthLabel}</h3>
+          <button className="close-modal" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer" }}>×</button>
+        </div>
+        <div className="queue-body">
+          <label className="queue-skip">
+            <input type="checkbox" checked={skipDone} onChange={(e) => { setSkipDone(e.target.checked); setIndex(0); }} /> Skip parents already reminded
+          </label>
+          {!current ? (
+            <p className="queue-empty">{students.length === 0 ? "No parents with pending fees this month." : "Everyone with pending fees has been reminded. Untick the box above to remind again."}</p>
+          ) : (
+            <>
+              <p className="queue-progress">{Math.min(index + 1, total)} of {total} left</p>
+              <div className="queue-card">
+                <strong>{current.childName || current.fullName}</strong>
+                <span className="queue-sub">{current.fullName} · {current.phone || "no phone"}</span>
+                {reminded[current._id] && <span className="queue-sub">Reminded {new Date(reminded[current._id]).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}
+                <pre className="queue-msg">{info.message}</pre>
+                {!info.number && <p className="queue-warn">No usable WhatsApp number for this parent. Skip, then fix their phone on their profile.</p>}
+              </div>
+              <div className="queue-actions">
+                <button type="button" className="cancel-btn" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0}>Back</button>
+                <button type="button" className="cancel-btn" onClick={() => setIndex((i) => Math.min(i + 1, total - 1))} disabled={index >= total - 1}>Skip</button>
+                <button type="button" className="pw-wa-btn" onClick={send} disabled={!info.number}>Send on WhatsApp</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- PAYMENT PROOFS TO REVIEW (Fee Tracker) ---
+// Parents upload a screenshot of their UPI/bank payment; admin approves (records
+// the payment for each month at that month's fee) or rejects with a reason.
+const ProofReviewPanel = ({ proofs, students, onClose, onReviewed }) => {
+  const [busyId, setBusyId] = useState(null);
+  const [rejecting, setRejecting] = useState(null); // proofId being rejected
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const monthLabel = (m) => { const [y, mo] = m.split("-").map(Number); return new Date(y, mo - 1, 1).toLocaleString("default", { month: "long", year: "numeric" }); };
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const review = async (p, action, amounts) => {
+    setBusyId(p.proofId);
+    setError("");
+    try {
+      await axios.put(`https://art-portal-7n6r.onrender.com/api/admin/payment-proofs/${p.userId}/${p.proofId}`, { action, amounts, note: action === "reject" ? reason : "" });
+      setRejecting(null);
+      setReason("");
+      onReviewed();
+    } catch (err) {
+      setError(err.response?.data?.message || "Couldn't save. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content proof-panel" role="dialog" aria-modal="true" aria-labelledby="proof-panel-title">
+        <div className="modal-header">
+          <h3 id="proof-panel-title">Payment proofs to review ({proofs.length})</h3>
+          <button className="close-modal" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer" }}>×</button>
+        </div>
+        <div className="proof-panel-body">
+          {proofs.length === 0 && <p className="proof-empty">All caught up. No payment proofs are waiting.</p>}
+          {error && <p className="proof-error" role="alert">{error}</p>}
+          {proofs.map((p) => {
+            const student = students.find((s) => s._id === p.userId);
+            const amounts = {};
+            p.months.forEach((m) => { amounts[m] = student ? getFeeForMonth(student, m) : 0; });
+            const todo = p.months.filter((m) => !p.alreadyPaid.includes(m));
+            const sum = todo.reduce((t, m) => t + (Number(amounts[m]) || 0), 0);
+            const isPdf = /\.pdf($|\?)/i.test(p.url || "");
+            const mismatch = p.amount && todo.length > 0 && Math.abs(p.amount - sum) > 0;
+            return (
+              <div key={p.proofId} className="proof-card">
+                <a href={p.url} target="_blank" rel="noreferrer" className="proof-thumb" aria-label="Open the payment screenshot">
+                  {isPdf ? <span>PDF</span> : <img src={p.url} alt={`Payment proof from ${p.childName || p.username}`} loading="lazy" />}
+                </a>
+                <div className="proof-info">
+                  <strong>{p.childName || p.username}</strong>
+                  <span className="proof-sub">{p.fullName} · {p.phone || "no phone"} · sent {new Date(p.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                  <ul className="proof-months">
+                    {p.months.map((m) => (
+                      <li key={m} className={p.alreadyPaid.includes(m) ? "done" : ""}>
+                        {monthLabel(m)} <em>{p.alreadyPaid.includes(m) ? "already paid" : `₹${amounts[m]}`}</em>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="proof-total">
+                    Parent says ₹{p.amount || 0} · fees add up to ₹{sum}
+                    {mismatch && <strong className="proof-warn"> · amounts differ, check the screenshot</strong>}
+                  </span>
+                  {p.note && <span className="proof-sub">Note: {p.note}</span>}
+                  {rejecting === p.proofId ? (
+                    <div className="proof-reject">
+                      <label htmlFor={`reject-${p.proofId}`}>Why isn't it accepted? (the parent will see this)</label>
+                      <input id={`reject-${p.proofId}`} type="text" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Amount is less than the fee, screenshot unclear" autoFocus />
+                      <div className="proof-actions">
+                        <button type="button" className="cancel-btn" onClick={() => { setRejecting(null); setReason(""); }}>Back</button>
+                        <button type="button" className="proof-reject-btn" disabled={busyId === p.proofId || !reason.trim()} onClick={() => review(p, "reject")}>Send rejection</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="proof-actions">
+                      <button type="button" className="proof-reject-btn outline" disabled={busyId === p.proofId} onClick={() => { setRejecting(p.proofId); setReason(""); }}>Reject</button>
+                      <button type="button" className="save-btn" style={{ width: "auto", padding: "10px 20px" }} disabled={busyId === p.proofId} onClick={() => review(p, "approve", amounts)}>
+                        {busyId === p.proofId ? "Saving…" : todo.length ? `Approve · mark paid${todo.length > 1 ? ` (${todo.length} months)` : ""}` : "Approve"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly = false, onRefresh }) => {
   const [allStudents, setAllStudents] = useState([]);
   const students = offlineOnly
@@ -5927,8 +6207,18 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   const [editFeeAmount, setEditFeeAmount] = useState("");
   const [editFeeSaving, setEditFeeSaving] = useState(false);
 
+  // Payment proofs parents sent that nobody has reviewed yet
+  const [proofs, setProofs] = useState([]);
+  const [showProofs, setShowProofs] = useState(false);
+  const fetchProofs = () =>
+    axios
+      .get("https://art-portal-7n6r.onrender.com/api/admin/payment-proofs")
+      .then((res) => setProofs(Array.isArray(res.data) ? res.data : []))
+      .catch((err) => console.error("Proofs fetch failed:", err));
+
   useEffect(() => {
     fetchStudents();
+    fetchProofs();
   }, []);
 
   const fetchStudents = async () => {
@@ -6005,7 +6295,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       });
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert("Error updating payment");
+      notify.error("Error updating payment");
       fetchStudents();
     }
   };
@@ -6029,7 +6319,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
     if (!student) return;
     const newAmount = Number(editFeeAmount);
     if (!Number.isFinite(newAmount) || newAmount < 0) {
-      alert("Enter a valid fee amount.");
+      notify.error("Enter a valid fee amount.");
       return;
     }
     setEditFeeSaving(true);
@@ -6071,7 +6361,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       setEditFeeAmount("");
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert("Error updating fee amount");
+      notify.error("Error updating fee amount");
     } finally {
       setEditFeeSaving(false);
     }
@@ -6100,7 +6390,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       setPassCustomReason("");
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert(err.response?.data?.message || "Error marking pass");
+      notify.error(err.response?.data?.message || "Error marking pass");
     } finally {
       setPassLoading(false);
     }
@@ -6119,7 +6409,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       );
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert("Error removing pass");
+      notify.error("Error removing pass");
     }
   };
 
@@ -6128,7 +6418,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       const res = await axios.get(`https://art-portal-7n6r.onrender.com/api/student-pass/${student._id}`);
       setPassHistoryModal({ show: true, student, passes: res.data });
     } catch (err) {
-      alert("Error fetching pass history");
+      notify.error("Error fetching pass history");
     }
   };
 
@@ -6149,16 +6439,10 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   };
 
   // Opens WhatsApp with a fee-reminder message personalised to this student.
-  const handleSendReminder = (student) => {
+  // The reminder text for one student (all unpaid months and the total), plus
+  // their WhatsApp number (null when the stored phone isn't usable).
+  const buildReminder = (student) => {
     const number = toWhatsAppNumber(student.phone);
-    if (!number) {
-      alert(
-        `No usable WhatsApp number for ${student.childName || student.fullName}.\n\n` +
-          `Stored phone: ${student.phone || "(empty)"}\n\n` +
-          `Add a valid phone number on the student's profile first.`,
-      );
-      return;
-    }
 
     // Built from local year/month so the label never slips a month in any timezone.
     const labelFor = (monthStr) => {
@@ -6211,12 +6495,35 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       `Please pay at your convenience, and do let us know once it is done.\n\n` +
       `Thank you for your understanding!`;
 
-    window.open(
-      `https://wa.me/${number}?text=${encodeURIComponent(message)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    return { number, message };
   };
+
+  const handleSendReminder = (student) => {
+    const { number, message } = buildReminder(student);
+    if (!number) {
+      notify.error(`No usable WhatsApp number for ${student.childName || student.fullName} (stored: ${student.phone || "empty"}). Add one on their profile first.`);
+      return;
+    }
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    markReminded(student._id);
+  };
+
+  // Who has already been reminded for the selected month (kept on this device)
+  const remindedKey = `fee_reminded_${selectedMonth}`;
+  const [reminded, setReminded] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(remindedKey) || "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    try { setReminded(JSON.parse(localStorage.getItem(remindedKey) || "{}")); } catch { setReminded({}); }
+  }, [remindedKey]);
+  const markReminded = (id) => {
+    setReminded((prev) => {
+      const next = { ...prev, [id]: new Date().toISOString() };
+      try { localStorage.setItem(remindedKey, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const [showQueue, setShowQueue] = useState(false);
 
   // Check if student has a pass for the selected month
   const hasPassForMonth = (student, month) => {
@@ -6328,6 +6635,23 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
         );
       return 0;
     });
+
+  // Fee list for the selected month, as shown (respects mode / search / status filters)
+  const exportFees = () => {
+    const rows = processedStudents.map((s) => {
+      const status = getPaymentStatus(s);
+      const pay = (s.payments || []).find((p) => p.month === selectedMonth);
+      const pending = calculateTotalPending(s);
+      return [
+        s.childName, s.fullName, s.phone, s.classMode || "online", s.location || s.city || "",
+        status === "Paid" ? (pay?.amount ?? "") : getFeeForMonth(s, selectedMonth),
+        status,
+        pay?.paidDate ? new Date(pay.paidDate).toLocaleDateString("en-GB") : "",
+        pending.count, pending.amount,
+      ];
+    });
+    downloadCSV(`fees-${selectedMonth}`, ["Student", "Parent", "Phone", "Mode", "Location", "Fee for month", "Status", "Paid on", "Months pending", "Total pending"], rows);
+  };
 
   const DonutChart = ({ value, total, color, label }) => {
     const percentage = total > 0 ? (value / total) * 100 : 0;
@@ -6500,6 +6824,20 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
               &gt;
             </button>
           </div>
+
+          <button type="button" className="proof-review-btn" onClick={() => setShowQueue(true)} title="Step through every parent with a pending fee">
+            Remind all pending
+          </button>
+          <button type="button" className="proof-review-btn" onClick={exportFees}>
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowProofs(true)}
+            className={`proof-review-btn${proofs.length ? " has-items" : ""}`}
+          >
+            Payment proofs{proofs.length > 0 && <span className="proof-count">{proofs.length}</span>}
+          </button>
 
           <button
             onClick={() => setShowAnalytics(!showAnalytics)}
@@ -6809,7 +7147,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                             )}
                             {/* Payment screenshot the parent sent for this month (until it's marked Paid) */}
                             {!isPaid && (() => {
-                              const proof = [...(student.paymentProofs || [])].reverse().find((pp) => (pp.months || []).includes(selectedMonth));
+                              const proof = [...(student.paymentProofs || [])].reverse().find((pp) => (pp.status || "pending") === "pending" && (pp.months || []).includes(selectedMonth));
                               return proof ? (
                                 <a
                                   href={proof.url}
@@ -7010,7 +7348,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
                                         title={`Send ${student.childName || "student"}'s fee reminder on WhatsApp`}
                                         onClick={() => handleSendReminder(student)}
                                       >
-                                        <IconWhatsApp /> Reminder
+                                        <IconWhatsApp /> {reminded[student._id] ? "Reminded ✓" : "Reminder"}
                                       </button>
                                     </>
                                   )}
@@ -7186,6 +7524,24 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
       )}
 
       {/* ===== EDIT FEE (PER-MONTH) MODAL ===== */}
+      {showQueue && (
+        <ReminderQueue
+          students={students.filter((s) => getPaymentStatus(s) === "Pending")}
+          monthLabel={new Date(selectedMonth + "-01").toLocaleString("default", { month: "long", year: "numeric" })}
+          reminded={reminded}
+          buildReminder={buildReminder}
+          onSent={markReminded}
+          onClose={() => setShowQueue(false)}
+        />
+      )}
+      {showProofs && (
+        <ProofReviewPanel
+          proofs={proofs}
+          students={allStudents}
+          onClose={() => setShowProofs(false)}
+          onReviewed={() => { fetchProofs(); fetchStudents(); if (onRefresh) onRefresh(); }}
+        />
+      )}
       {payConfirm && (() => {
         const paying = payConfirm.status !== "Paid";
         const monthLabel = (() => {
@@ -7403,7 +7759,7 @@ const GalleryRepositoryTab = () => {
         setArtwork(artwork.filter((art) => art._id !== artId));
         if (lightboxIndex !== null) setLightboxIndex(null);
       } catch (err) {
-        alert("Error deleting artwork");
+        notify.error("Error deleting artwork");
       }
     }
   };
@@ -7423,7 +7779,7 @@ const GalleryRepositoryTab = () => {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   } catch (err) {
-    alert("Failed to download image. It may be blocked by CORS.");
+    notify.error("Couldn't download the image. It may be blocked by the browser.");
   }
 };
 
@@ -7435,11 +7791,11 @@ const GalleryRepositoryTab = () => {
         await navigator.share({ title: title || "Artwork", text: `Check out this artwork: ${title}`, url: imageUrl });
       } else {
         await navigator.clipboard.writeText(imageUrl);
-        alert("Image URL copied to clipboard!");
+        notify.success("Image URL copied");
       }
     } catch (err) {
       if (err.name !== "AbortError") {
-        try { await navigator.clipboard.writeText(imageUrl); alert("Image URL copied!"); } catch {}
+        try { await navigator.clipboard.writeText(imageUrl); notify.success("Image URL copied"); } catch {}
       }
     }
   };
@@ -8121,7 +8477,7 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
       setEditingExpense(null);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert("Failed to save changes");
+      notify.error("Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -8134,7 +8490,7 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
       setExpenses((prev) => prev.filter((e) => e._id !== id));
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert("Failed to delete expense");
+      notify.error("Failed to delete expense");
     }
   };
 
@@ -8348,6 +8704,13 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
       {/* ── Table ── */}
       <div className="table-wrapper">
         <div className="filter-bar" style={{ flexWrap: "wrap", gap: "12px" }}>
+          <button
+            type="button"
+            className="proof-review-btn"
+            onClick={() => downloadCSV(`expenses-${filterMonth || "all"}`, ["Date", "Title", "Type", "Amount", "Notes"], filtered.map((e) => [e.date ? new Date(e.date).toLocaleDateString("en-GB") : "", e.title, e.type, e.amount, e.description || ""]))}
+          >
+            Export CSV
+          </button>
           <div className="search-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
@@ -8507,6 +8870,7 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [userInitialModeFilter, setUserInitialModeFilter] = useState("all");
   const [userInitialGenderFilter, setUserInitialGenderFilter] = useState("all");
   const [userInitialViewMode, setUserInitialViewMode] = useState("active");
+  const [openEditUserId, setOpenEditUserId] = useState(null); // set by the bell's "Open parent"
 
   // ICONS
   const IconHome = () => (
@@ -8784,6 +9148,7 @@ const AdminDashboard = ({ user, onLogout }) => {
 
   return (
     <div className="admin-container" data-theme={darkMode ? "dark" : "light"}>
+      <ToastHost />
       {mobileMenuOpen && (
         <div
           className="mobile-menu-backdrop"
@@ -9027,6 +9392,7 @@ const AdminDashboard = ({ user, onLogout }) => {
               students={overviewUsers.filter((u) => u.role === "parent")}
               storageKey="admin_bday_notif_read"
               showResetRequests
+              onOpenUser={(userId) => { setOpenEditUserId(userId); handleNavigate("users"); }}
             />
             <label
               className="theme-toggle-label desktop-only"
@@ -9089,7 +9455,7 @@ const AdminDashboard = ({ user, onLogout }) => {
         <div className="content-scrollable">
           {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} expenses={overviewExpenses} loading={overviewLoading} onNavigate={handleNavigate} />}
           {activeTab === "revenue-analytics" && <RevenueAnalyticsTab users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onBack={() => handleNavigate("overview")} />}
-          {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} />}
+          {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} openEditUserId={openEditUserId} onOpenedEdit={() => setOpenEditUserId(null)} />}
           {activeTab === "classes" && <ClassManagementTab key={tabRefreshKey} />}
           {activeTab === "add-user" && <AddUserTab onRefresh={refreshOverview} />}
           {activeTab === "fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter={feeInitialFilter} onRefresh={refreshOverview} />}
