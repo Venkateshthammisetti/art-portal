@@ -11,6 +11,10 @@ const feedbackSchema = new mongoose.Schema({
   // ✨ NEW FIELD: This is required to save the parent's comment
   parentComment: { type: String, default: "" }, 
 
+  // When each side last opened the conversation (for unread dots)
+  teacherReadAt: { type: Date },
+  parentReadAt: { type: Date },
+
   // Conversation about this report between the parent and the teacher
   messages: [{
     from: { type: String, enum: ['parent', 'teacher'] },

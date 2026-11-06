@@ -3880,3 +3880,47 @@
 .teacher-container[data-theme="dark"] .recharts-cartesian-axis-tick text { fill: #94a3b8 !important; }
 .teacher-container { --muted-ui: #64748b; }
 .teacher-container[data-theme="dark"] { --muted-ui: #94a3b8; }
+
+/* Today's agenda: join + parents who can't attend */
+.tc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tc-actions .tc-btn { flex: 1 1 120px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; min-height: 44px; }
+.tc-join { background: #047857 !important; color: #fff !important; }
+.tc-join.pulse { box-shadow: 0 0 0 0 rgba(4,120,87,.5); animation: tcPulse 1.8s infinite; }
+@keyframes tcPulse { 70% { box-shadow: 0 0 0 10px rgba(4,120,87,0); } 100% { box-shadow: 0 0 0 0 rgba(4,120,87,0); } }
+@media (prefers-reduced-motion: reduce) { .tc-join.pulse { animation: none; } }
+.tc-badge.live { background: #dcfce7; color: #166534; }
+.tc-away { margin-top: 6px; font-size: .8rem; font-weight: 600; color: #92400e; background: #fef3c7; border-radius: 8px; padding: 4px 8px; }
+.teacher-container[data-theme="dark"] .tc-away { background: rgba(245,158,11,.16); color: #fcd34d; }
+.teacher-container[data-theme="dark"] .tc-badge.live { background: rgba(34,197,94,.16); color: #86efac; }
+/* Admin's stylesheet (global) hides .nav-label on phones; teachers get labels */
+@media (max-width: 767px) {
+  .teacher-container .mobile-bottom-nav .nav-item { flex-direction: column; gap: 3px; }
+  .teacher-container .mobile-bottom-nav .nav-item .nav-label { display: block; font-size: .68rem; font-weight: 600; line-height: 1; }
+  .teacher-container .mobile-bottom-nav .nav-item.active::after { display: none; }
+  .teacher-container .mobile-bottom-nav .nav-item.active .nav-label { font-weight: 800; }
+}
+
+/* Gallery upload: per-photo status */
+.up-thumb { position: relative; }
+.up-thumb.done img { opacity: .55; }
+.up-thumb.failed img { outline: 2px solid #dc2626; }
+.up-badge { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; font-weight: 800; color: #fff; }
+.up-badge.done { background: #16a34a; } .up-badge.failed { background: #dc2626; } .up-badge.uploading { background: #2563eb; }
+.bulk-btn.informed { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.teacher-container[data-theme="dark"] .bulk-btn.informed { background: rgba(245,158,11,.16); color: #fcd34d; border-color: rgba(245,158,11,.4); }
+
+/* Batch upload: one column on phones, fields never wider than the card */
+.gallery-upload-grid > * { min-width: 0; }
+.gallery-upload-grid input, .gallery-upload-grid select { box-sizing: border-box; max-width: 100%; }
+@media (max-width: 768px) {
+  .gallery-upload-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .gallery-upload { padding: 14px !important; }
+}
+
+/* Dark-mode contrast fixes (phone nav, unmarked attendance switch, chat bubbles) */
+.teacher-container[data-theme="dark"] .mobile-bottom-nav .nav-item { color: #94a3b8; }
+.teacher-container[data-theme="dark"] .mobile-bottom-nav .nav-item.active { color: #60a5fa; }
+.status-switch.neutral .switch-text { color: #334155; }
+.teacher-container .rt-msg.teacher { color: #0f172a; background: #e2e8f0; }
+.teacher-container[data-theme="dark"] .rt-msg.teacher { color: #f1f5f9; background: #334155; }
+.teacher-container .rt-who { opacity: 1; }

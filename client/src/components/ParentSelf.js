@@ -382,14 +382,14 @@ export const switchToChild = (child) => {
 };
 
 // ---------- teacher's side of a report conversation ----------
-export const TeacherReportThread = ({ report, teacherId, onUpdated }) => {
+export const TeacherReportThread = ({ report, teacherId, onUpdated, allowStart = false }) => {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const msgs = report.messages?.length
     ? report.messages
     : report.parentComment ? [{ from: "parent", text: report.parentComment, _legacy: true }] : [];
-  if (!msgs.length) return null; // the parent starts the conversation
+  if (!msgs.length && !allowStart) return null; // the parent usually starts the conversation
   const send = async () => {
     if (!text.trim()) return;
     setBusy(true);
@@ -406,6 +406,7 @@ export const TeacherReportThread = ({ report, teacherId, onUpdated }) => {
   };
   return (
     <div className="rt-thread teacher">
+      {msgs.length === 0 && <p className="rt-start-hint">Start a conversation with the parent about this report.</p>}
       <ul className="rt-list">
         {msgs.map((m, i) => (
           <li key={m._id || i} className={`rt-msg ${m.from === "teacher" ? "parent" : "teacher"}`}>
@@ -415,7 +416,7 @@ export const TeacherReportThread = ({ report, teacherId, onUpdated }) => {
         ))}
       </ul>
       <div className="rt-compose inline">
-        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Reply to the parent…" aria-label="Reply to the parent" maxLength={1000} onKeyDown={(e) => e.key === "Enter" && send()} />
+        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder={msgs.length ? "Reply to the parent…" : "Write to the parent…"} aria-label="Message to the parent" maxLength={1000} onKeyDown={(e) => e.key === "Enter" && send()} />
         <button type="button" className="rt-send" onClick={send} disabled={busy || !text.trim()}>{busy ? "…" : "Send"}</button>
       </div>
       {error && <p className="pd-sheet-error" role="alert">{error}</p>}
