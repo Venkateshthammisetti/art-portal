@@ -106,7 +106,11 @@ const UserSchema = new mongoose.Schema({
     amount: Number,
     url: String,             // Cloudinary URL
     note: { type: String, default: '' },
-    at: { type: Date, default: Date.now }
+    at: { type: Date, default: Date.now },
+    // Admin review: missing/'pending' = not looked at yet
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    reviewedAt: Date,
+    reviewNote: { type: String, default: '' }
   }],
 
   // Student Pass History (months where fee is waived)

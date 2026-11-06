@@ -1966,12 +1966,27 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
               {(() => {
                 const paidMonths = new Set(feeList.filter((r) => r.status === "Paid").map((r) => r.month));
-                const waiting = (studentProfile?.paymentProofs || []).filter((pp) => (pp.months || []).some((m) => !paidMonths.has(m)));
-                return waiting.length > 0 ? (
-                  <div className="ps-proof-note" role="status">
-                    <strong>Proof sent</strong> for {waiting.flatMap((pp) => pp.months).filter((m, i, a) => a.indexOf(m) === i).map(formatFullMonthDate).join(", ")} — the academy will mark it as paid after checking.
-                  </div>
-                ) : null;
+                const proofs = studentProfile?.paymentProofs || [];
+                const unpaid = (pp) => (pp.months || []).some((m) => !paidMonths.has(m));
+                const waiting = proofs.filter((pp) => (pp.status || "pending") === "pending" && unpaid(pp));
+                // latest rejected proof, unless the parent has since sent a newer one
+                const rejected = [...proofs].reverse().find((pp) => pp.status === "rejected" && unpaid(pp));
+                const rejectedStillOpen = rejected && !waiting.some((w) => new Date(w.at) > new Date(rejected.at));
+                return (
+                  <>
+                    {rejectedStillOpen && (
+                      <div className="ps-proof-note rejected" role="alert">
+                        <strong>Payment proof not accepted</strong> for {(rejected.months || []).map(formatFullMonthDate).join(", ")}
+                        {rejected.reviewNote ? `: ${rejected.reviewNote}` : "."} Please send it again or contact the academy.
+                      </div>
+                    )}
+                    {waiting.length > 0 && (
+                      <div className="ps-proof-note" role="status">
+                        <strong>Proof sent</strong> for {waiting.flatMap((pp) => pp.months).filter((m, i, a) => a.indexOf(m) === i).map(formatFullMonthDate).join(", ")} — the academy will mark it as paid after checking.
+                      </div>
+                    )}
+                  </>
+                );
               })()}
               <div className="fee-table-wrapper">
                 <table className="fee-table">

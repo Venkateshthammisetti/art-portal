@@ -235,3 +235,8 @@ body.dark .bday-notif-icon.reset { background: rgba(239, 68, 68, 0.16); color: #
 }
 .admin-container[data-theme="dark"] .bday-notif-resolve,
 body.dark .bday-notif-resolve { color: #fca5a5; }
+.bday-notif-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.bday-notif-actions .bday-notif-resolve { margin-top: 0; }
+.bday-notif-resolve.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.admin-container[data-theme="dark"] .bday-notif-resolve.primary,
+body.dark .bday-notif-resolve.primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }

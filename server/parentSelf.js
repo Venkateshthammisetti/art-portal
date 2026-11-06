@@ -160,6 +160,79 @@ module.exports = (upload) => {
     }
   });
 
+  // ---------- admin: payment proofs waiting for review ----------
+  router.get("/admin/payment-proofs", async (req, res) => {
+    try {
+      const parents = await User.find({ role: "parent", "paymentProofs.0": { $exists: true } })
+        .select("username fullName childName phone monthlyFee payments passes paymentProofs isActive").lean();
+      const out = [];
+      parents.forEach((u) => (u.paymentProofs || []).forEach((p) => {
+        if ((p.status || "pending") !== "pending") return;
+        out.push({
+          userId: u._id, proofId: p._id, username: u.username, fullName: u.fullName, childName: u.childName, phone: u.phone,
+          months: p.months || [], amount: p.amount || 0, url: p.url, note: p.note || "", at: p.at,
+          alreadyPaid: (p.months || []).filter((m) => (u.payments || []).some((x) => x.month === m && x.status === "Paid")),
+        });
+      }));
+      out.sort((a, b) => new Date(b.at) - new Date(a.at));
+      res.json(out.slice(0, 100));
+    } catch (err) {
+      console.error("Proof list error:", err);
+      res.status(500).json({ message: "Error loading payment proofs" });
+    }
+  });
+
+  // approve: records the payment for each month (amounts come from the admin's
+  // fee rules) and marks the proof done; reject: marks it and tells the parent why
+  router.put("/admin/payment-proofs/:userId/:proofId", async (req, res) => {
+    try {
+      const { action, amounts = {}, note = "" } = req.body || {};
+      if (!["approve", "reject"].includes(action)) return res.status(400).json({ message: "Unknown action" });
+      const parent = await loadParent(req.params.userId, res);
+      if (!parent) return;
+      const proof = (parent.paymentProofs || []).find((p) => String(p._id) === req.params.proofId);
+      if (!proof) return res.status(404).json({ message: "Proof not found" });
+      if ((proof.status || "pending") !== "pending") return res.status(409).json({ message: `Already ${proof.status}` });
+      const reason = String(note).trim().slice(0, 200);
+      if (action === "reject" && !reason) return res.status(400).json({ message: "Tell the parent why it wasn't accepted" });
+
+      const recorded = [];
+      if (action === "approve") {
+        const months = (proof.months || []).filter((m) => /^\d{4}-\d{2}$/.test(m));
+        if (!months.length) return res.status(400).json({ message: "This proof has no valid months" });
+        months.forEach((m) => {
+          if ((parent.payments || []).some((x) => x.month === m && x.status === "Paid")) return; // already paid
+          const amt = Number(amounts[m]);
+          parent.payments.push({
+            month: m,
+            status: "Paid",
+            amount: Number.isFinite(amt) && amt >= 0 ? amt : Math.round((proof.amount || parent.monthlyFee || 0) / months.length),
+            paidDate: new Date(),
+          });
+          recorded.push(m);
+        });
+        // a one-off pass for a month that was just paid is replaced by the payment
+        parent.passes = (parent.passes || []).filter((p) => !recorded.includes(p.month));
+      }
+      proof.status = action === "approve" ? "approved" : "rejected";
+      proof.reviewedAt = new Date();
+      proof.reviewNote = reason;
+      await parent.save();
+      res.json({ ok: true, recorded, status: proof.status });
+
+      parentPush.later("Payment review", async () => {
+        const kid = parent.childName ? `${parent.childName}'s` : "Your";
+        const labels = (proof.months || []).map((m) => parentPush.monthLabel(m)).join(", ");
+        return parentPush.pushToUsers([parent], action === "approve"
+          ? { title: "✅ Payment received", body: `${kid} fee for ${labels} is marked as paid. Thank you!`, tag: `paid-${proof._id}`, url: `${parentPush.APP_URL}/#fees` }
+          : { title: "⚠️ Payment proof not accepted", body: `${kid} payment proof for ${labels} couldn't be accepted: ${reason}. Please send it again or contact the academy.`, tag: `proof-no-${proof._id}`, url: `${parentPush.APP_URL}/#fees` });
+      });
+    } catch (err) {
+      console.error("Proof review error:", err);
+      res.status(500).json({ message: "Couldn't save the review" });
+    }
+  });
+
   // ---------- absence notice: "my child can't attend this class" ----------
   router.post("/parent/:id/absence", async (req, res) => {
     try {

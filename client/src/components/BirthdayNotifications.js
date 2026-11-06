@@ -88,7 +88,7 @@ export const getBirthdayNotifications = (students, today = new Date()) => {
  * the last week) by itself when the app opens, once per poster. `holdPopup` delays it while another dialog is showing
  * or the page is still loading, so popups never stack.
  */
-const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, holdPopup = false, showResetRequests = false }) => {
+const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, holdPopup = false, showResetRequests = false, onOpenUser = null }) => {
   const [resetRequests, setResetRequests] = useState([]);
   const [resetsLoaded, setResetsLoaded] = useState(!showResetRequests);
   const [open, setOpen] = useState(false);
@@ -348,16 +348,32 @@ const BirthdayNotificationBell = ({ students, storageKey, autoPopup = false, hol
                         </p>
                       )}
                       <p className="bday-notif-sub">{timeAgo(n.request.at)}</p>
-                      <button
-                        type="button"
-                        className="bday-notif-resolve"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          resolveReset(n.request);
-                        }}
-                      >
-                        Mark done
-                      </button>
+                      <div className="bday-notif-actions">
+                        {n.request.userId && onOpenUser && (
+                          <button
+                            type="button"
+                            className="bday-notif-resolve primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markRead(n.id);
+                              setOpen(false);
+                              onOpenUser(n.request.userId);
+                            }}
+                          >
+                            Set new password
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="bday-notif-resolve"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resolveReset(n.request);
+                          }}
+                        >
+                          Mark done
+                        </button>
+                      </div>
                     </div>
                     {!readIds.includes(n.id) && <span className="bday-notif-dot" />}
                   </div>

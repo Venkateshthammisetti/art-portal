@@ -4822,3 +4822,59 @@ body {
 .proof-sent-badge { display: inline-block; margin-top: 4px; font-size: 0.72rem; font-weight: 700; color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 3px 9px; text-decoration: none; }
 .proof-sent-badge:hover { text-decoration: underline; }
 body.dark .proof-sent-badge, .dark .proof-sent-badge { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+
+/* Edit Details: "Password changed" confirmation */
+.pw-done-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+.pw-wa-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border-radius: 10px; background: #047857; color: #fff; font-weight: 700; text-decoration: none; }
+.pw-no-phone { font-size: 0.85rem; color: #b45309; }
+
+/* Payment proofs to review */
+.proof-review-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; font-weight: 600; cursor: pointer; }
+.proof-review-btn.has-items { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; }
+.proof-count { background: #2563eb; color: #fff; border-radius: 999px; font-size: 0.72rem; padding: 2px 8px; font-weight: 700; }
+.proof-panel { max-width: 680px; width: 94vw; max-height: 90vh; display: flex; flex-direction: column; }
+.proof-panel-body { padding: 14px 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.proof-card { display: flex; gap: 14px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; background: #fff; }
+.proof-thumb { flex: 0 0 110px; height: 140px; border-radius: 8px; overflow: hidden; background: #f1f5f9; display: grid; place-items: center; text-decoration: none; color: #475569; font-weight: 700; }
+.proof-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.proof-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.proof-sub { font-size: 0.78rem; color: #64748b; }
+.proof-months { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; }
+.proof-months li em { font-style: normal; font-weight: 700; margin-left: 6px; }
+.proof-months li.done { color: #64748b; text-decoration: line-through; }
+.proof-total { font-size: 0.82rem; color: #334155; }
+.proof-warn { color: #b45309; }
+.proof-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.proof-reject label { font-size: 0.8rem; font-weight: 600; display: block; margin: 6px 0 4px; }
+.proof-reject input { width: 100%; box-sizing: border-box; min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #cbd5e1; }
+.proof-reject-btn { min-height: 40px; padding: 0 16px; border-radius: 8px; border: none; background: #b91c1c; color: #fff; font-weight: 700; cursor: pointer; }
+.proof-reject-btn.outline { background: transparent; color: #b91c1c; border: 1px solid #b91c1c; }
+.proof-reject-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.proof-empty { text-align: center; color: #64748b; padding: 24px 0; }
+.proof-error { color: #b91c1c; font-size: 0.85rem; }
+@media (max-width: 520px) { .proof-card { flex-direction: column; } .proof-thumb { flex-basis: auto; height: 180px; } }
+.admin-container[data-theme="dark"] .proof-card { background: #1e293b; border-color: #334155; }
+.admin-container[data-theme="dark"] .proof-review-btn { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+.admin-container[data-theme="dark"] .proof-review-btn.has-items { background: rgba(59,130,246,.16); color: #93c5fd; border-color: #3b82f6; }
+.admin-container[data-theme="dark"] .proof-total, .admin-container[data-theme="dark"] .proof-info strong { color: #e2e8f0; }
+.admin-container[data-theme="dark"] .proof-sub, .admin-container[data-theme="dark"] .proof-empty { color: #94a3b8; }
+.admin-container[data-theme="dark"] .proof-reject input { background: #0f172a; border-color: #475569; color: #e2e8f0; }
+.admin-container[data-theme="dark"] .proof-reject-btn.outline { color: #fca5a5; border-color: #fca5a5; }
+.admin-container[data-theme="dark"] .proof-warn { color: #fcd34d; }
+
+/* Fee reminders queue */
+.queue-panel { max-width: 520px; width: 94vw; max-height: 90vh; display: flex; flex-direction: column; }
+.queue-body { padding: 14px 18px 20px; overflow-y: auto; }
+.queue-skip { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-bottom: 10px; min-height: 36px; }
+.queue-progress { font-weight: 700; margin: 0 0 8px; }
+.queue-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.queue-sub { font-size: 0.8rem; color: #64748b; }
+.queue-msg { white-space: pre-wrap; font-family: inherit; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; padding: 10px; margin: 8px 0 0; max-height: 240px; overflow: auto; }
+.queue-warn { color: #b45309; font-size: 0.82rem; margin: 6px 0 0; }
+.queue-empty { text-align: center; color: #64748b; padding: 24px 0; }
+.queue-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.queue-actions .pw-wa-btn { border: none; cursor: pointer; font-size: 0.95rem; }
+.queue-actions .pw-wa-btn:disabled { opacity: .5; cursor: not-allowed; }
+.admin-container[data-theme="dark"] .queue-card { border-color: #334155; }
+.admin-container[data-theme="dark"] .queue-msg { background: #0f172a; color: #e2e8f0; }
+.admin-container[data-theme="dark"] .queue-sub, .admin-container[data-theme="dark"] .queue-empty { color: #94a3b8; }
