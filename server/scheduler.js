@@ -136,7 +136,7 @@ const checkTeacherReminders = async () => {
 
       const payload = JSON.stringify({
         title: `📝 Month-End Reminder`,
-        body: `${urgency} Please upload pending artworks and submit student reports before the month ends.`,
+        body: `${urgency} Please upload this month's pending artworks. (Monthly reports are sent at the start of next month.)`,
         url: "https://art-portal.netlify.app/#gallery"
       });
 
@@ -476,6 +476,54 @@ const checkTeacherClassReminders = async () => {
 };
 
 // ==========================================
+// REPORT REMINDERS (Teachers): last month's reports, on the 1st, 3rd and 5th
+// ==========================================
+// Reports are written for the month that just ended (October's in November).
+// Each teacher hears how many of their students still don't have one.
+const REPORT_REMINDER_DAYS = [1, 3, 5];
+const checkTeacherReportReminders = async (force = false) => {
+  if (!setupVapid()) return;
+  const ist = new Date(Date.now() + 330 * 60000);
+  if (!force && !REPORT_REMINDER_DAYS.includes(ist.getUTCDate())) return;
+  const [y, m] = ist.toISOString().slice(0, 7).split('-').map(Number);
+  const month = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+  const label = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)) - 1, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+  try {
+    const Feedback = require('./models/Feedback');
+    const { getStudentStartMonth, isInactiveForMonth } = require('./fees');
+    const classes = await Class.find({ teacher: { $ne: null } })
+      .populate('teacher', 'pushSubscription notifyPrefs fullName')
+      .populate('students', 'isActive registeredDate joiningDate createdAt inactiveHistory');
+    const byTeacher = new Map();
+    classes.forEach((c) => {
+      if (!c.teacher?.pushSubscription) return;
+      const k = String(c.teacher._id);
+      if (!byTeacher.has(k)) byTeacher.set(k, { teacher: c.teacher, students: new Map() });
+      (c.students || []).forEach((st) => {
+        if (!st || st.isActive === false || getStudentStartMonth(st) > month || isInactiveForMonth(st, month)) return;
+        byTeacher.get(k).students.set(String(st._id), st);
+      });
+    });
+    let sent = 0;
+    for (const { teacher, students } of byTeacher.values()) {
+      if (!students.size) continue;
+      const done = new Set((await Feedback.find({ teacherId: teacher._id, month }).select('studentId').lean()).map((f) => String(f.studentId)));
+      const due = [...students.keys()].filter((id) => !done.has(id)).length;
+      if (!due) continue;
+      sent += await parentPush.pushToUsers([teacher], {
+        title: `📝 ${label} reports: ${due} to send`,
+        body: `${students.size - due} of ${students.size} done. Tap to see who is still due.`,
+        tag: `reports-due-${month}`,
+        url: `${parentPush.APP_URL}/#feedback`,
+      });
+    }
+    if (sent) console.log(`📝 Report reminders sent to ${sent} teachers for ${month}`);
+  } catch (err) {
+    console.error('❌ Report reminder error:', err.message);
+  }
+};
+
+// ==========================================
 // ADMIN MORNING SUMMARY (9 AM India time)
 // ==========================================
 const sendAdminSummary = async () => {
@@ -520,6 +568,9 @@ const startScheduler = () => {
   // Clear in-memory dedup set at midnight
   cron.schedule('0 0 * * *', clearSentSet);
 
+  // Teachers: last month's reports still to send, 9:15 AM India time on the 1st, 3rd and 5th
+  cron.schedule('15 9 * * *', () => checkTeacherReportReminders(), { timezone: 'Asia/Kolkata' });
+
   // Admin: morning summary of what needs attention, 9:05 AM India time
   cron.schedule('5 9 * * *', sendAdminSummary, { timezone: 'Asia/Kolkata' });
 
@@ -537,3 +588,4 @@ module.exports = startScheduler;
 startScheduler.checkClassReminders = checkClassReminders; // exposed for tests
 startScheduler.sendAdminSummary = sendAdminSummary; // exposed for tests
 startScheduler.checkTeacherClassReminders = checkTeacherClassReminders; // exposed for tests
+startScheduler.checkTeacherReportReminders = checkTeacherReportReminders; // exposed for tests

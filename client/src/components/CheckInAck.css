@@ -1,0 +1,21 @@
+.ack-btn { flex-shrink: 0; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; color: #334155; font-weight: 700; font-size: .78rem; cursor: pointer; }
+.ack-form { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 6px; }
+.ack-form input { flex: 1; min-width: 0; min-height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 16px; background: #fff; color: #0f172a; }
+.ack-save { min-height: 38px; padding: 0 14px; border-radius: 8px; border: none; background: #0f172a; color: #fff; font-weight: 700; cursor: pointer; }
+.ack-cancel { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: transparent; color: #334155; font-size: 1.1rem; cursor: pointer; }
+.ack-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ack-known { margin-top: 6px; font-size: .78rem; }
+.ack-known summary { cursor: pointer; color: #64748b; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.ack-known ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.ack-known li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid #f1f5f9; color: #475569; }
+.ack-known li span em { font-style: normal; color: #64748b; }
+.ack-known li button { min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: transparent; color: #1d4ed8; font-weight: 700; font-size: .75rem; cursor: pointer; flex-shrink: 0; }
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-btn,
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-form input { background: #0f172a; border-color: #475569; color: #e2e8f0; }
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-save { background: #3b82f6; }
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-cancel,
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-known li button { border-color: #475569; color: #93c5fd; }
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-known summary,
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-known li,
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-known li span em { color: #94a3b8; }
+:is(.teacher-container, .admin-container)[data-theme="dark"] .ack-known li { border-color: #334155; }

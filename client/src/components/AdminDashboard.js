@@ -2608,7 +2608,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
   );
 };
 
-const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate, onOpenProofs, onOpenUser, onOpenOverdue }) => {
+const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate, onOpenProofs, onOpenUser, onOpenOverdue, adminId }) => {
   // ===== ATTENDANCE WIDGET STATE =====
   const [attSelectedClass, setAttSelectedClass] = useState("");
   const [attMonth, setAttMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -2945,7 +2945,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     <div
       style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}
     >
-      <AdminAttention onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
+      <AdminAttention adminId={adminId} onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
       <div
         className="overview-hero-banner"
         style={{
@@ -9459,6 +9459,7 @@ const AdminDashboard = ({ user, onLogout }) => {
             onOpenProofs={() => { setFeeOpenProofs(true); handleNavigate("fees"); }}
             onOpenUser={(userId) => { setOpenEditUserId(userId); handleNavigate("users"); }}
             onOpenOverdue={() => { setFeeInitialSort("total-pending-high"); handleNavigate("fees"); }}
+            adminId={user?._id}
           />}
           {activeTab === "revenue-analytics" && <RevenueAnalyticsTab users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onBack={() => handleNavigate("overview")} />}
           {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} openEditUserId={openEditUserId} onOpenedEdit={() => setOpenEditUserId(null)} />}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { TeacherReportThread } from "./ParentSelf";
-import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey, useTodayNotes, ClassNoteSheet, ReportsDueCard, AtRiskCard } from "./TeacherExtras";
+import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey, useTodayNotes, ClassNoteSheet, ReportsDueCard, AtRiskCard, reportMonthKey } from "./TeacherExtras";
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
 import imageCompression from "browser-image-compression";
@@ -1049,7 +1049,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [rmQueue, setRmQueue] = useState([]); // students still due a report, in order
   const pickDueStudent = (st, due) => {
     setRmQueue(due.map((x) => x._id));
-    setRmForm((prev) => ({ ...prev, studentId: st._id }));
+    setRmForm((prev) => ({ ...prev, studentId: st._id, month: reportMonthKey() }));
     openReportMaker();
   };
   useEffect(() => {
@@ -1085,16 +1085,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [isClassScheduled, setIsClassScheduled] = useState(true);
   const [forceExtraSession, setForceExtraSession] = useState(false);
   const [feedbackStudent, setFeedbackStudent] = useState("");
-  const [feedbackMonth, setFeedbackMonth] = useState(
-    new Date().toISOString().slice(0, 7),
-  );
+  // reports are written for last month (October's report is sent in November)
+  const [feedbackMonth, setFeedbackMonth] = useState(reportMonthKey);
   const [feedbackText, setFeedbackText] = useState("");
   const [rating, setRating] = useState(5);
   const [reportFile, setReportFile] = useState(null);
   const [feedbackHistory, setFeedbackHistory] = useState([]);
-  const [historyMonth, setHistoryMonth] = useState(
-    new Date().toISOString().slice(0, 7),
-  );
+  const [historyMonth, setHistoryMonth] = useState(reportMonthKey);
   const [sharingReportId, setSharingReportId] = useState(null);
 
   // --- CERTIFICATIONS ---
@@ -1121,7 +1118,6 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   })();
   const [rmForm, setRmForm] = useState({
-    month: new Date().toISOString().slice(0, 7),
     attendance: "",
     fee: "Paid",
     topics: "",
@@ -1130,6 +1126,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     feedback: "",
     overall: "EXCELLENT",
     ...rmDraft.form,
+    month: reportMonthKey(), // always last month, never an old draft's month
     studentId: "",
   });
   const [rmRatings, setRmRatings] = useState({
@@ -1804,7 +1801,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
   // Persist the draft (everything except the student-specific fields)
   useEffect(() => {
-    const { studentId, attendance, ...form } = rmForm;
+    const { studentId, attendance, month, ...form } = rmForm;
     try {
       localStorage.setItem("rmDraft", JSON.stringify({ form, ratings: rmRatings }));
     } catch {

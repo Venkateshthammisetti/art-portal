@@ -101,13 +101,21 @@
 .rd-list button span { font-weight: 400; font-size: .72rem; color: #64748b; }
 .ar-card { border-left: 5px solid #dc2626; }
 .ar-card ul { list-style: none; margin: 8px 0 0; padding: 0; }
-.ar-card li button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 48px; padding: 8px 0; background: none; border: none; border-top: 1px solid #f1f5f9; color: inherit; cursor: pointer; font: inherit; }
-.ar-card li span { font-size: .8rem; color: #64748b; }
+.ar-card li .ar-open { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 48px; padding: 8px 0; background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
+.ar-card li .ar-open span { font-size: .8rem; color: #64748b; }
 .teacher-container[data-theme="dark"] .rd-card, .teacher-container[data-theme="dark"] .ar-card { background: #1e293b; border-color: #334155; }
 .teacher-container[data-theme="dark"] .ar-card { border-left-color: #ef4444; }
 .teacher-container[data-theme="dark"] .rd-list button { background: #0f172a; border-color: #475569; color: #f1f5f9; }
-.teacher-container[data-theme="dark"] .rd-list button span, .teacher-container[data-theme="dark"] .ar-card li span { color: #94a3b8; }
-.teacher-container[data-theme="dark"] .ar-card li button { border-color: #334155; }
+.teacher-container[data-theme="dark"] .rd-list button span, .teacher-container[data-theme="dark"] .ar-card li .ar-open span { color: #94a3b8; }
+
 .teacher-container[data-theme="dark"] .rd-pill { background: rgba(245,158,11,.16); color: #fcd34d; }
 .teacher-container[data-theme="dark"] .rd-pill.ok, .teacher-container[data-theme="dark"] .rd-ok { background: transparent; color: #86efac; }
 .teacher-container[data-theme="dark"] .rd-pill.ok { background: rgba(34,197,94,.16); }
+.rd-sub { margin: 2px 0 0; font-size: .78rem; color: #64748b; }
+.teacher-container[data-theme="dark"] .rd-sub { color: #94a3b8; }
+.ar-card .ar-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid #f1f5f9; }
+.ar-card .ar-row .ar-open { flex: 1; min-width: 160px; border-top: none; }
+.ar-card .ar-row .ack-form { flex-basis: 100%; margin: 0 0 8px; }
+.ar-card.quiet { border-left-color: #cbd5e1; padding-top: 6px; padding-bottom: 6px; }
+.teacher-container[data-theme="dark"] .ar-card .ar-row { border-color: #334155; }
+.teacher-container[data-theme="dark"] .ar-card.quiet { border-left-color: #475569; }

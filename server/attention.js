@@ -14,7 +14,7 @@ const prevMonth = (ym) => { const [y, m] = ym.split("-").map(Number); return m =
 const first = (s) => String(s || "").trim().split(/\s+/)[0];
 
 // Students whose last `n` recorded classes were all missed (Absent or Missed).
-// Returns Map studentId -> { misses, lastPresent }
+// Returns Map studentId -> { misses, lastPresent, streakStart }
 const absenceStreaks = async (studentIds = null, n = 3) => {
   const since = istDateKey(-75);
   const q = { date: { $gte: since } };
@@ -33,17 +33,23 @@ const absenceStreaks = async (studentIds = null, n = 3) => {
     for (const r of list) { if (r.status === "Present") break; misses++; }
     if (misses >= n) {
       const lastPresent = list.find((r) => r.status === "Present");
-      out.set(k, { misses, lastPresent: lastPresent ? lastPresent.date : null });
+      // first missed class of this run: a "known" mark is tied to it, so it
+      // lapses on its own once the student attends and later misses again
+      out.set(k, { misses, lastPresent: lastPresent ? lastPresent.date : null, streakStart: list[misses - 1].date });
     }
   });
   return out;
 };
 
+// The "I'm aware" mark that covers this run of absences, if any
+const ackFor = (student, streak, test) =>
+  (student.checkInAcks || []).find((a) => a.streakStart === streak.streakStart && test(a)) || null;
+
 const computeAttention = async () => {
   const today = istDateKey();
   const thisMonth = today.slice(0, 7);
   const parents = await User.find({ role: "parent" })
-    .select("username fullName childName phone isActive assignedClass registeredDate joiningDate createdAt monthlyFee payments passes inactiveHistory feeChangeHistory feeOverrides paymentProofs absenceNotices")
+    .select("username fullName childName phone isActive assignedClass registeredDate joiningDate createdAt monthlyFee payments passes inactiveHistory feeChangeHistory feeOverrides paymentProofs absenceNotices checkInAcks")
     .lean();
   const active = parents.filter((p) => p.isActive !== false);
   const name = (p) => p.childName || p.fullName || p.username;
@@ -69,9 +75,17 @@ const computeAttention = async () => {
 
   // 4. students who missed their last 3 classes
   const streaks = await absenceStreaks(active.map((p) => p._id));
-  const missing = active.filter((p) => streaks.has(String(p._id)))
-    .map((p) => ({ userId: p._id, child: name(p), parent: p.fullName || "", phone: p.phone || "", ...streaks.get(String(p._id)) }))
+  const missingAll = active.filter((p) => streaks.has(String(p._id)))
+    .map((p) => {
+      const st = streaks.get(String(p._id));
+      const adminAck = ackFor(p, st, (a) => a.role === "admin");
+      const teacherAck = ackFor(p, st, (a) => a.role === "teacher");
+      return { userId: p._id, child: name(p), parent: p.fullName || "", phone: p.phone || "", ...st,
+        known: !!adminAck, knownNote: adminAck?.note || "", teacherNote: teacherAck ? (teacherAck.note || "Teacher is aware") : "" };
+    })
     .sort((a, b) => b.misses - a.misses);
+  const missing = missingAll.filter((m) => !m.known);
+  const missingKnown = missingAll.filter((m) => m.known);
 
   // 5. classes that ended today without attendance
   const now = istNow();
@@ -101,7 +115,7 @@ const computeAttention = async () => {
     counts,
     total: Object.values(counts).reduce((a, b) => a + b, 0),
     overdueAmount: overdue.reduce((s, o) => s + o.amount, 0),
-    items: { proofs: proofs.slice(0, 20), resets, overdue: overdue.slice(0, 30), missing: missing.slice(0, 30), unmarked, notices },
+    items: { proofs: proofs.slice(0, 20), resets, overdue: overdue.slice(0, 30), missing: missing.slice(0, 30), missingKnown: missingKnown.slice(0, 30), unmarked, notices },
   };
 };
 
@@ -118,4 +132,4 @@ const summaryLine = (a) => {
   return bits.length ? bits.join(" · ") : null;
 };
 
-module.exports = { computeAttention, absenceStreaks, summaryLine, istDateKey, first };
+module.exports = { computeAttention, absenceStreaks, ackFor, summaryLine, istDateKey, first };
