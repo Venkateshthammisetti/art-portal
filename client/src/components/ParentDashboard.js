@@ -3,7 +3,7 @@ import axios from "axios";
 import { buildFeeHistory, feeRowForMonth, monthKey } from "../utils/fees";
 import { NotificationSettings, WhatsNewCard, MoreSheet } from "./ParentExtras";
 import { RatingTrend, AttendanceCalendar, attendanceStreak, bestStreak, GalleryProgress } from "./ParentProgress";
-import { AbsencePanel, downloadCalendar, EditContactSheet, ReportThread, PaymentProofSheet, downloadReceipt, ReferralStats, useFamily, switchToChild } from "./ParentSelf";
+import { AbsencePanel, downloadCalendar, EditContactSheet, ReportThread, PaymentProofSheet, downloadReceipt, ReferralStats, useFamily, switchToChild, ClassNotesCard } from "./ParentSelf";
 import "./ParentDashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -630,6 +630,21 @@ const ParentDashboard = ({ user, onLogout }) => {
   // Modal States
   const [showFeeReminder, setShowFeeReminder] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // offline: no connection, or the service worker answered from saved data
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
+  useEffect(() => {
+    const goOffline = () => setOffline(true);
+    const goOnline = () => setOffline(false);
+    const onSw = (e) => { if (e.data?.type === "offline-data") setOffline(true); };
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", onSw);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+      if ("serviceWorker" in navigator) navigator.serviceWorker.removeEventListener("message", onSw);
+    };
+  }, []);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -1385,7 +1400,13 @@ const ParentDashboard = ({ user, onLogout }) => {
         </header>
 
         <div className="p-content" ref={contentRef}>
-          {loadError && (
+          {offline && (
+            <div className="offline-banner" role="status">
+              <span>You're offline — showing the details saved on this phone.</span>
+              <button type="button" onClick={() => { setOffline(navigator.onLine === false); fetchParentData(); }}>Try again</button>
+            </div>
+          )}
+          {loadError && !offline && (
             <div className="load-error-banner" role="alert">
               <span>Some details couldn't load. What you see may be out of date.</span>
               <button type="button" onClick={fetchParentData} disabled={loading}>{loading ? "Loading…" : "Retry"}</button>
@@ -1424,6 +1445,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                   else handleNavClick(item.tab);
                 }}
               />
+              <ClassNotesCard studentId={currentUser._id} compact onSeeAll={() => handleNavClick("schedule")} />
               <div className="info-card attendance-card">
                 <h3
                   onClick={() => handleNavClick("attendance")}
@@ -1740,6 +1762,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                     </button>
                     <span className="ps-muted">Weekly reminders on your phone, 15 minutes before class</span>
                   </div>
+                  <ClassNotesCard studentId={currentUser._id} />
                   <AbsencePanel
                     studentId={currentUser._id}
                     schedule={assignedClass.schedule}

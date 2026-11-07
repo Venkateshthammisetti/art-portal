@@ -3924,3 +3924,15 @@
 .teacher-container .rt-msg.teacher { color: #0f172a; background: #e2e8f0; }
 .teacher-container[data-theme="dark"] .rt-msg.teacher { color: #f1f5f9; background: #334155; }
 .teacher-container .rt-who { opacity: 1; }
+
+/* class note button on today's card + report queue banner */
+.tc-btn.tc-note { background: #eef2ff !important; color: #3730a3 !important; }
+.tc-btn.tc-note.done { background: #dcfce7 !important; color: #166534 !important; }
+.teacher-container[data-theme="dark"] .tc-btn.tc-note { background: rgba(99,102,241,.18) !important; color: #c7d2fe !important; }
+.teacher-container[data-theme="dark"] .tc-btn.tc-note.done { background: rgba(34,197,94,.16) !important; color: #86efac !important; }
+.rm-queue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; }
+.rm-queue span { flex: 1; min-width: 180px; }
+.rm-queue button { min-height: 40px; padding: 0 14px; border-radius: 8px; border: none; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; }
+.rm-queue button.ghost { background: transparent; color: #1e3a8a; border: 1px solid #93c5fd; }
+.teacher-container[data-theme="dark"] .rm-queue { background: rgba(59,130,246,.14); color: #bfdbfe; border-color: rgba(59,130,246,.35); }
+.teacher-container[data-theme="dark"] .rm-queue button.ghost { color: #bfdbfe; }

@@ -1537,3 +1537,23 @@ body.dark .pd-family-btn.current { color: #93c5fd; }
 body.dark .join-btn.disabled, body.dark .join-btn:disabled { color: #cbd5e1 !important; background: #334155 !important; border-color: #475569 !important; }
 .ps-proof-note.rejected { background: #fef2f2; color: #7f1d1d; border-color: #fecaca; }
 body.dark .ps-proof-note.rejected { background: rgba(239, 68, 68, 0.14); color: #fecaca; border-color: rgba(239, 68, 68, 0.35); }
+
+/* Class notes & homework */
+.cn-card { min-width: 0; }
+.cn-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cn-head h4 { margin: 0 0 6px; font-size: 1rem; color: var(--p-text); }
+.info-card.cn-card .cn-head h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: .04em; color: var(--p-muted); }
+.cn-list { list-style: none; margin: 0; padding: 0; }
+.cn-list li { padding: 10px 0; border-top: 1px solid var(--p-border); }
+.cn-list li:first-child { border-top: none; }
+.cn-date { font-size: .75rem; font-weight: 700; color: var(--p-muted); }
+.cn-text { margin: 4px 0 0; color: var(--p-text); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.cn-hw { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: #fef3c7; color: #78350f; white-space: pre-wrap; overflow-wrap: anywhere; }
+body.dark .cn-hw { background: rgba(245, 158, 11, 0.16); color: #fde68a; }
+
+/* Offline */
+.offline-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #e0e7ff; color: #312e81; border: 1px solid #c7d2fe; padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: .9rem; font-weight: 500; }
+.offline-banner button { flex-shrink: 0; min-height: 40px; padding: 0 16px; border-radius: 8px; border: none; background: #4338ca; color: #fff; font-weight: 700; cursor: pointer; }
+body.dark .offline-banner { background: rgba(99, 102, 241, 0.16); color: #c7d2fe; border-color: rgba(99, 102, 241, 0.35); }
+.wn-icon.note { background: #e0e7ff; color: #4338ca; }
+body.dark .wn-icon.note { background: rgba(99, 102, 241, 0.18); color: #c7d2fe; }

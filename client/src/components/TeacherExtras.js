@@ -305,3 +305,121 @@ export const TeacherInbox = ({ inbox, teacherId, openId }) => {
     </div>
   );
 };
+
+// ---------- class notes & homework ----------
+// Today's notes this teacher has already written, keyed by classId
+export const useTodayNotes = (teacherId) => {
+  const [notes, setNotes] = useState({});
+  const refresh = useCallback(() => {
+    if (!teacherId) return;
+    axios.get(`${API}/class-notes/teacher/${teacherId}?since=${istDateKey()}`)
+      .then((r) => {
+        const map = {};
+        (Array.isArray(r.data) ? r.data : []).forEach((n) => { if (n.date === istDateKey()) map[String(n.classId)] = n; });
+        setNotes(map);
+      })
+      .catch(() => {});
+  }, [teacherId]);
+  useEffect(() => { refresh(); }, [refresh]);
+  return { notes, refresh, set: (classId, note) => setNotes((m) => ({ ...m, [String(classId)]: note })) };
+};
+
+export const ClassNoteSheet = ({ cls, teacherId, existing, dark, onClose, onSaved }) => {
+  const [text, setText] = useState(existing?.text || "");
+  const [homework, setHomework] = useState(existing?.homework || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const save = async (e) => {
+    e.preventDefault();
+    if (!text.trim() && !homework.trim()) { setError("Write what you did in class, or the homework."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const r = await axios.post(`${API}/class-notes`, { classId: cls._id, teacherId, date: istDateKey(), text, homework });
+      onSaved(r.data.note, r.data.created);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || "Couldn't save. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <TSheet title={existing ? "Edit class note" : "Class note"} subtitle={`${cls.className} · ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`} onClose={onClose} dark={dark}>
+      <form onSubmit={save} className="cn-form">
+        <label htmlFor="cn-text">What did you do in class today?</label>
+        <textarea id="cn-text" rows={4} maxLength={1500} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. We practised light and shade on a sphere and started a still life." autoFocus />
+        <label htmlFor="cn-hw">Homework <span>(optional)</span></label>
+        <textarea id="cn-hw" rows={2} maxLength={600} value={homework} onChange={(e) => setHomework(e.target.value)} placeholder="e.g. Draw 3 fruits with shading before next class." />
+        <p className="cn-note">{existing ? "Parents already have this note; your changes update it." : "Parents of this class get a notification and see it on their Home screen."}</p>
+        {error && <p className="cn-error" role="alert">{error}</p>}
+        <div className="cn-actions">
+          <button type="button" className="cn-btn ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" className="cn-btn" disabled={busy}>{busy ? "Saving…" : existing ? "Save changes" : "Send to parents"}</button>
+        </div>
+      </form>
+    </TSheet>
+  );
+};
+
+// ---------- reports still due this month ----------
+export const ReportsDueCard = ({ students, teacherId, onPick, refreshKey = 0 }) => {
+  const month = istDateKey().slice(0, 7);
+  const [done, setDone] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API}/feedback/teacher/${teacherId}?month=${month}`)
+      .then((r) => alive && setDone(new Set((Array.isArray(r.data) ? r.data : []).map((f) => String(f.studentId?._id || f.studentId)))))
+      .catch(() => alive && setDone(null));
+    return () => { alive = false; };
+  }, [teacherId, month, refreshKey]);
+  if (!done) return null;
+  const active = students.filter((s) => s.isActive !== false);
+  const due = active.filter((s) => !done.has(String(s._id)));
+  return (
+    <div className="rd-card">
+      <div className="rd-head">
+        <h3>Reports for {monthLabel(month)}</h3>
+        <span className={`rd-pill${due.length ? "" : " ok"}`}>{active.length - due.length} of {active.length} done</span>
+      </div>
+      {due.length === 0 ? <p className="rd-ok">Every student has this month's report. 🎉</p> : (
+        <ul className="rd-list">
+          {due.map((s) => (
+            <li key={s._id}>
+              <button type="button" onClick={() => onPick(s, due)}>{s.childName}<span>{s.className}</span></button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+// ---------- students who missed their last 3 classes ----------
+export const AtRiskCard = ({ teacherId, students, onOpen }) => {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API}/teacher/${teacherId}/at-risk`).then((r) => alive && setList(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    return () => { alive = false; };
+  }, [teacherId]);
+  if (!list.length) return null;
+  return (
+    <div className="ar-card" role="status">
+      <h3>Needs a check-in</h3>
+      <ul>
+        {list.map((x) => {
+          const st = students.find((s) => String(s._id) === String(x.studentId));
+          return (
+            <li key={x.studentId}>
+              <button type="button" onClick={() => st && onOpen(st)} disabled={!st}>
+                <strong>{x.childName}</strong>
+                <span>missed the last {x.misses} classes{x.lastPresent ? ` · last came ${new Date(x.lastPresent + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+};

@@ -30,6 +30,8 @@ const https = require("https");
 
 const app = express();
 app.use(cors());
+// gzip JSON responses (user lists, galleries): several times smaller on phones
+app.use(require("compression")());
 app.use(express.json());
 
 // 2. Configure Cloudinary (Replace with your actual keys from Step 1)
@@ -141,8 +143,11 @@ app.get("/api/users/parent/:phone", async (req, res) => {
 
 app.get("/api/users", async (req, res) => {
   try {
-    const users = await User.find({}).select("-password");
-    res.json(users);
+    // ?role=parent narrows the list; push subscriptions never leave the server
+    const q = {};
+    if (["parent", "teacher", "admin", "crm"].includes(req.query.role)) q.role = req.query.role;
+    const users = await User.find(q).select("-password").lean();
+    res.json(users.map(({ pushSubscription, ...u }) => ({ ...u, hasPush: !!pushSubscription })));
   } catch (err) {
     res.status(500).json({ message: "Server Error" });
   }
@@ -594,6 +599,25 @@ app.get("/api/student-pass/:userId", async (req, res) => {
     res.json(user.passes || []);
   } catch (err) {
     res.status(500).json({ message: "Error fetching pass history" });
+  }
+});
+
+// Students in a teacher's classes who missed their last 3 classes
+app.get("/api/teacher/:id/at-risk", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ message: "Not found" });
+    const classes = await Class.find({ teacher: req.params.id }).populate("students", "childName isActive").lean();
+    const students = classes.flatMap((c) => c.students || []).filter((s) => s && s.isActive !== false);
+    if (!students.length) return res.json([]);
+    const streaks = await require("./attention").absenceStreaks(students.map((s) => s._id));
+    const seen = new Set();
+    res.json(students
+      .filter((s) => streaks.has(String(s._id)) && !seen.has(String(s._id)) && seen.add(String(s._id)))
+      .map((s) => ({ studentId: s._id, childName: s.childName, ...streaks.get(String(s._id)) }))
+      .sort((a, b) => b.misses - a.misses));
+  } catch (err) {
+    console.error("At-risk error:", err);
+    res.status(500).json({ message: "Error loading" });
   }
 });
 
@@ -1101,6 +1125,19 @@ app.put("/api/users/:id/notify-prefs", async (req, res) => {
 // Parent self-service: referrals, contact details, forgot password, absence
 // notices, report conversations, payment proof, siblings
 app.use("/api", require("./parentSelf")(upload));
+// Class notes & homework (teacher → parents)
+app.use("/api", require("./classNotes"));
+
+// Admin home: what needs attention today (proofs, resets, overdue fees,
+// students missing classes, classes without attendance, absence notices)
+app.get("/api/admin/attention", async (req, res) => {
+  try {
+    res.json(await require("./attention").computeAttention());
+  } catch (err) {
+    console.error("Attention error:", err);
+    res.status(500).json({ message: "Error loading" });
+  }
+});
 
 // ✨ SAVE SUBSCRIPTION
 app.post("/api/notifications/subscribe", async (req, res) => {

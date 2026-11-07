@@ -20,3 +20,20 @@ reportWebVitals();
 if (process.env.NODE_ENV === 'development') {
   import('devknobs').then(({ mount }) => mount());
 }
+
+// Service worker: push notifications plus offline reading for parents.
+// Registered in production builds (and in development only with localStorage swDev=1).
+if ("serviceWorker" in navigator) {
+  let devOptIn = false;
+  try { devOptIn = localStorage.getItem("swDev") === "1"; } catch { /* ignore */ }
+  if (process.env.NODE_ENV === "production" || devOptIn) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch((err) => console.log("SW registration failed:", err.message));
+      // hand the worker the app files already loaded, so a first visit is enough for offline use
+      navigator.serviceWorker.ready.then((reg) => {
+        const urls = [window.location.origin + "/", ...performance.getEntriesByType("resource").map((r) => r.name)];
+        (navigator.serviceWorker.controller || reg.active)?.postMessage({ type: "cache-app-files", urls });
+      }).catch(() => {});
+    });
+  }
+}

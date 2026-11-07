@@ -8,7 +8,7 @@ const APP_URL = "https://art-portal.netlify.app";
 
 // Types a parent can switch off in the dashboard. Fee reminders and birthday
 // wishes are always sent.
-const PREF_KEYS = ["reports", "certificates", "attendance", "classChanges", "classReminders", "artwork", "posters"];
+const PREF_KEYS = ["reports", "certificates", "attendance", "classChanges", "classReminders", "artwork", "posters", "classNotes"];
 
 // Missing settings mean "on" (accounts created before settings existed).
 const wants = (user, pref) => !pref || !user?.notifyPrefs || user.notifyPrefs[pref] !== false;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { TeacherReportThread } from "./ParentSelf";
-import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey } from "./TeacherExtras";
+import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey, useTodayNotes, ClassNoteSheet, ReportsDueCard, AtRiskCard } from "./TeacherExtras";
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
 import imageCompression from "browser-image-compression";
@@ -1044,6 +1044,14 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [modalData, setModalData] = useState(null);
   const [profileStudent, setProfileStudent] = useState(null);
   const inbox = useTeacherThreads(currentUser._id);
+  const todayNotes = useTodayNotes(currentUser._id);
+  const [noteFor, setNoteFor] = useState(null); // class whose note sheet is open
+  const [rmQueue, setRmQueue] = useState([]); // students still due a report, in order
+  const pickDueStudent = (st, due) => {
+    setRmQueue(due.map((x) => x._id));
+    setRmForm((prev) => ({ ...prev, studentId: st._id }));
+    openReportMaker();
+  };
   useEffect(() => {
     const onHash = () => { const h = readHash(); if (h.tab) { setActiveTab(h.tab); setHashParam(h.param); } };
     const onSw = (e) => { if (e.data?.type === "navigate" && e.data.hash) window.location.hash = e.data.hash; };
@@ -1957,9 +1965,20 @@ const TeacherDashboard = ({ user, onLogout }) => {
       );
 
       setMsg("✅ Report generated & sent to parent!");
+      const sentId = rmForm.studentId;
       resetRmForm();
       fetchHistory();
       setTimeout(() => setMsg(""), 3000);
+      // working through this month's list: move straight on to the next student
+      const rest = rmQueue.filter((id) => id !== sentId);
+      setRmQueue(rest);
+      if (rest.length) {
+        setRmForm((prev) => ({ ...prev, studentId: rest[0] }));
+        const next = myStudents.find((x) => x._id === rest[0]);
+        notify.success(`Sent! Next: ${next?.childName || "next student"} (${rest.length} left)`);
+      } else if (rmQueue.length) {
+        notify.success("Sent! That was the last report due this month.");
+      }
     } catch (err) {
       console.error(err);
       setMsg("❌ Failed to generate report");
@@ -2539,6 +2558,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   </div>
                 </div>
               </div>
+              <AtRiskCard teacherId={currentUser._id} students={myStudents} onOpen={setProfileStudent} />
               <h3 className="section-title">Today's Agenda</h3>
               {getTodayClasses().length === 0 ? (
                 <div className="empty-state">No classes scheduled today.</div>
@@ -2586,6 +2606,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
                             className="tc-btn"
                           >
                             Mark Attendance
+                          </button>
+                          <button type="button" className={`tc-btn tc-note${todayNotes.notes[String(cls._id)] ? " done" : ""}`} onClick={() => setNoteFor(cls)}>
+                            {todayNotes.notes[String(cls._id)] ? "✓ Class note sent" : "Class note & homework"}
                           </button>
                         </div>
                       </div>
@@ -3361,6 +3384,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
           {activeTab === "feedback" && (
             <div className="feedback-view">
               <TeacherInbox inbox={inbox} teacherId={currentUser._id} openId={hashParam} />
+              <ReportsDueCard students={myStudents} teacherId={currentUser._id} onPick={pickDueStudent} refreshKey={feedbackHistory.length} />
               <div className="feedback-container-grid">
                 <div className="form-card">
                   <h3><IconNote /> New Report</h3>
@@ -3682,6 +3706,24 @@ const TeacherDashboard = ({ user, onLogout }) => {
           {/* ✨ REPORT MAKER */}
           {activeTab === "report-maker" && (
             <div className="report-maker-container">
+              {rmQueue.length > 0 && (
+                <div className="rm-queue" role="status">
+                  <span>Monthly reports: <strong>{rmQueue.length} left</strong>{rmForm.studentId ? ` · now: ${myStudents.find((x) => x._id === rmForm.studentId)?.childName || ""}` : ""}</span>
+                  {rmQueue.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const i = rmQueue.indexOf(rmForm.studentId);
+                        const next = rmQueue[(i + 1) % rmQueue.length];
+                        setRmForm((prev) => ({ ...prev, studentId: next, attendance: "" }));
+                      }}
+                    >
+                      Skip to next
+                    </button>
+                  )}
+                  <button type="button" className="ghost" onClick={() => setRmQueue([])}>Stop</button>
+                </div>
+              )}
               <div className="report-maker-body">
                 {/* LEFT: FORM */}
                 <div className="rm-form-panel">
@@ -4082,6 +4124,16 @@ const TeacherDashboard = ({ user, onLogout }) => {
         </button>
       </nav>
 
+      {noteFor && (
+        <ClassNoteSheet
+          cls={noteFor}
+          teacherId={currentUser._id}
+          existing={todayNotes.notes[String(noteFor._id)]}
+          dark={darkMode}
+          onClose={() => setNoteFor(null)}
+          onSaved={(note, created) => { todayNotes.set(noteFor._id, note); notify.success(created ? "Sent to parents" : "Note updated"); }}
+        />
+      )}
       {profileStudent && (
         <StudentProfileSheet
           student={profileStudent}
@@ -4191,6 +4243,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   }}
                 >
                   <IconNote /> Mark Attendance
+                </button>
+                <button
+                  type="button"
+                  className="mark-att-btn"
+                  onClick={() => { const c = classes.find((x) => x._id === modalData._id); setModalData(null); if (c) setNoteFor(c); }}
+                >
+                  <IconEdit /> {todayNotes.notes[String(modalData._id)] ? "Edit today's class note" : "Class note & homework"}
                 </button>
               </div>
             </div>
