@@ -37,3 +37,6 @@
 .admin-container[data-theme="dark"] .att-action { background: #3b82f6; }
 .admin-container[data-theme="dark"] .att-clear { color: #86efac; }
 .admin-container[data-theme="dark"] .att-error { color: #fecaca; }
+.att-list li { flex-wrap: wrap; }
+.att-list li .ack-form { flex-basis: 100%; }
+.att-known { margin-top: 10px; }

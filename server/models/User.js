@@ -114,6 +114,16 @@ const UserSchema = new mongoose.Schema({
     reviewNote: { type: String, default: '' }
   }],
 
+  // "I'm aware" marks on the missed-classes check-in list. Each covers one run
+  // of absences (streakStart = its first missed class), so a new run shows again.
+  checkInAcks: [{
+    by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    role: { type: String, enum: ['teacher', 'admin'] },
+    streakStart: String,     // "YYYY-MM-DD"
+    note: { type: String, default: '' },
+    at: { type: Date, default: Date.now }
+  }],
+
   // Student Pass History (months where fee is waived)
   passes: [{
     month: String, // Format: "YYYY-MM"

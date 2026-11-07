@@ -18,9 +18,9 @@ const ToastHost = () => {
   useEffect(() => {
     const onToast = (e) => {
       const id = nextId.current++;
-      const { message, type, retry, duration } = e.detail || {};
-      setToasts((list) => [...list.slice(-3), { id, message, type, retry }]);
-      const ms = duration ?? (retry ? 12000 : type === "error" ? 6000 : 3500);
+      const { message, type, retry, action, duration } = e.detail || {};
+      setToasts((list) => [...list.slice(-3), { id, message, type, retry, action }]);
+      const ms = duration ?? (retry || action ? 8000 : type === "error" ? 6000 : 3500);
       timers.current[id] = setTimeout(() => dismiss(id), ms);
     };
     window.addEventListener(TOAST_EVENT, onToast);
@@ -39,6 +39,9 @@ const ToastHost = () => {
           <span className="toast-msg">{t.message}</span>
           {t.retry && (
             <button type="button" className="toast-btn" onClick={() => { dismiss(t.id); t.retry(); }}>Retry</button>
+          )}
+          {t.action && (
+            <button type="button" className="toast-btn" onClick={() => { dismiss(t.id); t.action.onClick(); }}>{t.action.label}</button>
           )}
           <button type="button" className="toast-close" aria-label="Dismiss" onClick={() => dismiss(t.id)}>×</button>
         </div>

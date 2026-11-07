@@ -606,14 +606,20 @@ app.get("/api/student-pass/:userId", async (req, res) => {
 app.get("/api/teacher/:id/at-risk", async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ message: "Not found" });
-    const classes = await Class.find({ teacher: req.params.id }).populate("students", "childName isActive").lean();
+    const classes = await Class.find({ teacher: req.params.id }).populate("students", "childName isActive checkInAcks").lean();
     const students = classes.flatMap((c) => c.students || []).filter((s) => s && s.isActive !== false);
     if (!students.length) return res.json([]);
-    const streaks = await require("./attention").absenceStreaks(students.map((s) => s._id));
+    const { absenceStreaks, ackFor } = require("./attention");
+    const streaks = await absenceStreaks(students.map((s) => s._id));
     const seen = new Set();
+    // every student on a run of misses; `known` = this teacher marked "I'm aware" for this run
     res.json(students
       .filter((s) => streaks.has(String(s._id)) && !seen.has(String(s._id)) && seen.add(String(s._id)))
-      .map((s) => ({ studentId: s._id, childName: s.childName, ...streaks.get(String(s._id)) }))
+      .map((s) => {
+        const st = streaks.get(String(s._id));
+        const mine = ackFor(s, st, (a) => String(a.by) === String(req.params.id));
+        return { studentId: s._id, childName: s.childName, ...st, known: !!mine, knownNote: mine?.note || "" };
+      })
       .sort((a, b) => b.misses - a.misses));
   } catch (err) {
     console.error("At-risk error:", err);
@@ -1127,6 +1133,8 @@ app.put("/api/users/:id/notify-prefs", async (req, res) => {
 app.use("/api", require("./parentSelf")(upload));
 // Class notes & homework (teacher → parents)
 app.use("/api", require("./classNotes"));
+// "I'm aware" on the missed-classes check-in lists
+app.use("/api", require("./checkins"));
 
 // Admin home: what needs attention today (proofs, resets, overdue fees,
 // students missing classes, classes without attendance, absence notices)

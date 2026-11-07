@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import { AttendanceCalendar, attendanceStreak, bestStreak } from "./ParentProgress";
 import { TeacherReportThread } from "./ParentSelf";
+import { getStudentStartMonth, isStudentInactiveForMonth } from "../utils/fees";
+import { AwareButton, undoCheckIn } from "./CheckInAck";
 import "./TeacherExtras.css";
 
 const API = "https://art-portal-7n6r.onrender.com/api";
@@ -12,6 +14,13 @@ const API = "https://art-portal-7n6r.onrender.com/api";
 // ---------- helpers ----------
 // Today's date in India (class times are IST), "YYYY-MM-DD"
 export const istDateKey = (offsetDays = 0) => new Date(Date.now() + 330 * 60000 + offsetDays * 86400000).toISOString().slice(0, 10);
+
+// Monthly reports are written for the month that just ended (October's
+// report is sent in November), so report screens default to last month.
+export const reportMonthKey = () => {
+  const [y, m] = istDateKey().slice(0, 7).split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+};
 
 // Parent absence notices for a student on a date. A notice names the class and
 // time it was sent for; older notices without them match on the date alone.
@@ -364,7 +373,7 @@ export const ClassNoteSheet = ({ cls, teacherId, existing, dark, onClose, onSave
 
 // ---------- reports still due this month ----------
 export const ReportsDueCard = ({ students, teacherId, onPick, refreshKey = 0 }) => {
-  const month = istDateKey().slice(0, 7);
+  const month = reportMonthKey(); // last month's reports, sent this month
   const [done, setDone] = useState(null);
   useEffect(() => {
     let alive = true;
@@ -374,15 +383,19 @@ export const ReportsDueCard = ({ students, teacherId, onPick, refreshKey = 0 }) 
     return () => { alive = false; };
   }, [teacherId, month, refreshKey]);
   if (!done) return null;
-  const active = students.filter((s) => s.isActive !== false);
+  // only students who were with us that month (not joined later, not on a break)
+  const active = students.filter((s) => s.isActive !== false && getStudentStartMonth(s) <= month && !isStudentInactiveForMonth(s, month));
   const due = active.filter((s) => !done.has(String(s._id)));
   return (
     <div className="rd-card">
       <div className="rd-head">
-        <h3>Reports for {monthLabel(month)}</h3>
+        <div>
+          <h3>{monthLabel(month)} reports</h3>
+          <p className="rd-sub">Based on {monthLabel(month).split(" ")[0]}'s classes · send them this month</p>
+        </div>
         <span className={`rd-pill${due.length ? "" : " ok"}`}>{active.length - due.length} of {active.length} done</span>
       </div>
-      {due.length === 0 ? <p className="rd-ok">Every student has this month's report. 🎉</p> : (
+      {due.length === 0 ? <p className="rd-ok">Every student has their {monthLabel(month).split(" ")[0]} report. 🎉</p> : (
         <ul className="rd-list">
           {due.map((s) => (
             <li key={s._id}>
@@ -396,6 +409,7 @@ export const ReportsDueCard = ({ students, teacherId, onPick, refreshKey = 0 }) 
 };
 
 // ---------- students who missed their last 3 classes ----------
+// "I'm aware" hides a student until they attend and then miss 3 in a row again.
 export const AtRiskCard = ({ teacherId, students, onOpen }) => {
   const [list, setList] = useState([]);
   useEffect(() => {
@@ -403,23 +417,43 @@ export const AtRiskCard = ({ teacherId, students, onOpen }) => {
     axios.get(`${API}/teacher/${teacherId}/at-risk`).then((r) => alive && setList(Array.isArray(r.data) ? r.data : [])).catch(() => {});
     return () => { alive = false; };
   }, [teacherId]);
+  const setKnown = (id, known, note) => setList((l) => l.map((x) => (String(x.studentId) === String(id) ? { ...x, known, knownNote: note } : x)));
+  const open = list.filter((x) => !x.known);
+  const known = list.filter((x) => x.known);
   if (!list.length) return null;
+  const date = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return (
-    <div className="ar-card" role="status">
-      <h3>Needs a check-in</h3>
-      <ul>
-        {list.map((x) => {
-          const st = students.find((s) => String(s._id) === String(x.studentId));
-          return (
-            <li key={x.studentId}>
-              <button type="button" onClick={() => st && onOpen(st)} disabled={!st}>
-                <strong>{x.childName}</strong>
-                <span>missed the last {x.misses} classes{x.lastPresent ? ` · last came ${new Date(x.lastPresent + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+    <div className={`ar-card${open.length ? "" : " quiet"}`} role="status">
+      {open.length > 0 && <h3>Needs a check-in</h3>}
+      {open.length > 0 && (
+        <ul>
+          {open.map((x) => {
+            const st = students.find((s) => String(s._id) === String(x.studentId));
+            return (
+              <li key={x.studentId} className="ar-row">
+                <button type="button" className="ar-open" onClick={() => st && onOpen(st)} disabled={!st}>
+                  <strong>{x.childName}</strong>
+                  <span>missed the last {x.misses} classes{x.lastPresent ? ` · last came ${date(x.lastPresent)}` : ""}</span>
+                </button>
+                <AwareButton studentId={x.studentId} childName={x.childName} by={teacherId} onChange={(k, note) => setKnown(x.studentId, k, note)} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {known.length > 0 && (
+        <details className="ack-known">
+          <summary>{known.length} marked as known</summary>
+          <ul>
+            {known.map((x) => (
+              <li key={x.studentId}>
+                <span>{x.childName}{x.knownNote ? <em> · {x.knownNote}</em> : null}</span>
+                <button type="button" onClick={() => undoCheckIn(x.studentId, teacherId).then(() => setKnown(x.studentId, false, "")).catch(() => {})}>Show again</button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 };
