@@ -44,6 +44,7 @@ export const ParentSheet = ({ title, onClose, children, dark }) => {
 
 // ---------- notification settings ----------
 export const NOTIFY_TYPES = [
+  { key: "classNotes", label: "Class notes & homework", hint: "What was done in class, and any homework" },
   { key: "reports", label: "Progress reports", hint: "When the teacher shares a new report" },
   { key: "artwork", label: "New artwork", hint: "When new photos are added to the gallery" },
   { key: "certificates", label: "Certificates", hint: "When a certificate is issued" },
@@ -147,7 +148,7 @@ const monthName = (ym) => {
 };
 
 export const WhatsNewCard = ({ userId, childName, reports, onOpen }) => {
-  const [extra, setExtra] = useState({ art: [], certs: [], posters: [], loaded: false });
+  const [extra, setExtra] = useState({ art: [], certs: [], posters: [], notes: [], loaded: false });
   const [seen, setSeen] = useState(() => readSeen(userId));
 
   useEffect(() => {
@@ -156,12 +157,14 @@ export const WhatsNewCard = ({ userId, childName, reports, onOpen }) => {
       axios.get(`${API}/gallery/student/${userId}`),
       axios.get(`${API}/certifications/student/${userId}`),
       axios.get(`${API}/spotlights`),
-    ]).then(([a, c, s]) => {
+      axios.get(`${API}/class-notes/student/${userId}?limit=5`),
+    ]).then(([a, c, s, n]) => {
       if (!alive) return;
       setExtra({
         art: a.status === "fulfilled" ? a.value.data || [] : [],
         certs: c.status === "fulfilled" ? c.value.data || [] : [],
         posters: s.status === "fulfilled" ? s.value.data || [] : [],
+        notes: n.status === "fulfilled" && Array.isArray(n.value.data) ? n.value.data : [],
         loaded: true,
       });
     });
@@ -183,6 +186,10 @@ export const WhatsNewCard = ({ userId, childName, reports, onOpen }) => {
     });
     byDay.forEach((v, day) => list.push({ id: `art-${day}`, kind: "art", tab: "gallery", at: v.at, image: v.image, title: v.count === 1 ? "New artwork added" : `${v.count} new artworks added`, sub: "Gallery" }));
     (reports || []).forEach((r) => r.createdAt && list.push({ id: `rep-${r._id}`, kind: "report", tab: "reports", at: r.createdAt, title: `${monthName(r.month)} progress report`, sub: r.teacherId?.fullName ? `From ${r.teacherId.fullName}` : "Reports" }));
+    extra.notes.forEach((n) => {
+      const at = n.createdAt || `${n.date}T12:00:00`;
+      list.push({ id: `note-${n._id}`, kind: "note", tab: "schedule", at, title: n.homework ? `Homework: ${n.homework}` : n.text, sub: `Class note · ${new Date(`${n.date}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` });
+    });
     extra.certs.forEach((c) => { const at = c.createdAt || c.dateIssued; if (at) list.push({ id: `cert-${c._id}`, kind: "cert", tab: "certifications", at, title: c.title || "New certificate", sub: "Certificates" }); });
     extra.posters.forEach((p) => {
       const at = p.publishedAt || p.createdAt;
@@ -216,7 +223,7 @@ export const WhatsNewCard = ({ userId, childName, reports, onOpen }) => {
     setSeen(next);
   };
 
-  const Icon = { art: IconImage, report: IconDoc, cert: IconAward, poster: IconStar };
+  const Icon = { art: IconImage, report: IconDoc, cert: IconAward, poster: IconStar, note: IconDoc };
   return (
     <div className="info-card whats-new-card">
       <div className="wn-head">

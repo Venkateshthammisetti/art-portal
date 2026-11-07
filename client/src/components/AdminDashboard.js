@@ -26,7 +26,9 @@ import { subscribeDeviceToPush } from "../pushSubscribe";
 import { getStudentStartMonth, isStudentInactiveForMonth, getFeeForMonth } from "../utils/fees";
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
+import AdminAttention from "./AdminAttention";
 import { downloadCSV } from "../utils/csv";
+import { getUsers, invalidateUsers } from "../utils/usersCache";
 import ListCountHeader from "./ListCountHeader";
 import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 
@@ -522,7 +524,7 @@ const AssignStudentsModal = ({ classId, className, onClose, onRefresh }) => {
       setLoading(true);
       // cache-busting param ensures we never get a stale browser-cached response
       const res = await axios.get(
-        `https://art-portal-7n6r.onrender.com/api/users?_t=${Date.now()}`,
+        `https://art-portal-7n6r.onrender.com/api/users?role=parent&_t=${Date.now()}`,
       );
       const studentList = res.data.filter((u) => u.role === "parent");
       setStudents(studentList);
@@ -2606,7 +2608,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
   );
 };
 
-const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate }) => {
+const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate, onOpenProofs, onOpenUser, onOpenOverdue }) => {
   // ===== ATTENDANCE WIDGET STATE =====
   const [attSelectedClass, setAttSelectedClass] = useState("");
   const [attMonth, setAttMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -2943,6 +2945,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     <div
       style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}
     >
+      <AdminAttention onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
       <div
         className="overview-hero-banner"
         style={{
@@ -3904,8 +3907,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
   }, [openEditUserId, users]);
 
   const fetchUsers = () => {
-    axios
-      .get("https://art-portal-7n6r.onrender.com/api/users")
+    getUsers()
       .then((res) => setUsers(res.data))
       .catch((err) => console.error(err));
   };
@@ -4533,7 +4535,7 @@ const AddUserTab = ({ onRefresh }) => {
   // Also stays above the highest existing TVA number so IDs never collide.
   const fetchNextAdmissionNo = async () => {
     try {
-      const res = await axios.get("https://art-portal-7n6r.onrender.com/api/users");
+      const res = await getUsers();
       const students = res.data.filter((u) => u.role === "parent");
       const maxExisting = students.reduce((max, s) => {
         const m = /^TVA(\d+)$/i.exec((s.admissionId || "").trim());
@@ -5358,7 +5360,7 @@ const ClassManagementTab = () => {
       );
       setClasses(classRes.data);
       const userRes = await axios.get(
-        `https://art-portal-7n6r.onrender.com/api/users?_t=${ts}`,
+        `https://art-portal-7n6r.onrender.com/api/users?role=teacher&_t=${ts}`,
       );
       setTeachers(userRes.data.filter((u) => u.role === "teacher"));
       return classRes.data;
@@ -5726,9 +5728,7 @@ const SlotManagementTab = () => {
         "https://art-portal-7n6r.onrender.com/api/classes",
       );
       setClasses(classRes.data);
-      const userRes = await axios.get(
-        "https://art-portal-7n6r.onrender.com/api/users",
-      );
+      const userRes = await getUsers();
       setTeachers(userRes.data.filter((u) => u.role === "teacher"));
     } catch (err) {
       console.error(err);
@@ -6179,7 +6179,7 @@ const ProofReviewPanel = ({ proofs, students, onClose, onReviewed }) => {
   );
 };
 
-const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly = false, onRefresh }) => {
+const FeeTrackerTab = ({ initialFilter = "all", initialSort = "name-asc", openProofsOnLoad = false, onProofsOpened = () => {}, offlineOnly = false, onlineOnly = false, onRefresh }) => {
   const [allStudents, setAllStudents] = useState([]);
   const students = offlineOnly
     ? allStudents.filter((s) => s.classMode === "offline")
@@ -6192,7 +6192,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState(initialFilter);
-  const [sortOrder, setSortOrder] = useState("name-asc");
+  const [sortOrder, setSortOrder] = useState(initialSort);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Student Pass states
@@ -6209,7 +6209,9 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
 
   // Payment proofs parents sent that nobody has reviewed yet
   const [proofs, setProofs] = useState([]);
-  const [showProofs, setShowProofs] = useState(false);
+  const [showProofs, setShowProofs] = useState(openProofsOnLoad);
+  useEffect(() => { if (openProofsOnLoad || initialSort !== "name-asc") onProofsOpened(); /* consumed */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const fetchProofs = () =>
     axios
       .get("https://art-portal-7n6r.onrender.com/api/admin/payment-proofs")
@@ -6224,9 +6226,7 @@ const FeeTrackerTab = ({ initialFilter = "all", offlineOnly = false, onlineOnly 
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        "https://art-portal-7n6r.onrender.com/api/users",
-      );
+      const res = await getUsers();
       setAllStudents(res.data.filter((u) => u.role === "parent"));
     } catch (err) {
       console.error(err);
@@ -7707,8 +7707,7 @@ const GalleryRepositoryTab = () => {
 
   useEffect(() => {
     // 1. Fetch all students
-    axios
-      .get("https://art-portal-7n6r.onrender.com/api/users")
+    getUsers()
       .then((res) => setStudents(res.data.filter((u) => u.role === "parent")))
       .catch((err) => console.error(err));
   }, []);
@@ -8442,7 +8441,7 @@ const ExpenseHistoryTab = ({ onRefresh, onNavigate }) => {
 
   const fetchStudents = useCallback(async () => {
     try {
-      const res = await axios.get("https://art-portal-7n6r.onrender.com/api/users");
+      const res = await getUsers();
       setStudents(res.data.filter((u) => u.role === "parent"));
     } catch (err) {
       console.error("Failed to load students", err);
@@ -8871,6 +8870,8 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [userInitialGenderFilter, setUserInitialGenderFilter] = useState("all");
   const [userInitialViewMode, setUserInitialViewMode] = useState("active");
   const [openEditUserId, setOpenEditUserId] = useState(null); // set by the bell's "Open parent"
+  const [feeOpenProofs, setFeeOpenProofs] = useState(false); // open the proofs panel on arrival
+  const [feeInitialSort, setFeeInitialSort] = useState("name-asc");
 
   // ICONS
   const IconHome = () => (
@@ -9047,7 +9048,7 @@ const AdminDashboard = ({ user, onLogout }) => {
   const fetchOverviewData = async () => {
     try {
       const [usersRes, classesRes, expensesRes] = await Promise.all([
-        axios.get("https://art-portal-7n6r.onrender.com/api/users"),
+        getUsers(),
         axios.get("https://art-portal-7n6r.onrender.com/api/classes"),
         axios.get("https://art-portal-7n6r.onrender.com/api/expenses"),
       ]);
@@ -9103,6 +9104,7 @@ const AdminDashboard = ({ user, onLogout }) => {
   const handleAppRefresh = async () => {
     if (appRefreshing) return;
     setAppRefreshing(true);
+    invalidateUsers(); // the header Refresh always fetches fresh lists
     try {
       await Promise.all([fetchOverviewData(), fetchStats()]);
     } finally {
@@ -9453,12 +9455,16 @@ const AdminDashboard = ({ user, onLogout }) => {
         </header>
 
         <div className="content-scrollable">
-          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} expenses={overviewExpenses} loading={overviewLoading} onNavigate={handleNavigate} />}
+          {activeTab === "overview" && <OverviewTab stats={stats} users={overviewUsers} classes={overviewClasses} expenses={overviewExpenses} loading={overviewLoading} onNavigate={handleNavigate}
+            onOpenProofs={() => { setFeeOpenProofs(true); handleNavigate("fees"); }}
+            onOpenUser={(userId) => { setOpenEditUserId(userId); handleNavigate("users"); }}
+            onOpenOverdue={() => { setFeeInitialSort("total-pending-high"); handleNavigate("fees"); }}
+          />}
           {activeTab === "revenue-analytics" && <RevenueAnalyticsTab users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onBack={() => handleNavigate("overview")} />}
           {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} openEditUserId={openEditUserId} onOpenedEdit={() => setOpenEditUserId(null)} />}
           {activeTab === "classes" && <ClassManagementTab key={tabRefreshKey} />}
           {activeTab === "add-user" && <AddUserTab onRefresh={refreshOverview} />}
-          {activeTab === "fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter={feeInitialFilter} onRefresh={refreshOverview} />}
+          {activeTab === "fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter={feeInitialFilter} initialSort={feeInitialSort} openProofsOnLoad={feeOpenProofs} onProofsOpened={() => { setFeeOpenProofs(false); setFeeInitialSort("name-asc"); }} onRefresh={refreshOverview} />}
           {activeTab === "online-fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter="all" onlineOnly={true} onRefresh={refreshOverview} />}
           {activeTab === "offline-fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter="all" offlineOnly={true} onRefresh={refreshOverview} />}
           {activeTab === "slots" && <SlotManagementTab key={tabRefreshKey} />}

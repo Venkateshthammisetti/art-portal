@@ -83,6 +83,8 @@ function App() {
   };
 
   const handleLogout = () => {
+    // forget this family's saved offline data on this device
+    if (typeof caches !== "undefined") caches.delete("tva-data-v1").catch(() => {});
     setUser(null);
     localStorage.removeItem('user');
     window.location.href = "/"; // Force refresh

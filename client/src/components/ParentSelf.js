@@ -423,3 +423,37 @@ export const TeacherReportThread = ({ report, teacherId, onUpdated, allowStart =
     </div>
   );
 };
+
+
+// ---------- class notes & homework (from the teacher) ----------
+const noteDate = (d) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+export const ClassNotesCard = ({ studentId, compact = false, onSeeAll }) => {
+  const [notes, setNotes] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API}/class-notes/student/${studentId}?limit=${compact ? 1 : 12}`)
+      .then((r) => alive && setNotes(Array.isArray(r.data) ? r.data : []))
+      .catch(() => alive && setNotes([]));
+    return () => { alive = false; };
+  }, [studentId, compact]);
+  if (!notes || notes.length === 0) return compact ? null : (
+    <div className="ps-card"><h4>Class notes</h4><p className="ps-muted">After each class the teacher will share what was done and any homework here.</p></div>
+  );
+  return (
+    <div className={compact ? "info-card cn-card" : "ps-card cn-card"}>
+      <div className="cn-head">
+        <h4>{compact ? "From the last class" : "Class notes & homework"}</h4>
+        {compact && onSeeAll && <button type="button" className="ps-link" onClick={onSeeAll}>See all</button>}
+      </div>
+      <ul className="cn-list">
+        {notes.map((n) => (
+          <li key={n._id}>
+            <span className="cn-date">{noteDate(n.date)}{n.teacherId?.fullName ? ` · ${n.teacherId.fullName}` : ""}</span>
+            {n.text && <p className="cn-text">{n.text}</p>}
+            {n.homework && <p className="cn-hw"><strong>Homework:</strong> {n.homework}</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};

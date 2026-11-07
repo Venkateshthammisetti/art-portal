@@ -436,6 +436,68 @@ const checkClassReminders = async () => {
   }
 };
 
+// ==========================================
+// CLASS REMINDERS (Teachers): 15 minutes before each class slot
+// ==========================================
+const TEACHER_REMINDER_MIN = 15;
+const checkTeacherClassReminders = async () => {
+  if (!setupVapid()) return;
+  const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const nowIST = new Date(Date.now() + 330 * 60000);
+  const nowMin = nowIST.getUTCHours() * 60 + nowIST.getUTCMinutes();
+  const todayDay = DAYS_OF_WEEK[nowIST.getUTCDay()];
+  const todayStr = nowIST.toISOString().slice(0, 10);
+  try {
+    const classes = await Class.find({ 'schedule.day': todayDay })
+      .select('className schedule meetingLink teacher students')
+      .populate('teacher', 'pushSubscription notifyPrefs')
+      .populate('students', 'childName absenceNotices');
+    for (const cls of classes) {
+      if (!cls.teacher?.pushSubscription) continue;
+      for (const slot of cls.schedule.filter((x) => x.day === todayDay && x.time)) {
+        const [h, m] = String(slot.time).split(':').map(Number);
+        if (Number.isNaN(h)) continue;
+        if (Math.abs(nowMin - (h * 60 + (m || 0) - TEACHER_REMINDER_MIN)) > 1) continue;
+        const key = `tremind_${cls._id}_${slot.time}_${todayStr}`;
+        if (sentAttendanceNotifs.has(key)) continue;
+        sentAttendanceNotifs.add(key);
+        const away = (cls.students || []).filter((st) => (st.absenceNotices || []).some((n) => n.date === todayStr && (!n.classId || String(n.classId) === String(cls._id)) && (!n.time || n.time === slot.time)));
+        await parentPush.pushToUsers([cls.teacher], {
+          title: `⏰ ${cls.className} in ${TEACHER_REMINDER_MIN} minutes`,
+          body: `${(cls.students || []).length} students${away.length ? ` · ${away.length} said they can't attend (${away.map((x) => String(x.childName || '').split(' ')[0]).join(', ')})` : ''}. Tap to open the class.`,
+          tag: `tremind-${cls._id}-${todayStr}`,
+          url: `${parentPush.APP_URL}/#overview`,
+        }, { urgency: 'high', TTL: TEACHER_REMINDER_MIN * 60 });
+      }
+    }
+  } catch (err) {
+    console.error('❌ Teacher class reminder error:', err.message);
+  }
+};
+
+// ==========================================
+// ADMIN MORNING SUMMARY (9 AM India time)
+// ==========================================
+const sendAdminSummary = async () => {
+  if (!setupVapid()) return;
+  try {
+    const { computeAttention, summaryLine } = require('./attention');
+    const a = await computeAttention();
+    const line = summaryLine(a);
+    if (!line) return; // nothing to do today: no push
+    const admins = await User.find({ role: 'admin', pushSubscription: { $ne: null } }).select('pushSubscription notifyPrefs');
+    const sent = await parentPush.pushToUsers(admins, {
+      title: '☀️ Good morning — today at the academy',
+      body: line,
+      tag: `admin-summary-${a.today}`,
+      url: `${parentPush.APP_URL}/`,
+    });
+    if (sent) console.log(`☀️ Admin summary sent to ${sent}: ${line}`);
+  } catch (err) {
+    console.error('❌ Admin summary error:', err.message);
+  }
+};
+
 const startScheduler = () => {
   // Fee reminders: daily at 10:00 AM
   cron.schedule('0 10 * * *', checkFeeReminders);
@@ -452,8 +514,14 @@ const startScheduler = () => {
   // Class reminders for parents: every minute — 30 min before each class
   cron.schedule('* * * * *', checkClassReminders);
 
+  // Class reminders for teachers: every minute — 15 min before each class
+  cron.schedule('* * * * *', checkTeacherClassReminders);
+
   // Clear in-memory dedup set at midnight
   cron.schedule('0 0 * * *', clearSentSet);
+
+  // Admin: morning summary of what needs attention, 9:05 AM India time
+  cron.schedule('5 9 * * *', sendAdminSummary, { timezone: 'Asia/Kolkata' });
 
   // Admissions CRM: morning summary of follow-ups and demos, 9:00 AM India time
   cron.schedule('0 9 * * *', require('./leads').sendCrmDailySummary, { timezone: 'Asia/Kolkata' });
@@ -467,3 +535,5 @@ const startScheduler = () => {
 
 module.exports = startScheduler;
 startScheduler.checkClassReminders = checkClassReminders; // exposed for tests
+startScheduler.sendAdminSummary = sendAdminSummary; // exposed for tests
+startScheduler.checkTeacherClassReminders = checkTeacherClassReminders; // exposed for tests

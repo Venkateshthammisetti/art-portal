@@ -56,6 +56,7 @@ const UserSchema = new mongoose.Schema({
     classReminders: { type: Boolean, default: true },
     artwork: { type: Boolean, default: true },
     posters: { type: Boolean, default: true },
+    classNotes: { type: Boolean, default: true },
   },
 
   isActive: { type: Boolean, default: true },
