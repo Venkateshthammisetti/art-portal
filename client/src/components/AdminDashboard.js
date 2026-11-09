@@ -27,6 +27,7 @@ import { getStudentStartMonth, isStudentInactiveForMonth, getFeeForMonth } from 
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
 import AdminAttention from "./AdminAttention";
+import AdminInsights from "./AdminInsights";
 import { downloadCSV } from "../utils/csv";
 import { getUsers, invalidateUsers } from "../utils/usersCache";
 import ListCountHeader from "./ListCountHeader";
@@ -9189,6 +9190,12 @@ const AdminDashboard = ({ user, onLogout }) => {
             <IconClasses /> <span>Class Management</span>
           </button>
           <button
+            className={activeTab === "insights" ? "active" : ""}
+            onClick={() => handleNavClick("insights")}
+          >
+            <IconTrendingUp /> <span>Insights</span>
+          </button>
+          <button
             className={(activeTab === "fees" || activeTab === "offline-fees" || activeTab === "online-fees") ? "active" : ""}
             onClick={() => {
               if (activeTab !== "fees" && activeTab !== "offline-fees" && activeTab !== "online-fees") {
@@ -9354,6 +9361,8 @@ const AdminDashboard = ({ user, onLogout }) => {
                   ? "All Users"
                   : activeTab === "classes"
                     ? "Class Management"
+                    : activeTab === "insights"
+                    ? "Insights"
                     : activeTab === "fees"
                       ? "Fee Tracker"
                       : activeTab === "offline-fees"
@@ -9464,6 +9473,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           {activeTab === "revenue-analytics" && <RevenueAnalyticsTab users={overviewUsers} classes={overviewClasses} loading={overviewLoading} onBack={() => handleNavigate("overview")} />}
           {activeTab === "users" && <UserManagementTab key={tabRefreshKey} initialRoleFilter={userInitialRoleFilter} initialModeFilter={userInitialModeFilter} initialGenderFilter={userInitialGenderFilter} initialViewMode={userInitialViewMode} openEditUserId={openEditUserId} onOpenedEdit={() => setOpenEditUserId(null)} />}
           {activeTab === "classes" && <ClassManagementTab key={tabRefreshKey} />}
+          {activeTab === "insights" && <AdminInsights onOpenRevenue={() => handleNavigate("revenue-analytics")} />}
           {activeTab === "add-user" && <AddUserTab onRefresh={refreshOverview} />}
           {activeTab === "fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter={feeInitialFilter} initialSort={feeInitialSort} openProofsOnLoad={feeOpenProofs} onProofsOpened={() => { setFeeOpenProofs(false); setFeeInitialSort("name-asc"); }} onRefresh={refreshOverview} />}
           {activeTab === "online-fees" && <FeeTrackerTab key={tabRefreshKey} initialFilter="all" onlineOnly={true} onRefresh={refreshOverview} />}
@@ -9484,6 +9494,12 @@ const AdminDashboard = ({ user, onLogout }) => {
       {(() => {
         const FEE_TABS = ["fees", "online-fees", "offline-fees"];
         const moreSections = [
+          {
+            title: "Reports",
+            items: [
+              { tab: "insights", label: "Insights", Icon: IconTrendingUp },
+            ],
+          },
           {
             title: "Fees",
             items: [
