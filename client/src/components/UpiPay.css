@@ -1,0 +1,35 @@
+.upi-card { background: var(--p-card, #fff); border: 1px solid var(--p-border, #e2e8f0); border-radius: 16px; padding: 16px; margin: 0 0 16px; color: var(--p-text, #0f172a); min-width: 0; }
+.upi-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.upi-head h4 { margin: 0; font-size: 1.05rem; }
+.upi-head p { margin: 2px 0 0; font-size: 0.8rem; color: #475569; }
+.upi-amt { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.upi-months { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+.upi-months button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid #cbd5e1; background: transparent; color: inherit; font: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer; }
+.upi-months button em { font-style: normal; font-weight: 500; color: #475569; }
+.upi-months button.on { border-color: #2563eb; background: #eff6ff; color: #1e3a8a; }
+.upi-months button.on em { color: #1e40af; }
+.upi-tick { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid currentColor; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; line-height: 1; }
+.upi-months button.on .upi-tick { background: #2563eb; border-color: #2563eb; color: #fff; }
+.upi-pay-btn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; margin-top: 14px; border-radius: 12px; border: none; background: #047857; color: #fff; font: inherit; font-size: 1rem; font-weight: 800; text-decoration: none; cursor: pointer; box-sizing: border-box; }
+.upi-pay-btn:disabled { background: #94a3b8; color: #0f172a; cursor: default; }
+.upi-pay-btn:focus-visible, .upi-months button:focus-visible, .upi-card button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.upi-link { display: block; margin: 10px auto 0; background: none; border: none; min-height: 40px; color: #1d4ed8; font: inherit; font-weight: 700; font-size: 0.88rem; cursor: pointer; }
+.upi-done { margin-top: 12px; padding: 12px; border-radius: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #064e3b; }
+.upi-done p { margin: 0 0 10px; font-size: 0.86rem; }
+.upi-done-btn { width: 100%; min-height: 46px; border-radius: 10px; border: none; background: #2563eb; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+.upi-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--p-border, #e2e8f0); font-size: 0.82rem; color: #475569; }
+.upi-foot span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.upi-foot b { color: var(--p-text, #0f172a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.upi-foot button { min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--p-border, #cbd5e1); background: transparent; color: #1d4ed8; font: inherit; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+.upi-fine { margin: 8px 0 0; font-size: 0.75rem; color: #64748b; }
+
+body.dark .upi-head p, body.dark .upi-months button em, body.dark .upi-foot { color: #cbd5e1; }
+body.dark .upi-months button { border-color: #475569; }
+body.dark .upi-months button.on { border-color: #60a5fa; background: rgba(59, 130, 246, 0.18); color: #dbeafe; }
+body.dark .upi-months button.on em { color: #bfdbfe; }
+body.dark .upi-months button.on .upi-tick { background: #3b82f6; border-color: #3b82f6; color: #0b1220; }
+body.dark .upi-pay-btn { background: #059669; color: #fff; }
+body.dark .upi-pay-btn:disabled { background: #475569; color: #e2e8f0; }
+body.dark .upi-link, body.dark .upi-foot button { color: #93c5fd; }
+body.dark .upi-done { background: rgba(16, 185, 129, 0.14); border-color: rgba(16, 185, 129, 0.4); color: #d1fae5; }
+body.dark .upi-fine { color: #94a3b8; }

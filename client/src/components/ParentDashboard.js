@@ -18,7 +18,9 @@ import logoImg from "./new-logo.png";
 import titleImg from "./logo-title-copy.png";
 import bannerImg from "./banner4.jpg";
 import bannerMobile from "./banner-001.png";
-import qrCodeImg from "./qrcode.jpeg";
+import qrCodeImg from "./upi-qr.png";
+import UpiPayCard from "./UpiPay";
+import { UPI_ID } from "../utils/upi";
 
 import { FaShareFromSquare } from "react-icons/fa6";
 
@@ -663,6 +665,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   // Comment States
   const [showEditContact, setShowEditContact] = useState(false);
   const [showProofSheet, setShowProofSheet] = useState(false);
+  const [proofMonths, setProofMonths] = useState(null); // months ticked when coming from Pay by UPI
   const family = useFamily(currentUser._id);
 
   // Theme State
@@ -1095,7 +1098,7 @@ const ParentDashboard = ({ user, onLogout }) => {
   };
 
   const handleCopyPaymentDetails = () => {
-    const details = `*Payment Details for Thevenkyart Art Academy*\nName: Venkatesh Tammisetti\nPhonePe: +91 9963613404\nUPI ID: 9963613404@ybl\nBank: State Bank of India\nAccount No: 35360947257\nIFSC: SBIN0001424`;
+    const details = `*Payment Details for Thevenkyart Art Academy*\nName: Venkatesh Tammisetti\nPhonePe: +91 9963613404\nUPI ID: ${UPI_ID}\nBank: State Bank of India\nAccount No: 35360947257\nIFSC: SBIN0001424`;
     navigator.clipboard.writeText(details.trim());
     setToastMessage("Payment details copied! ✅");
     setShowToast(true);
@@ -1968,6 +1971,12 @@ const ParentDashboard = ({ user, onLogout }) => {
 
           {activeTab === "fees" && (
             <div className="fees-view">
+              <UpiPayCard
+                pendingRows={feeList.filter((r) => r.status === "Pending").reverse()}
+                childName={studentProfile?.childName || currentUser.childName}
+                onShowQr={() => setShowPaymentModal(true)}
+                onPaid={(months) => { setProofMonths(months); setShowProofSheet(true); }}
+              />
               <div className="fees-header-bar">
                 <h3>Fee History</h3>
                 <div className="fee-actions">
@@ -1980,9 +1989,9 @@ const ParentDashboard = ({ user, onLogout }) => {
                     className="pay-now-btn"
                     onClick={() => setShowPaymentModal(true)}
                   >
-                    Pay Now
+                    QR &amp; bank details
                   </button>
-                  <button type="button" className="ps-btn-ghost" onClick={() => setShowProofSheet(true)}>
+                  <button type="button" className="ps-btn-ghost" onClick={() => { setProofMonths(null); setShowProofSheet(true); }}>
                     Send payment proof
                   </button>
                 </div>
@@ -2298,7 +2307,7 @@ const ParentDashboard = ({ user, onLogout }) => {
                 </div>
                 <div className="ds-row">
                   <span className="ds-label">UPI ID</span>
-                  <span className="ds-val">9963613404@ybl</span>
+                  <span className="ds-val">{UPI_ID}</span>
                 </div>
                 <div className="divider"></div>
                 <div className="ds-row">
@@ -2316,7 +2325,7 @@ const ParentDashboard = ({ user, onLogout }) => {
               </div>
             </div>
             <div className="pm-footer">
-              <p>After payment, please share a screenshot on WhatsApp.</p>
+              <p>After paying, send the screenshot with <strong>Send payment proof</strong> on the Fees page.</p>
               <button
                 className="copy-details-btn"
                 onClick={handleCopyPaymentDetails}
@@ -2332,6 +2341,8 @@ const ParentDashboard = ({ user, onLogout }) => {
         <PaymentProofSheet
           studentId={currentUser._id}
           pendingRows={feeList.filter((r) => r.status === "Pending").reverse()}
+          initialMonths={proofMonths}
+          initialNote={proofMonths ? "Paid by UPI" : ""}
           onClose={() => setShowProofSheet(false)}
           onSent={(paymentProofs) => {
             setStudentProfile((p) => ({ ...p, paymentProofs }));
