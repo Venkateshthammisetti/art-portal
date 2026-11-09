@@ -106,6 +106,8 @@ The CRM **Clients** tab ([client/src/components/CRMClients.js](client/src/compon
 - Cron jobs handle expired subscriptions: on `statusCode` 404 or 410 they null out `User.pushSubscription`.
 - Parent pushes go through [server/parentPush.js](server/parentPush.js) (`pushToUsers`, honours `User.notifyPrefs`; missing = on): report ready (`POST /api/feedback`), certificate issued, newly marked Absent (only for the last 2 days), class timetable/link changed (`PUT /api/classes/:id`), and a reminder 30 min before each class (scheduler, every minute, IST). Parents choose types in Notifications (`PUT /api/users/:id/notify-prefs`); fee reminders and birthday wishes are always sent. Fee reminders go only to active parents.
 
+**Access check (watch only):** [server/authWatch.js](server/authWatch.js) is step 1 of protecting the API. `/api/login` (and `/api/parent/:id/family` for siblings) return a signed `authToken` (HMAC, 30 days, `AUTH_SECRET`, falling back to `CHATBOT_SECRET`; the chatbot's `chatToken` is accepted too). `client/src/utils/authHeader.js` sends it as `Authorization: Bearer` on every axios call to the API (unless a call sets its own). The middleware judges each finished request against `RULES` (`"public"`, `"any"`, a role list, or `{ roles, self: ":param" }` where a parent may also open a sibling's data) and only **counts** would-be refusals per IST day (`AuthWatch` model, flushed once a minute, kept 35 days). **Nothing is blocked.** Admin sees them in the "Security check" card on the home screen (`GET /api/admin/auth-watch?days=`). Every new route needs a `RULES` entry: `server/tests/auth-watch.test.js` fails otherwise.
+
 ## Environment Variables
 
 Backend requires `server/.env`:
@@ -116,6 +118,7 @@ GMAIL_PASS=
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 CHATBOT_SECRET=      # signs chatbot tokens (server/chatbot.js)
+AUTH_SECRET=         # signs login passes (server/authWatch.js); falls back to CHATBOT_SECRET
 GEMINI_API_KEY=      # Google Gemini key for the chatbot
 GEMINI_MODEL=        # optional, defaults to gemini-flash-lite-latest
 ```
@@ -125,5 +128,5 @@ If `MONGO_URI` is missing, the server falls back to `mongodb://localhost:27017/a
 ## Known Limitations
 
 - Passwords are stored as plaintext — no hashing.
-- No authentication middleware on API routes — all endpoints are publicly accessible.
+- No authentication is enforced on API routes — all endpoints are publicly accessible. The watch-only check (server/authWatch.js) records what the planned rules would refuse.
 - Cloudinary credentials are hardcoded in [server/index.js](server/index.js) rather than read from `.env`.

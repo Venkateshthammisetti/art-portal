@@ -10,6 +10,7 @@ const Lead = require("./models/Lead");
 const ResetRequest = require("./models/ResetRequest");
 const parentPush = require("./parentPush");
 const { signChatToken } = require("./chatbot");
+const { signAuthToken } = require("./authWatch");
 
 const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const last10 = (p) => String(p || "").replace(/\D/g, "").slice(-10);
@@ -400,7 +401,8 @@ module.exports = (upload) => {
           delete obj.password; // never send these, even if a select changes
           delete obj.pushSubscription;
           const chatToken = signChatToken(k);
-          return chatToken ? { ...obj, chatToken } : obj;
+          const authToken = signAuthToken(k);
+          return { ...obj, ...(chatToken ? { chatToken } : {}), ...(authToken ? { authToken } : {}) };
         }),
       });
     } catch (err) {
