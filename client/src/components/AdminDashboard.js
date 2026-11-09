@@ -27,9 +27,9 @@ import { getStudentStartMonth, isStudentInactiveForMonth, getFeeForMonth } from 
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
 import AdminAttention from "./AdminAttention";
-import AdminInsights from "./AdminInsights";
 import { downloadCSV } from "../utils/csv";
 import { getUsers, invalidateUsers } from "../utils/usersCache";
+import AdminInsights from "./AdminInsights";
 import ListCountHeader from "./ListCountHeader";
 import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 

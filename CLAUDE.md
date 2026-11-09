@@ -75,6 +75,8 @@ The CRM **Clients** tab ([client/src/components/CRMClients.js](client/src/compon
 
 **Check-ins & report month:** "I'm aware" on a missed-classes item (Teacher "Needs a check-in", Admin "Missed last 3 classes") is stored in `User.checkInAcks` (`POST/DELETE /api/checkins/:studentId`, [server/checkins.js](server/checkins.js)) with the run's `streakStart`, so it hides that run only; the student shows again after attending and missing 3 in a row again. Teacher marks are per teacher, admin marks are shared by admins, and the teacher's note shows on the Admin card. Monthly reports are written for the previous month (October's report in November): Teacher report screens default to `reportMonthKey()` (last month, never a saved draft's month), the due list counts only students active that month, and teachers get a reminder push at 9:15 AM IST on the 1st, 3rd and 5th; the month-end reminder is about artwork only.
 
+**Insights (Admin):** [server/insights.js](server/insights.js) (`GET /api/admin/insights?month=YYYY-MM&months=6`) and [client/src/components/AdminInsights.js](client/src/components/AdminInsights.js) (sidebar "Insights", More › Reports on phones). Per month: active students (started by then and not inactive), joined (joining date, as Revenue's New Joins), left (`inactiveHistory.inactiveFrom`), came back, fees expected vs collected for that fee month (Fee Tracker rules: passes and inactive months left out), attendance % (Present ÷ all marked). For the chosen month: attendance by class (lowest first, under 75% flagged) and per-teacher classes, students, sessions, attendance and reports written for that month. Each table exports CSV. Rupee detail stays on Revenue Analytics.
+
 ### Key Data Relationships
 
 - A `Class` has one `teacher` (User ref) and many `students` (User refs); also stores its own `schedule[]` of `{day, time, link}` slots.
@@ -105,8 +107,6 @@ The CRM **Clients** tab ([client/src/components/CRMClients.js](client/src/compon
 - Triggered on artwork upload (`/api/notifications/batch-alert`) and by the two cron jobs above.
 - Cron jobs handle expired subscriptions: on `statusCode` 404 or 410 they null out `User.pushSubscription`.
 - Parent pushes go through [server/parentPush.js](server/parentPush.js) (`pushToUsers`, honours `User.notifyPrefs`; missing = on): report ready (`POST /api/feedback`), certificate issued, newly marked Absent (only for the last 2 days), class timetable/link changed (`PUT /api/classes/:id`), and a reminder 30 min before each class (scheduler, every minute, IST). Parents choose types in Notifications (`PUT /api/users/:id/notify-prefs`); fee reminders and birthday wishes are always sent. Fee reminders go only to active parents.
-
-**Insights (Admin):** [server/insights.js](server/insights.js) (`GET /api/admin/insights?month=YYYY-MM&months=6`) and [client/src/components/AdminInsights.js](client/src/components/AdminInsights.js) (sidebar "Insights", More › Reports on phones). Per month: active students (started by then and not inactive), joined (joining date, as Revenue's New Joins), left (`inactiveHistory.inactiveFrom`), came back, fees expected vs collected for that fee month (Fee Tracker rules: passes and inactive months left out), attendance % (Present ÷ all marked). For the chosen month: attendance by class (lowest first, under 75% flagged) and per-teacher classes, students, sessions, attendance and reports written for that month. Each table exports CSV. Rupee detail stays on Revenue Analytics.
 
 ## Environment Variables
 
