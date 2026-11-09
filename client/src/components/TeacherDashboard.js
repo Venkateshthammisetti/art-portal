@@ -4,6 +4,7 @@ import { TeacherReportThread } from "./ParentSelf";
 import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey, useTodayNotes, ClassNoteSheet, ReportsDueCard, AtRiskCard, reportMonthKey } from "./TeacherExtras";
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
+import MonthlyAttendanceSummary, { PctCell, statsFor } from "./TeacherAttendanceSummary";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
@@ -3307,8 +3308,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     ))}
                   {attendanceView === "monthly" && (
                     <div className="monthly-sheet-container animate-fade-in">
+                      <MonthlyAttendanceSummary rows={monthlyData} days={monthDays} month={selectedMonth} />
                       <div className="sheet-wrapper">
-                        <table className="sheet-table">
+                        <table className="sheet-table with-pct">
                           <thead>
                             <tr>
                               <th className="sticky-col name-col">
@@ -3324,16 +3326,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
                               ))}
                               <th className="summary-col present">P</th>
                               <th className="summary-col absent">A</th>
+                              <th className="summary-col missed" title="Missed">M</th>
+                              <th className="summary-col pct" title="Attendance %">%</th>
                             </tr>
                           </thead>
                           <tbody>
                             {monthlyData.map((s) => {
-                              const presentCount = s.history.filter(
-                                (h) => h === "P",
-                              ).length;
-                              const absentCount = s.history.filter(
-                                (h) => h === "A",
-                              ).length;
+                              const { p: presentCount, a: absentCount, m: missedCount } = statsFor(s.history);
                               return (
                                 <tr key={s._id}>
                                   <td className="sticky-col name-col">
@@ -3360,6 +3359,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                   <td className="summary-col absent-val">
                                     {absentCount}
                                   </td>
+                                  <td className="summary-col missed-val">
+                                    {missedCount}
+                                  </td>
+                                  <PctCell history={s.history} />
                                 </tr>
                               );
                             })}
