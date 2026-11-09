@@ -2947,8 +2947,6 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
     <div
       style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}
     >
-      <AdminAttention adminId={adminId} onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
-      <SecurityWatch />
       <div
         className="overview-hero-banner"
         style={{
@@ -2997,6 +2995,8 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
           </div>
         </div>
       </div>
+      <AdminAttention adminId={adminId} onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
+      <SecurityWatch />
 
       <div className="overview-stats-grid">
         <div
