@@ -17,7 +17,16 @@ cd server && node index.js         # Start server (port 5000 by default)
 cd server && npx nodemon index.js  # Dev with auto-restart
 ```
 
-There are no lint scripts. The root `package.json` has no scripts. The only test file is the CRA boilerplate `client/src/App.test.js`.
+### Tests
+```bash
+cd server && npm test                          # server tests (node:test), no database needed
+cd client && npm run build && cd ../e2e && npm install && npm test   # browser smoke test
+```
+- `server/tests/*.test.js` run route modules and the scheduler against an in-memory stand-in for MongoDB ([server/tests/helpers/memdb.js](server/tests/helpers/memdb.js)); web-push is stubbed and sent messages are captured (`t.pushes()`). [server/tests/helpers/school.js](server/tests/helpers/school.js) builds a small academy dated relative to today. Routes defined inline in `index.js` aren't covered (requiring it connects to Mongo); new features should live in their own router module so they can be tested. `fees.test.js` also checks that `server/fees.js` and `client/src/utils/fees.js` agree.
+- `e2e/smoke.js` serves `client/build`, logs in as admin/teacher/parent/CRM with made-up data (every API call is answered locally), clicks every menu item and fails on any JavaScript error.
+- GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs both on every PR and push to main. The client uses `npm install`, not `npm ci`, because `client/package-lock.json` is out of step.
+
+There are no lint scripts. The root `package.json` has no scripts.
 
 ## Architecture
 

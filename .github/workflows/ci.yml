@@ -1,0 +1,50 @@
+# Runs on every pull request and every push to main. Nothing here deploys.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  server-tests:
+    name: Server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+      - name: Test
+        working-directory: server
+        run: npm test
+
+  app-build-and-smoke:
+    name: App build + browser smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # client/package-lock.json is out of step with package.json, so `npm ci`
+      # refuses; `npm install` works (the lock file change is not committed).
+      - name: Install app
+        working-directory: client
+        run: npm install --no-audit --no-fund
+      - name: Build app
+        working-directory: client
+        env:
+          CI: "false" # don't fail the build on existing lint warnings
+        run: npm run build
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Smoke test every dashboard
+        working-directory: e2e
+        run: npm test
