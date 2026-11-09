@@ -1078,18 +1078,51 @@ const ClassDetailsView = ({ cls, onBack, onEdit, onDelete, onAssign }) => {
 };
 
 // --- EDIT USER MODAL ---
+// Safe "YYYY-MM-DD" for date inputs (bad or missing dates become empty)
+const dateInputValue = (v) => {
+  if (!v) return "";
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  try { return formatDateForInput(v); } catch { return ""; }
+};
+const ageFromDob = (dob) => {
+  const d = new Date(dob);
+  if (!dob || Number.isNaN(d.getTime())) return "";
+  const t = new Date();
+  let age = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--;
+  return age >= 0 ? age : "";
+};
+// "Sai Krishna Reddy" -> ["Sai", "Krishna Reddy"] (joined back the same way on save)
+const splitChildName = (full) => {
+  const s = String(full || "").trim();
+  const i = s.indexOf(" ");
+  return i < 0 ? [s, ""] : [s.slice(0, i), s.slice(i + 1).trim()];
+};
+
+// Edit Details: the same fields as Register User, for every role
 const EditUserModal = ({ user, onClose, onSave }) => {
+  const [firstName, lastName] = splitChildName(user.childName);
   const [formData, setFormData] = useState({
     ...user,
+    username: user.username || "",
+    firstName,
+    lastName,
     city: user.city || "",
-    joiningDate: formatDateForInput(user.joiningDate),
-    registeredDate: user.registeredDate || formatDateForInput(user.joiningDate),
-    childDob: formatDateForInput(user.childDob),
-    dob: formatDateForInput(user.dob),
+    joiningDate: dateInputValue(user.joiningDate),
+    registeredDate: dateInputValue(user.registeredDate || user.joiningDate),
+    childDob: dateInputValue(user.childDob),
+    dob: dateInputValue(user.dob),
   });
+  const [formError, setFormError] = useState("");
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "childDob" && value) next.childAge = ageFromDob(value); // like Register User
+      return next;
+    });
   };
   // A new password is optional. It is only sent when typed (an empty box must
   // never blank the saved password), and after saving, the admin is offered a
@@ -1098,13 +1131,25 @@ const EditUserModal = ({ user, onClose, onSave }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [sentPassword, setSentPassword] = useState(null); // set once saved with a new password
   const [saving, setSaving] = useState(false);
+  const isParent = user.role === "parent";
+  const isTeacher = user.role === "teacher";
+  const usernameChanged = String(formData.username || "").trim() !== String(user.username || "");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { password: _old, ...rest } = formData;
+    setFormError("");
+    const { password: _old, firstName: fn, lastName: ln, ...rest } = formData;
+    const payload = { ...rest, username: String(rest.username || "").trim() };
+    if (!payload.username) return setFormError("Username can't be empty.");
+    if (/\s/.test(payload.username)) return setFormError("Username can't have spaces.");
+    if (isParent) {
+      payload.childName = `${String(fn || "").trim()} ${String(ln || "").trim()}`.trim();
+      if (user.parentEmail !== undefined) payload.parentEmail = payload.email; // keep both copies in step
+    }
     const pw = newPassword.trim();
     if (newPassword && pw.length < 4) return;
     setSaving(true);
-    const ok = await onSave(pw ? { ...rest, password: pw } : rest);
+    const ok = await onSave(pw ? { ...payload, password: pw } : payload);
     setSaving(false);
     if (ok && pw) setSentPassword(pw);
   };
@@ -1167,14 +1212,52 @@ const EditUserModal = ({ user, onClose, onSave }) => {
     );
   }
 
+  // One labelled input. A plain function (not a component) so typing never loses focus.
+  const field = (label, name, opts = {}) => {
+    const { type = "text", style, readOnly, required, placeholder, full, hint, ...rest } = opts;
+    return (
+      <div className="form-group" style={full ? { gridColumn: "1 / -1" } : undefined}>
+        <label htmlFor={`ed-${name}`} style={style?.label}>{label}{required ? " *" : ""}</label>
+        <input
+          id={`ed-${name}`}
+          name={name}
+          type={type}
+          value={formData[name] ?? ""}
+          onChange={handleChange}
+          readOnly={readOnly}
+          required={required}
+          placeholder={placeholder}
+          style={style?.input}
+          {...rest}
+        />
+        {hint && <small className="edit-hint">{hint}</small>}
+      </div>
+    );
+  };
+  const select = (label, name, options) => {
+    const value = formData[name] ?? "";
+    const list = value && !options.some(([v]) => v === value) ? [...options, [value, value]] : options;
+    return (
+      <div className="form-group">
+        <label htmlFor={`ed-${name}`}>{label}</label>
+        <select id={`ed-${name}`} name={name} value={value} onChange={handleChange} style={{ fontWeight: "bold" }}>
+          {list.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+    );
+  };
+  const hasDob = !!formData.childDob;
+  const ageField = field(hasDob ? "Age (auto)" : "Age", "childAge", { type: "number", min: 0, readOnly: hasDob });
+
   return (
     <div className="modal-overlay">
-      <div className="modal-content edit-user-modal" style={{ maxWidth: "600px" }}>
+      <div className="modal-content edit-user-modal" style={{ maxWidth: "680px" }} role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
         <div className="modal-header">
-          <h3>Edit Details: {user.username}</h3>
+          <h3 id="edit-user-title">Edit Details: {user.username}</h3>
           <button
             className="close-modal"
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: "none",
               border: "none",
@@ -1186,248 +1269,106 @@ const EditUserModal = ({ user, onClose, onSave }) => {
           </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="edit-form-grid">
-            <div className="form-group">
-              <label>Full Name</label>
-              <input
-                name="fullName"
-                value={formData.fullName || ""}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Phone Number</label>
-              <input
-                name="phone"
-                value={formData.phone || ""}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                name="email"
-                value={formData.email || ""}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Location</label>
-              <input
-                name="location"
-                value={formData.location || ""}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>City</label>
-              <input
-                name="city"
-                value={formData.city || ""}
-                onChange={handleChange}
-              />
-            </div>
-            {user.role !== "admin" && (
-              <>
-                <div className="form-group">
-                  <label>Zoom ID</label>
-                  <input
-                    name="zoomId"
-                    value={formData.zoomId || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Referred By</label>
-                  <input
-                    name="referredBy"
-                    value={formData.referredBy || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-
           <div className="edit-form-section">
-            {user.role === "parent" ? (
-              <div className="edit-form-grid">
-                <div className="form-group">
-                  <label>Child Name</label>
+            <h4 className="edit-section-title">Login</h4>
+            <div className="edit-form-grid">
+              {field("Username", "username", { required: true, autoComplete: "off", autoCapitalize: "none", spellCheck: false,
+                hint: usernameChanged ? "They'll log in with this new username from now on." : undefined })}
+              <div className="form-group">
+                <label htmlFor="edit-new-password">New password <span style={{ fontWeight: 400, opacity: 0.7 }}>(empty = keep)</span></label>
+                <div style={{ display: "flex", gap: "8px" }}>
                   <input
-                    name="childName"
-                    value={formData.childName || ""}
-                    onChange={handleChange}
+                    id="edit-new-password"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={4}
+                    placeholder="At least 4 characters"
+                    style={{ flex: 1 }}
                   />
-                </div>
-                <div className="form-group">
-                  <label>Monthly Fee (₹)</label>
-                  <input
-                    type="number"
-                    name="monthlyFee"
-                    value={formData.monthlyFee || ""}
-                    onChange={handleChange}
-                    style={{ fontWeight: "bold", color: "#16a34a" }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Classes / Month</label>
-                  <input
-                    type="number"
-                    name="monthlyClassesTarget"
-                    value={formData.monthlyClassesTarget || ""}
-                    onChange={handleChange}
-                    style={{ fontWeight: "bold", color: "#0284c7" }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Child Age</label>
-                  <input
-                    name="childAge"
-                    value={formData.childAge || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Date of Birth</label>
-                  <input
-                    type="date"
-                    name="childDob"
-                    value={formData.childDob || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Class/Grade</label>
-                  <input
-                    name="childClass"
-                    value={formData.childClass || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Joining Date</label>
-                  <input
-                    type="date"
-                    name="joiningDate"
-                    value={formData.joiningDate || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label style={{ color: "#ea580c" }}>
-                    Fee Start Date (Reg)
-                  </label>
-                  <input
-                    type="date"
-                    name="registeredDate"
-                    value={formData.registeredDate || ""}
-                    onChange={handleChange}
-                    style={{ border: "1px solid #ea580c" }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Class Mode</label>
-                  <select
-                    name="classMode"
-                    value={formData.classMode || "online"}
-                    onChange={handleChange}
-                    style={{ fontWeight: "bold" }}
-                  >
-                    <option value="online">Online</option>
-                    <option value="offline">Offline</option>
-                  </select>
+                  <button type="button" className="cancel-btn" onClick={() => setShowNewPassword((v) => !v)} aria-pressed={showNewPassword}>
+                    {showNewPassword ? "Hide" : "Show"}
+                  </button>
                 </div>
               </div>
-            ) : user.role === "teacher" ? (
-              <div className="edit-form-grid">
-                <div className="form-group">
-                  <label>Specialization</label>
-                  <input
-                    name="specialization"
-                    value={formData.specialization || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Monthly Salary (₹)</label>
-                  <input
-                    type="number"
-                    name="monthlyFee"
-                    value={formData.monthlyFee || ""}
-                    onChange={handleChange}
-                    style={{ fontWeight: "bold", color: "#9333ea" }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Date of Birth</label>
-                  <input
-                    type="date"
-                    name="childDob"
-                    value={formData.childDob || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Joining Date</label>
-                  <input
-                    type="date"
-                    name="joiningDate"
-                    value={formData.joiningDate || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="edit-form-grid">
-                <div className="form-group">
-                  <label>Specialization / Role</label>
-                  <input
-                    name="specialization"
-                    value={formData.specialization || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Date of Birth</label>
-                  <input
-                    type="date"
-                    name="dob"
-                    value={formData.dob || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Joining Date</label>
-                  <input
-                    type="date"
-                    name="joiningDate"
-                    value={formData.joiningDate || ""}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="form-group" style={{ margin: "4px 20px 12px" }}>
-            <label htmlFor="edit-new-password">New password <span style={{ fontWeight: 400, opacity: 0.7 }}>(leave empty to keep the current one)</span></label>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <input
-                id="edit-new-password"
-                type={showNewPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={4}
-                placeholder="At least 4 characters"
-                style={{ flex: 1 }}
-              />
-              <button type="button" className="cancel-btn" onClick={() => setShowNewPassword((v) => !v)} aria-pressed={showNewPassword}>
-                {showNewPassword ? "Hide" : "Show"}
-              </button>
             </div>
           </div>
+
+          {isParent ? (
+            <>
+              <div className="edit-form-section">
+                <h4 className="edit-section-title">Student details</h4>
+                <div className="edit-form-grid">
+                  {field("First Name", "firstName")}
+                  {field("Last Name", "lastName")}
+                  {field("Date of Birth", "childDob", { type: "date" })}
+                  {ageField}
+                  {select("Gender", "gender", [["", "Select"], ["Male", "Male"], ["Female", "Female"]])}
+                  {field("Admission ID", "admissionId", { placeholder: "e.g. TVA12" })}
+                  {field("Class / Grade", "childClass")}
+                  {field("Monthly Fee (₹)", "monthlyFee", { type: "number", min: 0, style: { input: { fontWeight: "bold", color: "#16a34a" } } })}
+                  {field("Classes / Month", "monthlyClassesTarget", { type: "number", min: 0, style: { input: { fontWeight: "bold", color: "#0284c7" } } })}
+                  {field("Date of Joining", "joiningDate", { type: "date" })}
+                  {field("Fee Start Date (Reg)", "registeredDate", { type: "date", style: { label: { color: "#ea580c" }, input: { border: "1px solid #ea580c" } } })}
+                  {select("Class Mode", "classMode", [["online", "Online"], ["offline", "Offline"]])}
+                  {field("Student Phone", "studentPhone", { type: "tel" })}
+                  {field("Student Email", "studentEmail", { type: "email" })}
+                  <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                    <label htmlFor="ed-shortBio">Short Bio</label>
+                    <textarea id="ed-shortBio" name="shortBio" rows={3} value={formData.shortBio || ""} onChange={handleChange} />
+                  </div>
+                </div>
+              </div>
+              <div className="edit-form-section">
+                <h4 className="edit-section-title">Parent details</h4>
+                <div className="edit-form-grid">
+                  {field("Parent Phone", "phone", { type: "tel" })}
+                  {field("Parent Name", "fullName")}
+                  {field("Parent Designation", "parentDesignation", { placeholder: "e.g. Father, Mother, Guardian" })}
+                  {field("Parent Email", "email", { type: "email" })}
+                  {field("Zoom ID", "zoomId")}
+                  {field("Location (Area/Street)", "location")}
+                  {field("City", "city", { placeholder: "e.g. Hyderabad" })}
+                  {field("Referred By", "referredBy")}
+                </div>
+              </div>
+            </>
+          ) : isTeacher ? (
+            <div className="edit-form-section">
+              <h4 className="edit-section-title">Details</h4>
+              <div className="edit-form-grid">
+                {field("Full Name", "fullName")}
+                {field("Phone", "phone", { type: "tel" })}
+                {field("Email", "email", { type: "email" })}
+                {field("Zoom ID", "zoomId")}
+                {field("Education / Qualification", "education")}
+                {field("Specialization", "specialization")}
+                {field("Salary (₹)", "monthlyFee", { type: "number", min: 0, style: { input: { fontWeight: "bold", color: "#9333ea" } } })}
+                {field("Date of Birth", "childDob", { type: "date" })}
+                {ageField}
+                {field("Joining Date", "joiningDate", { type: "date" })}
+                {field("Location", "location")}
+                {field("City", "city")}
+              </div>
+            </div>
+          ) : (
+            <div className="edit-form-section">
+              <h4 className="edit-section-title">Details</h4>
+              <div className="edit-form-grid">
+                {field("Full Name", "fullName")}
+                {field("Phone", "phone", { type: "tel" })}
+                {field("Email", "email", { type: "email" })}
+                {field("Date of Birth", "dob", { type: "date" })}
+                {field("Specialization / Role", "specialization")}
+                {field("Joining Date", "joiningDate", { type: "date" })}
+                {field("Location", "location")}
+                {field("City", "city")}
+              </div>
+            </div>
+          )}
+
+          {formError && <p className="edit-error" role="alert">{formError}</p>}
 
           <div className="modal-actions" style={{ justifyContent: "flex-end" }}>
             <button
@@ -3995,7 +3936,7 @@ const UserManagementTab =({ initialRoleFilter = "all", initialModeFilter = "all"
       showToast(updatedData.password ? "Password changed!" : "User details updated!", "success");
       return true;
     } catch (err) {
-      showToast("Failed to update user.", "error");
+      showToast(err.response?.data?.message || "Failed to update user.", "error");
       return false;
     }
   };

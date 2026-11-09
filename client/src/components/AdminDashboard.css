@@ -4889,3 +4889,15 @@ body.dark .proof-sent-badge, .dark .proof-sent-badge { background: rgba(59, 130,
 .admin-container[data-theme="dark"] .queue-card { border-color: #334155; }
 .admin-container[data-theme="dark"] .queue-msg { background: #0f172a; color: #e2e8f0; }
 .admin-container[data-theme="dark"] .queue-sub, .admin-container[data-theme="dark"] .queue-empty { color: #94a3b8; }
+
+/* Edit Details: section headings like Register User */
+.admin-container .edit-section-title { margin: 0 0 12px; font-size: 0.95rem; font-weight: 700; color: #0369a1; }
+.admin-container .edit-hint { display: block; margin-top: 4px; font-size: 0.78rem; color: #92400e; }
+.admin-container .edit-error { margin: 0 0 8px; padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #991b1b; font-weight: 600; font-size: 0.88rem; }
+.admin-container .edit-user-modal textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font: inherit; resize: vertical; }
+.admin-container[data-theme="dark"] .edit-section-title { color: #7dd3fc; }
+.admin-container[data-theme="dark"] .edit-hint { color: #fcd34d; }
+.admin-container[data-theme="dark"] .edit-error { background: #450a0a; color: #fecaca; }
+.admin-container[data-theme="dark"] .edit-user-modal textarea { background: var(--bg-input, #0f172a); color: var(--text, #f1f5f9); border-color: var(--border, #334155); }
+.admin-container .edit-user-modal input[readonly] { background: #f1f5f9; color: #475569; cursor: default; }
+.admin-container[data-theme="dark"] .edit-user-modal input[readonly] { background: #0b1220 !important; color: #94a3b8 !important; }

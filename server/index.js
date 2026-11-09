@@ -163,6 +163,16 @@ app.put("/api/users/:id", async (req, res) => {
     const existing = await User.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: "User not found" });
 
+    // Username can be changed in Edit Details: never empty, never someone else's
+    if (req.body.username !== undefined) {
+      const username = String(req.body.username).trim();
+      if (!username) return res.status(400).json({ message: "Username can't be empty" });
+      if (username !== existing.username && (await User.exists({ username, _id: { $ne: existing._id } }))) {
+        return res.status(400).json({ message: "That username is already taken" });
+      }
+      req.body.username = username;
+    }
+
     // A new password answers any open "forgot password" request for this account
     if (req.body.password && req.body.password !== existing.password) {
       ResetRequest.updateMany({ userId: existing._id, resolved: false }, { resolved: true, resolvedAt: new Date() })
