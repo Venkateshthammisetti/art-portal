@@ -1,0 +1,11 @@
+{
+  "name": "art-portal-e2e",
+  "private": true,
+  "description": "Browser smoke test: opens every dashboard screen of the built app with made-up data",
+  "scripts": {
+    "test": "node smoke.js"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}
