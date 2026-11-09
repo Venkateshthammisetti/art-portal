@@ -33,6 +33,10 @@ app.use(cors());
 // gzip JSON responses (user lists, galleries): several times smaller on phones
 app.use(require("compression")());
 app.use(express.json());
+// Watch-only access check: records which calls the planned rules would refuse (blocks nothing)
+const authWatch = require("./authWatch");
+app.use(authWatch.middleware);
+app.use("/api", authWatch.router);
 
 // 2. Configure Cloudinary (Replace with your actual keys from Step 1)
 cloudinary.config({
@@ -106,7 +110,8 @@ app.post("/api/login", async (req, res) => {
   if (user) {
     // Additive: chatToken is used only by the chatbot (/api/chatbot)
     const chatToken = signChatToken(user);
-    res.json(chatToken ? { ...user.toObject(), chatToken } : user);
+    const authToken = authWatch.signAuthToken(user); // login pass the app sends on every call
+    res.json({ ...user.toObject(), ...(chatToken ? { chatToken } : {}), ...(authToken ? { authToken } : {}) });
   }
   else res.status(401).json({ success: false, message: "Wrong credentials" });
 });

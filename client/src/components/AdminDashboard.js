@@ -27,6 +27,7 @@ import { getStudentStartMonth, isStudentInactiveForMonth, getFeeForMonth } from 
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
 import AdminAttention from "./AdminAttention";
+import SecurityWatch from "./SecurityWatch";
 import { downloadCSV } from "../utils/csv";
 import { getUsers, invalidateUsers } from "../utils/usersCache";
 import ListCountHeader from "./ListCountHeader";
@@ -2946,6 +2947,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
       style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}
     >
       <AdminAttention adminId={adminId} onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
+      <SecurityWatch />
       <div
         className="overview-hero-banner"
         style={{

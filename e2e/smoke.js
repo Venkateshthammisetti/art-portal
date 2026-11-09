@@ -60,6 +60,7 @@ const reply = (url, method) => {
   if (/^\/classes(\?|$)/.test(p) || /^\/teacher\/[^/]+\/classes/.test(p)) return [cls];
   if (/^\/dashboard\/stats/.test(p)) return { totalStudents: 3, activeStudents: 3, totalTeachers: 1, totalClasses: 1 };
   if (/^\/admin\/attention/.test(p)) return { today, total: 0, overdueAmount: 0, counts: { proofs: 0, resets: 0, overdue: 0, missing: 0, unmarked: 0, notices: 0 }, items: { proofs: [], resets: [], overdue: [], missing: [], missingKnown: [], unmarked: [], notices: [] } };
+  if (/^\/admin\/auth-watch/.test(p)) return { configured: true, checked: 120, wouldBlock: 2, byReason: { "no-token": 2 }, rows: [{ method: "GET", route: "/api/users", reason: "no-token", role: "-", count: 2, lastAt: new Date().toISOString() }] };
   if (/^\/leads\/stats/.test(p)) return { total: 0, byStage: {}, bySource: [], conversion: 0, today: [], overdue: [], upcomingDemos: [], funnel: [], monthly: [] };
   if (/^\/student\/[^/]+\/profile/.test(p)) return { student: kids[0], attendance: [], feedback: [] };
   if (/^\/parent\/[^/]+\/referrals/.test(p)) return { count: 0, families: [], enquiries: 0 };
