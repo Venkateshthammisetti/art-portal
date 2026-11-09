@@ -11,7 +11,7 @@
   --ins-warn-bg: #fef3c7;
   --ins-warn-text: #92400e;
   --ins-accent: #1d4ed8;
-  max-width: 1200px;
+  max-width: var(--content-max, 1200px);
   margin: 0 auto;
   padding-bottom: 30px;
   color: var(--ins-text);

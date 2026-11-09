@@ -894,6 +894,9 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 30px;
+  /* How wide a page may grow: 1200px on a laptop, wider on big screens or
+     when the browser is zoomed out, so the page doesn't sit in a narrow strip. */
+  --content-max: clamp(1200px, 76vw, 1680px);
 }
 
 /* Overview Stats Grid */
@@ -4347,6 +4350,14 @@ body {
 .admin-container .top-header {
   box-sizing: content-box;
   padding-top: env(safe-area-inset-top, 0px);
+}
+/* Desktop / tablet: keep the header's normal top padding (the rule above had
+   removed it, leaving the title touching the top edge). Phones use a fixed
+   60px header with no top padding. */
+@media (min-width: 769px) {
+  .admin-container .top-header {
+    padding-top: calc(15px + env(safe-area-inset-top, 0px));
+  }
 }
 .admin-sidebar.mobile-open {
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
