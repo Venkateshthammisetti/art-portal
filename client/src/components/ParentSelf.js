@@ -229,11 +229,12 @@ export const ReportThread = ({ report, parentId, onUpdated }) => {
 
 // ---------- payment proof ----------
 const monthName = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" }); };
-export const PaymentProofSheet = ({ studentId, pendingRows, onClose, onSent }) => {
-  const [months, setMonths] = useState(() => pendingRows.slice(0, 1).map((r) => r.month));
+export const PaymentProofSheet = ({ studentId, pendingRows, initialMonths, initialNote = "", onClose, onSent }) => {
+  const [months, setMonths] = useState(() =>
+    initialMonths?.length ? initialMonths.filter((m) => pendingRows.some((r) => r.month === m)) : pendingRows.slice(0, 1).map((r) => r.month));
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(initialNote);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const amount = pendingRows.filter((r) => months.includes(r.month)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
