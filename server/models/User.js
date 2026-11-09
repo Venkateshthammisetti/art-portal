@@ -26,6 +26,8 @@ const UserSchema = new mongoose.Schema({
   gender: String,
   admissionId: String,
   shortBio: String,
+  studentPhone: String, // the child's own phone/email (Register User › Student Phone/Email)
+  studentEmail: String,
   childClass: String, // e.g. "Grade 5"
   
   // Fee & Class Info
