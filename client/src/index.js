@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import './utils/authHeader'; // sends the login pass with every API call
+import './utils/installPrompt'; // catches Chrome's install event before the app draws
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

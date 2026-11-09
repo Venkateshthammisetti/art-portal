@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { buildFeeHistory, feeRowForMonth, monthKey } from "../utils/fees";
 import { NotificationSettings, WhatsNewCard, MoreSheet } from "./ParentExtras";
+import { InstallCard, IosInstallSheet } from "./InstallApp";
+import { useInstallApp } from "../utils/installPrompt";
 import { RatingTrend, AttendanceCalendar, attendanceStreak, bestStreak, GalleryProgress } from "./ParentProgress";
 import { AbsencePanel, downloadCalendar, EditContactSheet, ReportThread, PaymentProofSheet, downloadReceipt, ReferralStats, useFamily, switchToChild, ClassNotesCard } from "./ParentSelf";
 import "./ParentDashboard.css";
@@ -656,6 +658,13 @@ const ParentDashboard = ({ user, onLogout }) => {
   // Toast State
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const installApp = useInstallApp();
+  const [showIosInstall, setShowIosInstall] = useState(false);
+  const installedToast = () => {
+    setToastMessage("App installed. Open VenkyArt from your home screen.");
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3500);
+  };
   const [, setPushEnabled] = useState(
     typeof Notification !== "undefined" && Notification.permission === "granted",
   );
@@ -1414,6 +1423,7 @@ const ParentDashboard = ({ user, onLogout }) => {
           )}
           {activeTab === "overview" && (
             <div className="overview-grid">
+              <InstallCard dark={theme === "dark"} onInstalled={installedToast} />
               <div
                 className="welcome-card"
                 style={{
@@ -2200,6 +2210,10 @@ const ParentDashboard = ({ user, onLogout }) => {
             setShowMore(false);
             if (key === "notifications") setShowNotifSettings(true);
             else if (key === "tutorial") setShowTutorial(true);
+            else if (key === "install") {
+              if (installApp.canPrompt) installApp.promptInstall().then((o) => o === "accepted" && installedToast());
+              else setShowIosInstall(true);
+            }
             else if (key === "theme") toggleTheme();
             else handleNavClick(key);
           }}
@@ -2211,10 +2225,19 @@ const ParentDashboard = ({ user, onLogout }) => {
             { key: "notifications", label: "Notifications", hint: "Choose which updates you get", icon: <IconBell /> },
             { key: "theme", label: theme === "light" ? "Dark mode" : "Light mode", icon: theme === "light" ? <IconMoon /> : <IconSun /> },
             { key: "tutorial", label: "App tutorial", icon: <IconHelp /> },
+            ...(installApp.available ? [{
+              key: "install",
+              label: "Install the app",
+              hint: installApp.ios ? "Add to Home Screen for notifications" : "Open it like any app",
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="3" /><path d="m9.5 9.5 2.5 2.5 2.5-2.5M12 6v6" /></svg>,
+            }] : []),
           ]}
         />
       )}
 
+      {showIosInstall && (
+        <IosInstallSheet inAppBrowser={installApp.inAppBrowser} dark={theme === "dark"} onClose={() => setShowIosInstall(false)} />
+      )}
       {showNotifSettings && (
         <NotificationSettings
           userId={currentUser._id}
