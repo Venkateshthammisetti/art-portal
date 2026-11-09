@@ -1140,6 +1140,8 @@ app.use("/api", require("./parentSelf")(upload));
 app.use("/api", require("./classNotes"));
 // "I'm aware" on the missed-classes check-in lists
 app.use("/api", require("./checkins"));
+// Admin Insights: students, fees, attendance by class and teacher (server/insights.js)
+app.use("/api", require("./insights").router);
 
 // Admin home: what needs attention today (proofs, resets, overdue fees,
 // students missing classes, classes without attendance, absence notices)

@@ -62,6 +62,13 @@ const reply = (url, method) => {
   if (/^\/admin\/attention/.test(p)) return { today, total: 0, overdueAmount: 0, counts: { proofs: 0, resets: 0, overdue: 0, missing: 0, unmarked: 0, notices: 0 }, items: { proofs: [], resets: [], overdue: [], missing: [], missingKnown: [], unmarked: [], notices: [] } };
   if (/^\/admin\/auth-watch/.test(p)) return { configured: true, checked: 120, wouldBlock: 2, byReason: { "no-token": 2 }, rows: [{ method: "GET", route: "/api/users", reason: "no-token", role: "-", count: 2, lastAt: new Date().toISOString() }] };
   if (/^\/leads\/stats/.test(p)) return { total: 0, byStage: {}, bySource: [], conversion: 0, today: [], overdue: [], upcomingDemos: [], funnel: [], monthly: [] };
+  if (/^\/admin\/insights/.test(p)) {
+    const row = (m, i) => ({ month: m, active: 10 + i, joined: i % 3, left: i % 2, returned: 0, net: (i % 3) - (i % 2), passes: 1, expected: 15000, collected: 12000 + i * 300, paidCount: 8, dueCount: 10, collectionRate: 80 + i * 2, attendanceRate: 70 + i * 3 });
+    const trend = [5, 4, 3, 2, 1, 0].map((n, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return row(d.toISOString().slice(0, 7), i); });
+    return { month, months: trend.map((r) => r.month), trend, summary: trend[5], previous: trend[4], unassigned: 0,
+      classes: [{ classId: CLASS, className: cls.className, teacher: teacher.fullName, students: 3, sessions: 4, marked: 12, present: 9, absent: 3, attendanceRate: 75 }],
+      teachers: [{ teacherId: TEACHER, teacher: teacher.fullName, classes: 1, students: 3, sessions: 4, attendanceRate: 75, reportsWritten: 1, reportsDue: 3 }] };
+  }
   if (/^\/student\/[^/]+\/profile/.test(p)) return { student: kids[0], attendance: [], feedback: [] };
   if (/^\/parent\/[^/]+\/referrals/.test(p)) return { count: 0, families: [], enquiries: 0 };
   if (/^\/parent\/[^/]+\/family/.test(p)) return { children: [kids[0]] };
