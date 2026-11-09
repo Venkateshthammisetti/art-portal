@@ -2280,7 +2280,7 @@ const RevenueAnalyticsTab = ({ users = [], classes = [], loading, onBack }) => {
   };
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}>
+    <div style={{ maxWidth: "var(--content-max, 1200px)", margin: "0 auto", paddingBottom: "30px" }}>
       <div className="rev-analytics-header">
         <button type="button" className="rev-back-btn" onClick={onBack}>
           ← Back
@@ -2945,7 +2945,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
 
   return (
     <div
-      style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}
+      style={{ maxWidth: "var(--content-max, 1200px)", margin: "0 auto", paddingBottom: "30px" }}
     >
       <div
         className="overview-hero-banner"
@@ -8072,7 +8072,7 @@ const ExpenseAnalysisTab = ({ expenses = [], students = [], loading, onBack }) =
   ];
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "30px" }}>
+    <div style={{ maxWidth: "var(--content-max, 1200px)", margin: "0 auto", paddingBottom: "30px" }}>
       <div className="rev-analytics-header">
         <button type="button" className="rev-back-btn" onClick={onBack}>
           ← Back
