@@ -65,6 +65,50 @@ const QUICK_TIMES = [
   { label: "Next week", get: () => at(7, 11) },
 ];
 // Demo teacher may come populated ({_id, fullName}) or as a bare id
+// Age in whole years from a YYYY-MM-DD date of birth (same as Admin › Register User)
+const ageFromDob = (dob) => {
+  if (!dob) return "";
+  const b = new Date(dob);
+  const t = new Date();
+  let age = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
+  return age;
+};
+
+// Convert form, pre-filled from the lead with the same fields as Admin › Register User
+const convertFormFor = (lead) => {
+  const demo = lead.demo || {};
+  const [first = "", ...rest] = (lead.childName || "").trim().split(/\s+/);
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    username: (lead.childName || lead.parentName).toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "") + Math.floor(10 + Math.random() * 89),
+    password: Math.random().toString(36).slice(2, 8),
+    firstName: first,
+    lastName: rest.join(" "),
+    childDob: "",
+    childAge: lead.childAge ?? "",
+    gender: "",
+    admissionId: "",
+    childClass: "",
+    monthlyFee: "",
+    monthlyClassesTarget: 8,
+    joiningDate: today,
+    registeredDate: today,
+    classMode: demo.mode || (lead.interestMode === "offline" ? "offline" : "online"),
+    classId: "",
+    shortBio: "",
+    phone: lead.phone || "",
+    fullName: lead.parentName || "",
+    parentDesignation: "",
+    email: lead.email || "",
+    zoomId: "",
+    location: "",
+    city: lead.city || "",
+    referredBy: lead.referredBy || "",
+  };
+};
+
 const teacherIdOf = (demo) => (demo?.teacherId && typeof demo.teacherId === "object" ? demo.teacherId._id : demo?.teacherId) || "";
 const teacherNameOf = (demo, teachers = []) => {
   if (demo?.teacherId && typeof demo.teacherId === "object" && demo.teacherId.fullName) return demo.teacherId.fullName;
@@ -309,12 +353,7 @@ const LeadDetail = ({ lead, by, dark, teachers, classes, onClose, onUpdated, onD
             </>
           )}
           {(lead.stage === "demo_done" || lead.stage === "contacted") && (
-            <button type="button" className="crm-btn crm-btn-success" onClick={() => open("convert", {
-              username: (lead.childName || lead.parentName).toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "") + Math.floor(10 + Math.random() * 89),
-              password: Math.random().toString(36).slice(2, 8),
-              monthlyFee: "", classMode: demo.mode || (lead.interestMode === "offline" ? "offline" : "online"), classId: "", childName: lead.childName || "",
-              registeredDate: new Date().toISOString().slice(0, 10),
-            })}>
+            <button type="button" className="crm-btn crm-btn-success" onClick={() => open("convert", convertFormFor(lead))}>
               <IconTrophy /> Convert to student
             </button>
           )}
@@ -410,13 +449,35 @@ const LeadDetail = ({ lead, by, dark, teachers, classes, onClose, onUpdated, onD
       {panel === "convert" && (
         <form className="crm-panel" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await post("/convert", form); setConverted({ ...r.parent, password: form.password }); return r.lead; }); }}>
           <h3>Convert to student</h3>
-          <p className="crm-hint">Creates the parent login with the details on this lead and the next admission number.</p>
+          <p className="crm-hint">Same details as Admin › Register User, filled in from this lead. Check them, then set the login.</p>
+
+          <h4 className="crm-section-title">Login credentials</h4>
           <div className="crm-grid2">
-            <Field label="Child's name"><input value={form.childName} onChange={set("childName")} /></Field>
-            <Field label="Monthly fee (₹)"><input type="number" inputMode="numeric" min="0" value={form.monthlyFee} onChange={set("monthlyFee")} /></Field>
             <Field label="Username" required><input value={form.username} onChange={set("username")} autoComplete="off" required /></Field>
             <Field label="Password" required><input value={form.password} onChange={set("password")} autoComplete="off" required /></Field>
-            <Field label="Class mode">
+          </div>
+
+          <h4 className="crm-section-title">Student details</h4>
+          <div className="crm-grid2">
+            <Field label="First name" required><input value={form.firstName} onChange={set("firstName")} required /></Field>
+            <Field label="Last name"><input value={form.lastName} onChange={set("lastName")} /></Field>
+            <Field label="Date of birth" required>
+              <input type="date" value={form.childDob} required
+                onChange={(e) => { const v = e.target.value; setForm((x) => ({ ...x, childDob: v, childAge: v ? ageFromDob(v) : x.childAge })); }} />
+            </Field>
+            <Field label="Age"><input type="number" min="0" value={form.childAge} onChange={set("childAge")} readOnly={!!form.childDob} /></Field>
+            <Field label="Gender" required>
+              <select value={form.gender} onChange={set("gender")} required>
+                <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option>
+              </select>
+            </Field>
+            <Field label="Admission ID"><input value={form.admissionId} onChange={set("admissionId")} placeholder="Auto: next TVA number" /></Field>
+            <Field label="Class / Grade"><input value={form.childClass} onChange={set("childClass")} /></Field>
+            <Field label="Monthly fee (₹)"><input type="number" inputMode="numeric" min="0" value={form.monthlyFee} onChange={set("monthlyFee")} /></Field>
+            <Field label="Classes / month"><input type="number" inputMode="numeric" min="0" value={form.monthlyClassesTarget} onChange={set("monthlyClassesTarget")} /></Field>
+            <Field label="Date of joining"><input type="date" value={form.joiningDate} onChange={set("joiningDate")} /></Field>
+            <Field label="Fee start date"><input type="date" value={form.registeredDate} onChange={set("registeredDate")} /></Field>
+            <Field label="Class mode" required>
               <select value={form.classMode} onChange={set("classMode")}><option value="online">Online</option><option value="offline">Offline</option></select>
             </Field>
             <Field label="Join class (optional)">
@@ -427,7 +488,19 @@ const LeadDetail = ({ lead, by, dark, teachers, classes, onClose, onUpdated, onD
                 ))}
               </select>
             </Field>
-            <Field label="Fees start from"><input type="date" value={form.registeredDate} onChange={set("registeredDate")} /></Field>
+          </div>
+          <Field label="Short bio"><textarea rows={2} value={form.shortBio} onChange={set("shortBio")} /></Field>
+
+          <h4 className="crm-section-title">Parent / guardian details</h4>
+          <div className="crm-grid2">
+            <Field label="Parent phone" required><input type="tel" value={form.phone} onChange={set("phone")} required /></Field>
+            <Field label="Parent name" required><input value={form.fullName} onChange={set("fullName")} required /></Field>
+            <Field label="Parent designation"><input value={form.parentDesignation} onChange={set("parentDesignation")} placeholder="e.g. Father, Mother, Guardian" /></Field>
+            <Field label="Parent email"><input type="email" value={form.email} onChange={set("email")} /></Field>
+            <Field label="Zoom ID"><input value={form.zoomId} onChange={set("zoomId")} /></Field>
+            <Field label="Location (area / street)"><input value={form.location} onChange={set("location")} /></Field>
+            <Field label="City"><input value={form.city} onChange={set("city")} /></Field>
+            <Field label="Referred by"><input value={form.referredBy} onChange={set("referredBy")} /></Field>
           </div>
           <PanelActions busy={busy} error={error} onCancel={() => setPanel(null)} label="Create student" tone="success" />
         </form>

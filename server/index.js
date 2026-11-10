@@ -55,12 +55,16 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// Configure VAPID Keys
-webpush.setVapidDetails(
-  "mailto:thevenkyart@gmail.com", // Your admin email
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY,
-);
+// Configure VAPID Keys (missing keys disable push instead of crashing startup)
+try {
+  webpush.setVapidDetails(
+    "mailto:thevenkyart@gmail.com", // Your admin email
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+} catch (err) {
+  console.warn("⚠️ Push notifications disabled:", err.message, "(set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY in server/.env)");
+}
 
 const upload = multer({ storage: storage });
 
