@@ -229,17 +229,53 @@ export const ReportThread = ({ report, parentId, onUpdated }) => {
 
 // ---------- payment proof ----------
 const monthName = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" }); };
-export const PaymentProofSheet = ({ studentId, pendingRows, initialMonths, initialNote = "", onClose, onSent }) => {
+// "YYYY-MM" n months from now (local time)
+const monthFromNow = (n) => {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+// Send payment proof. Due months are listed first; "Add another month" lets a
+// parent send proof for any earlier (or the next) month too, e.g. a month that
+// was paid but never marked. The amount is filled in from the fees and can be changed.
+export const PaymentProofSheet = ({ studentId, pendingRows = [], feeRows = [], monthlyFee = 0, initialMonths, initialNote = "", onClose, onSent }) => {
   const [months, setMonths] = useState(() =>
-    initialMonths?.length ? initialMonths.filter((m) => pendingRows.some((r) => r.month === m)) : pendingRows.slice(0, 1).map((r) => r.month));
+    initialMonths?.length ? [...initialMonths] : pendingRows.slice(0, 1).map((r) => r.month));
+  const [extra, setExtra] = useState(() => (initialMonths || []).filter((m) => !pendingRows.some((r) => r.month === m)));
+  const [addMonth, setAddMonth] = useState(() => (pendingRows.length ? "" : monthFromNow(-1)));
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [note, setNote] = useState(initialNote);
+  const [amountText, setAmountText] = useState(null); // null = follow the months picked
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const amount = pendingRows.filter((r) => months.includes(r.month)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
+
+  const rowFor = (m) => feeRows.find((r) => r.month === m) || pendingRows.find((r) => r.month === m);
+  const feeFor = (m) => {
+    const r = rowFor(m);
+    if (r && r.status !== "Pass" && r.status !== "Inactive" && Number(r.amount) > 0) return Number(r.amount);
+    return Number(monthlyFee) || 0;
+  };
+  const suggested = months.reduce((sum, m) => sum + feeFor(m), 0);
+  const amount = amountText === null ? suggested : Number(amountText) || 0;
+  const maxMonth = monthFromNow(1); // allow paying next month in advance
+
   const toggle = (m) => setMonths((ms) => (ms.includes(m) ? ms.filter((x) => x !== m) : [...ms, m]));
+  const addExtra = () => {
+    setError("");
+    if (!/^\d{4}-\d{2}$/.test(addMonth)) return setError("Pick a month to add");
+    if (addMonth > maxMonth) return setError("That month is too far ahead");
+    if (!pendingRows.some((r) => r.month === addMonth) && !extra.includes(addMonth)) setExtra((xs) => [...xs, addMonth].sort());
+    setMonths((ms) => (ms.includes(addMonth) ? ms : [...ms, addMonth]));
+    setAddMonth("");
+  };
+  const removeExtra = (m) => {
+    setExtra((xs) => xs.filter((x) => x !== m));
+    setMonths((ms) => ms.filter((x) => x !== m));
+  };
   const pick = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -247,15 +283,15 @@ export const PaymentProofSheet = ({ studentId, pendingRows, initialMonths, initi
     setPreview(URL.createObjectURL(f));
   };
   const send = async () => {
-    if (!file) return setError("Attach the payment screenshot");
     if (!months.length) return setError("Choose the month(s) you paid for");
+    if (!file) return setError("Attach the payment screenshot");
     setBusy(true);
     setError("");
     try {
       const small = file.type.startsWith("image/") ? await imageCompression(file, { maxSizeMB: 0.4, maxWidthOrHeight: 1600, fileType: "image/jpeg" }) : file;
       const fd = new FormData();
       fd.append("proof", small, small.name || "payment.jpg");
-      fd.append("months", months.join(","));
+      fd.append("months", [...months].sort().join(","));
       fd.append("amount", String(amount));
       fd.append("note", note);
       const res = await axios.post(`${API}/parent/${studentId}/payment-proof`, fd);
@@ -267,22 +303,44 @@ export const PaymentProofSheet = ({ studentId, pendingRows, initialMonths, initi
       setBusy(false);
     }
   };
+  const statusNote = (m) => {
+    const st = rowFor(m)?.status;
+    return st === "Paid" ? "already marked paid" : st === "Pass" ? "on a pass" : st === "Inactive" ? "on a break" : "";
+  };
+
   return (
     <ParentSheet title="Send payment proof" onClose={onClose}>
       <p className="ps-muted">Paid by UPI or bank transfer? Send the screenshot here and the academy will mark it as paid.</p>
-      {pendingRows.length > 0 && (
-        <fieldset className="ps-months">
-          <legend>Paid for</legend>
-          {pendingRows.map((r) => (
-            <label key={r.month} className="ps-check">
-              <input type="checkbox" checked={months.includes(r.month)} onChange={() => toggle(r.month)} />
-              <span>{monthName(r.month)}</span>
-              <em>₹{Number(r.amount) || 0}</em>
-            </label>
-          ))}
-        </fieldset>
-      )}
-      {amount > 0 && <p className="ps-total">Total: <strong>₹{amount}</strong></p>}
+      <fieldset className="ps-months">
+        <legend>Paid for</legend>
+        {pendingRows.map((r) => (
+          <label key={r.month} className="ps-check">
+            <input type="checkbox" checked={months.includes(r.month)} onChange={() => toggle(r.month)} />
+            <span>{monthName(r.month)} <small className="ps-due">due</small></span>
+            <em>₹{Number(r.amount) || 0}</em>
+          </label>
+        ))}
+        {extra.map((m) => (
+          <div key={m} className="ps-check ps-extra">
+            <input type="checkbox" checked={months.includes(m)} onChange={() => toggle(m)} aria-label={monthName(m)} />
+            <span>{monthName(m)}{statusNote(m) && <small className="ps-due muted">{statusNote(m)}</small>}</span>
+            <em>₹{feeFor(m)}</em>
+            <button type="button" className="ps-remove" onClick={() => removeExtra(m)} aria-label={`Remove ${monthName(m)}`}>×</button>
+          </div>
+        ))}
+        {!pendingRows.length && !extra.length && <p className="ps-none">No fees are due right now. Add the month you paid for:</p>}
+        <div className="ps-add-month">
+          <label htmlFor="ps-add-month">{pendingRows.length || extra.length ? "Add another month" : "Month"}</label>
+          <div>
+            <input id="ps-add-month" type="month" value={addMonth} max={maxMonth} onChange={(e) => setAddMonth(e.target.value)} />
+            <button type="button" className="ps-btn-ghost" onClick={addExtra}>Add</button>
+          </div>
+        </div>
+      </fieldset>
+      <label className="ps-field">
+        <span>Amount paid (₹)</span>
+        <input type="number" inputMode="numeric" min="0" value={amountText === null ? (suggested || "") : amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="e.g. 3000" />
+      </label>
       <label className="ps-upload">
         <input type="file" accept="image/*,application/pdf" onChange={pick} />
         {preview && file?.type.startsWith("image/") ? <img src={preview} alt="Payment screenshot preview" /> : <span>{file ? file.name : "Choose screenshot"}</span>}

@@ -2364,6 +2364,8 @@ const ParentDashboard = ({ user, onLogout }) => {
         <PaymentProofSheet
           studentId={currentUser._id}
           pendingRows={feeList.filter((r) => r.status === "Pending").reverse()}
+          feeRows={feeList}
+          monthlyFee={studentProfile?.monthlyFee}
           initialMonths={proofMonths}
           initialNote={proofMonths ? "Paid by UPI" : ""}
           onClose={() => setShowProofSheet(false)}

@@ -1285,7 +1285,9 @@ body.dark .wn-mark { color: #93c5fd; }
 .pd-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 10px; border-bottom: 1px solid var(--p-border); }
 .pd-sheet-head h2 { margin: 0; font-size: 1.1rem; }
 .pd-sheet-close { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--p-border); background: var(--p-card); color: var(--p-text); display: grid; place-items: center; cursor: pointer; }
-.pd-sheet-body { padding: 14px 18px 20px; overflow-y: auto; }
+/* flex: 1 + min-height: 0 let the body shrink inside the sheet and scroll (it was cut off on phones) */
+.pd-sheet-body { padding: 14px 18px 20px; overflow-y: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.pd-sheet-head { flex-shrink: 0; }
 .pd-sheet-note { font-size: 0.8rem; color: var(--p-muted); margin: 12px 0 0; }
 .pd-sheet-error { color: #b91c1c; font-size: 0.85rem; margin: 10px 0 0; }
 body.dark .pd-sheet-error { color: #fca5a5; }
@@ -1557,3 +1559,16 @@ body.dark .cn-hw { background: rgba(245, 158, 11, 0.16); color: #fde68a; }
 body.dark .offline-banner { background: rgba(99, 102, 241, 0.16); color: #c7d2fe; border-color: rgba(99, 102, 241, 0.35); }
 .wn-icon.note { background: #e0e7ff; color: #4338ca; }
 body.dark .wn-icon.note { background: rgba(99, 102, 241, 0.18); color: #c7d2fe; }
+
+/* Send payment proof: any month */
+.ps-due { margin-left: 6px; font-size: 0.72rem; font-weight: 700; color: #b45309; text-transform: uppercase; letter-spacing: 0.03em; }
+.ps-due.muted { color: var(--p-muted); text-transform: none; letter-spacing: 0; font-weight: 600; }
+body.dark .ps-due:not(.muted) { color: #fcd34d; }
+.ps-remove { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--p-border); background: transparent; color: var(--p-text); font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0; }
+.ps-none { margin: 4px 0 8px; font-size: 0.85rem; color: var(--p-muted); }
+.ps-add-month { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px; border-top: 1px dashed var(--p-border); margin-top: 4px; }
+.ps-add-month label { font-size: 0.8rem; font-weight: 700; color: var(--p-muted); }
+.ps-add-month > div { display: flex; gap: 8px; }
+.ps-add-month input { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--p-border); background: var(--p-bg); color: var(--p-text); font-size: 16px; font-family: inherit; }
+.ps-upload img { max-height: 180px; }
+.ps-due.muted { display: block; margin-left: 0; font-size: 0.76rem; }
