@@ -31,6 +31,7 @@ import SecurityWatch from "./SecurityWatch";
 import { downloadCSV } from "../utils/csv";
 import { getUsers, invalidateUsers } from "../utils/usersCache";
 import AdminInsights from "./AdminInsights";
+import AdminResources from "./AdminResources";
 import ListCountHeader from "./ListCountHeader";
 import { ArtworkViewer, ArtThumb, useIncrementalList, GridSentinel } from "./ArtworkViewer";
 
@@ -77,6 +78,7 @@ import {
   IconWhatsApp,
   IconTrophy,
   IconMore,
+  IconFolder,
 } from "./Icons";
 import {
   StudentAttendanceAnalysis,
@@ -9200,6 +9202,12 @@ const AdminDashboard = ({ user, onLogout }) => {
             <IconGallery /> <span>Gallery</span>
           </button>
           <button
+            className={activeTab === "resources" ? "active" : ""}
+            onClick={() => handleNavClick("resources")}
+          >
+            <IconFolder /> <span>Academic Resources</span>
+          </button>
+          <button
             className={(activeTab === "spotlight-publish" || activeTab === "spotlight-history") ? "active" : ""}
             onClick={() => {
               if (activeTab !== "spotlight-publish" && activeTab !== "spotlight-history") {
@@ -9316,6 +9324,8 @@ const AdminDashboard = ({ user, onLogout }) => {
                           ? "Slot Manager"
                           : activeTab === "gallery"
                             ? "Art Gallery"
+                          : activeTab === "resources"
+                            ? "Academic Resources"
                             : activeTab === "spotlight-publish"
                               ? "Publish Poster"
                             : activeTab === "spotlight-history"
@@ -9424,6 +9434,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           {activeTab === "slots" && <SlotManagementTab key={tabRefreshKey} />}
           {/* ✨ ADDED GALLERY TAB */}
           {activeTab === "gallery" && <GalleryRepositoryTab key={tabRefreshKey} />}
+          {activeTab === "resources" && <AdminResources key={tabRefreshKey} />}
           {activeTab === "spotlight-publish" && <SpotlightPublishTab students={overviewUsers} onViewHistory={() => handleNavClick("spotlight-history")} />}
           {activeTab === "spotlight-history" && <SpotlightHistoryTab key={tabRefreshKey} onCreate={() => handleNavClick("spotlight-publish")} />}
           {activeTab === "expense-add" && <AddExpenseTab onSuccess={refreshOverview} />}
@@ -9456,6 +9467,7 @@ const AdminDashboard = ({ user, onLogout }) => {
               { tab: "add-user", label: "Register User", Icon: IconAdd },
               { tab: "slots", label: "Slot Manager", Icon: IconClock },
               { tab: "gallery", label: "Gallery", Icon: IconGallery },
+              { tab: "resources", label: "Academic Resources", Icon: IconFolder },
             ],
           },
           {

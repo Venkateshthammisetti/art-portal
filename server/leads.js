@@ -414,9 +414,14 @@ router.post("/:id/convert", async (req, res) => {
     const lead = await findLead(req, res);
     if (!lead) return;
     if (lead.stage === "converted") return res.status(400).json({ message: "Already converted" });
-    const { username, password, monthlyFee, classMode, classId, registeredDate, childName, by } = req.body;
+    const b = req.body;
+    const { username, password, monthlyFee, classMode, classId, registeredDate, by } = b;
+    const str = (v, fallback = "") => (typeof v === "string" ? v.trim() : v == null ? fallback : String(v).trim());
     if (!username?.trim() || !password?.trim()) return res.status(400).json({ message: "Username and password are required" });
     if (await User.findOne({ username: username.trim() })) return res.status(400).json({ message: "Username taken — choose another" });
+    const wantedAdmissionId = str(b.admissionId);
+    if (wantedAdmissionId && (await User.findOne({ role: "parent", admissionId: wantedAdmissionId })))
+      return res.status(400).json({ message: `Admission ID ${wantedAdmissionId} is already used` });
 
     // Next admission number, matching Register User: TVA{max(existing, count)+1}
     const students = await User.find({ role: "parent" }).select("admissionId");
@@ -431,18 +436,26 @@ router.post("/:id/convert", async (req, res) => {
       username: username.trim(),
       password: password.trim(),
       role: "parent",
-      fullName: lead.parentName,
-      childName: (childName || lead.childName || "").trim(),
-      childAge: lead.childAge || undefined,
-      phone: lead.phone,
-      email: lead.email,
-      parentEmail: lead.email,
-      city: lead.city,
-      referredBy: lead.referredBy,
+      fullName: str(b.fullName) || lead.parentName,
+      childName: `${str(b.firstName)} ${str(b.lastName)}`.trim() || str(b.childName) || lead.childName || "",
+      childAge: Number(b.childAge) || lead.childAge || undefined,
+      childDob: str(b.childDob),
+      gender: str(b.gender),
+      childClass: str(b.childClass),
+      shortBio: str(b.shortBio),
+      phone: str(b.phone) || lead.phone,
+      email: str(b.email, lead.email),
+      parentEmail: str(b.email, lead.email),
+      parentDesignation: str(b.parentDesignation),
+      zoomId: str(b.zoomId),
+      location: str(b.location),
+      city: str(b.city, lead.city),
+      referredBy: str(b.referredBy, lead.referredBy),
       classMode: classMode === "offline" ? "offline" : "online",
       monthlyFee: Number(monthlyFee) || 0,
-      admissionId: `TVA${Math.max(students.length, maxExisting) + 1}`,
-      joiningDate: registeredDate || today,
+      monthlyClassesTarget: Number(b.monthlyClassesTarget) || 8,
+      admissionId: wantedAdmissionId || `TVA${Math.max(students.length, maxExisting) + 1}`,
+      joiningDate: str(b.joiningDate) || registeredDate || today,
       registeredDate: registeredDate || today,
       assignedClass: validClass ? validClass._id : null,
     });

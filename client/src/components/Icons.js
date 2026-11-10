@@ -74,6 +74,13 @@ import {
   FiBook,
   FiBookOpen,
   FiPaperclip,
+  FiFolder,
+  FiFolderPlus,
+  FiLink,
+  FiCopy,
+  FiExternalLink,
+  FiArrowLeft,
+  FiMoreVertical,
   FiPackage,
   FiEdit,
   FiEdit3,
@@ -187,6 +194,13 @@ export const IconClipboard = icon(FiClipboard);
 export const IconBook = icon(FiBook);
 export const IconClasses = icon(FiBookOpen);
 export const IconAttach = icon(FiPaperclip);
+export const IconFolder = icon(FiFolder);
+export const IconFolderPlus = icon(FiFolderPlus);
+export const IconLink = icon(FiLink);
+export const IconCopy = icon(FiCopy);
+export const IconExternal = icon(FiExternalLink);
+export const IconArrowLeft = icon(FiArrowLeft);
+export const IconMoreVertical = icon(FiMoreVertical);
 export const IconPackage = icon(FiPackage);
 export const IconEdit = icon(FiEdit);
 export const IconNote = icon(FiEdit3);
