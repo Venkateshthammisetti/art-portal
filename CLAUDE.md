@@ -81,6 +81,8 @@ The CRM **Clients** tab ([client/src/components/CRMClients.js](client/src/compon
 
 **Insights (Admin):** [server/insights.js](server/insights.js) (`GET /api/admin/insights?month=YYYY-MM&months=6`) and [client/src/components/AdminInsights.js](client/src/components/AdminInsights.js) (sidebar "Insights", More › Reports on phones). Per month: active students (started by then and not inactive), joined (joining date, as Revenue's New Joins), left (`inactiveHistory.inactiveFrom`), came back, fees expected vs collected for that fee month (Fee Tracker rules: passes and inactive months left out), attendance % (Present ÷ all marked). For the chosen month: attendance by class (lowest first, under 75% flagged) and per-teacher classes, students, sessions, attendance and reports written for that month. Each table exports CSV. Rupee detail stays on Revenue Analytics.
 
+**Academic Resources** (Admin sidebar): [server/resources.js](server/resources.js) is a router at `/api/resources` (model [server/models/ResourceFolder.js](server/models/ResourceFolder.js), items embedded in the folder: `link | note | image | file`). Links get a best-effort page title fetched server-side; uploads (≤10 MB) go to Cloudinary folder `art-academy-resources` — images/PDFs/video as `auto`, everything else as `raw` with the extension kept in the public id. Deleting an item leaves the Cloudinary asset, like artwork. Frontend: [client/src/components/AdminResources.js](client/src/components/AdminResources.js) (paste/type/upload/drop/paste-image into a folder; pinned items show at the top for one-tap Copy / WhatsApp).
+
 ### Key Data Relationships
 
 - A `Class` has one `teacher` (User ref) and many `students` (User refs); also stores its own `schedule[]` of `{day, time, link}` slots.

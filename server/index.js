@@ -1156,6 +1156,8 @@ app.use("/api", require("./classNotes"));
 app.use("/api", require("./checkins"));
 // Admin Insights: students, fees, attendance by class and teacher (server/insights.js)
 app.use("/api", require("./insights").router);
+// Admin › Academic Resources: folders of links, notes and files (server/resources.js)
+app.use("/api/resources", require("./resources"));
 
 // Admin home: what needs attention today (proofs, resets, overdue fees,
 // students missing classes, classes without attendance, absence notices)
