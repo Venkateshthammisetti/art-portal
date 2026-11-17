@@ -109,7 +109,7 @@ const ChatbotWidget = ({ user }) => {
       const res = await axios.post(
         'https://art-portal-7n6r.onrender.com/api/chatbot',
         { message: text, history },
-        { headers: { Authorization: `Bearer ${user.chatToken}` }, timeout: 40000 }
+        { headers: { Authorization: `Bearer ${user.chatToken}` }, timeout: 75000 }
       );
       addAssistantReply(res.data?.reply || FALLBACK);
     } catch (err) {

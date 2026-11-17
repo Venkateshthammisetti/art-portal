@@ -129,8 +129,9 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 CHATBOT_SECRET=      # signs chatbot tokens (server/chatbot.js)
 AUTH_SECRET=         # signs login passes (server/authWatch.js); falls back to CHATBOT_SECRET
-GEMINI_API_KEY=      # Google Gemini key for the chatbot
-GEMINI_MODEL=        # optional, defaults to gemini-flash-lite-latest
+ANTHROPIC_API_KEY=   # Claude API key for the chatbot (console.anthropic.com)
+ANTHROPIC_MODEL=     # optional, defaults to claude-haiku-5-5
+ANTHROPIC_EFFORT=    # optional: low | medium (default) | high
 ```
 
 If `MONGO_URI` is missing, the server falls back to `mongodb://localhost:27017/art_academy`.
