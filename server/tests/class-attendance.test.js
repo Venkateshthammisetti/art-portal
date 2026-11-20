@@ -16,8 +16,8 @@ const build = () => {
   const paint = t.add(Class, { className: "Painting", teacher: priya._id });
   const empty = t.add(Class, { className: "Clay", teacher: venky._id });
   const kid = (name, cls, o = {}) => t.add(User, { username: name, password: "x", role: "parent", childName: name, assignedClass: cls._id, ...o });
-  const a = kid("a", sketch), b = kid("b", sketch); kid("gone", sketch, { isActive: false });
-  const c = kid("c", paint);
+  const a = kid("a", sketch, { monthlyClassesTarget: 8 }), b = kid("b", sketch, { monthlyClassesTarget: 8 }); kid("gone", sketch, { isActive: false, monthlyClassesTarget: 12 });
+  const c = kid("c", paint, { monthlyClassesTarget: 4 });
   const mark = (u, cls, d, status) => t.add(Attendance, { studentId: u._id, classId: cls._id, date: `${M}-${d}`, status });
   mark(a, sketch, "02", "Present"); mark(b, sketch, "02", "Present"); mark(a, sketch, "04", "Present"); mark(b, sketch, "04", "Missed");
   mark(c, paint, "03", "Absent"); mark(c, paint, "05", "Present");
@@ -25,14 +25,15 @@ const build = () => {
   return { venky, priya, empty };
 };
 
-test("all classes, lowest first, with the month's rate", async () => {
+test("classes held, target and balance for each class, most left to do first", async () => {
   build();
   const r = await classSummary({ month: M });
-  assert.deepEqual(r.classes.map((c) => [c.className, c.rate, c.sessions, c.students]), [
-    ["Painting", 50, 2, 1],
-    ["Sketching", 75, 2, 2],
-    ["Clay", null, 0, 0],
-  ], "unmarked class last; inactive student not counted");
+  assert.deepEqual(r.classes.map((c) => [c.className, c.held, c.target, c.balance, c.students]), [
+    ["Clay", 0, 8, 8, 0],
+    ["Sketching", 2, 8, 6, 2],
+    ["Painting", 2, 4, 2, 1],
+  ], "target from the students' Classes / Month (8 when none); inactive student not counted");
+  assert.deepEqual(r.totals, { held: 4, target: 20, balance: 16 });
   assert.equal(r.overall, 66.7, "4 of 6 present");
   assert.deepEqual(r.teachers.map((x) => x.name), ["Priya", "Venky"]);
   assert.equal(r.classes.find((c) => c.className === "Sketching").missed, 1);
@@ -41,7 +42,7 @@ test("all classes, lowest first, with the month's rate", async () => {
 test("one teacher's classes, and the endpoint", async () => {
   const { venky } = build();
   const r = await classSummary({ month: M, teacherId: String(venky._id) });
-  assert.deepEqual(r.classes.map((c) => c.className), ["Sketching", "Clay"]);
+  assert.deepEqual(r.classes.map((c) => c.className), ["Clay", "Sketching"]);
   const api = await t.serve((app) => app.use("/api", require("../classAttendance").router));
   const res = await api("GET", `/api/attendance/class-summary?month=${M}&teacherId=${venky._id}`);
   assert.equal(res.status, 200);

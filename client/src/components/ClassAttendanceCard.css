@@ -41,3 +41,11 @@ button.ca-row:hover { background: var(--ca-track); }
   .ca-filter select { flex: 1; min-width: 0; }
   .ca-month { flex: 1; justify-content: space-between; }
 }
+
+.ca-name small { display: block; font-weight: 500; font-size: 0.76rem; color: var(--ca-muted); margin-top: 1px; }
+.ca-nums { display: flex; gap: 18px; margin: 8px 0 0; }
+.ca-nums div { display: flex; align-items: baseline; gap: 6px; }
+.ca-nums dt { font-size: 0.76rem; color: var(--ca-muted); }
+.ca-nums dd { margin: 0; font-weight: 800; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.ca-nums dd.done { color: var(--ca-good); }
+.ca-list { gap: 10px; }

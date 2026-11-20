@@ -2941,7 +2941,6 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
       </div>
       <AdminAttention adminId={adminId} onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
       <SecurityWatch />
-      <ClassAttendanceCard showTeacherFilter />
 
       <div className="overview-stats-grid">
         <div
@@ -3573,6 +3572,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
           </>
         )}
       </div>
+      <ClassAttendanceCard showTeacherFilter />
     </div>
   );
 };
