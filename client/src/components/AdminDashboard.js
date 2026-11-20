@@ -28,6 +28,7 @@ import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
 import AdminAttention from "./AdminAttention";
 import SecurityWatch from "./SecurityWatch";
+import ClassAttendanceCard from "./ClassAttendanceCard";
 import { downloadCSV } from "../utils/csv";
 import { getUsers, invalidateUsers } from "../utils/usersCache";
 import AdminInsights from "./AdminInsights";
@@ -2940,6 +2941,7 @@ const OverviewTab = ({ stats, users, classes, expenses = [], loading, onNavigate
       </div>
       <AdminAttention adminId={adminId} onOpenProofs={onOpenProofs} onOpenUser={onOpenUser} onOpenOverdue={onOpenOverdue} />
       <SecurityWatch />
+      <ClassAttendanceCard showTeacherFilter />
 
       <div className="overview-stats-grid">
         <div
