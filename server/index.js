@@ -1154,6 +1154,8 @@ app.use("/api", require("./parentSelf")(upload));
 app.use("/api", require("./classNotes"));
 // "I'm aware" on the missed-classes check-in lists
 app.use("/api", require("./checkins"));
+// Attendance progress per class (Teacher home, Admin overview): server/classAttendance.js
+app.use("/api", require("./classAttendance").router);
 // Admin Insights: students, fees, attendance by class and teacher (server/insights.js)
 app.use("/api", require("./insights").router);
 // Admin › Academic Resources: folders of links, notes and files (server/resources.js)

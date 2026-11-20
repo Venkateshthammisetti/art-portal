@@ -110,6 +110,7 @@ const RULES = {
   "POST /api/attendance": [A, T],
   "GET /api/attendance/student/:studentId": { roles: [A, T], self: "studentId" },
   "GET /api/attendance/class/:classId": [A, T],
+  "GET /api/attendance/class-summary": [A, T],
   "GET /api/student/:id/profile": { roles: [A, T, C], self: "id" },
 
   "POST /api/gallery/upload": [A, T],

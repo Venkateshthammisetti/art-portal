@@ -4,6 +4,7 @@ import { TeacherReportThread } from "./ParentSelf";
 import { StudentProfileSheet, TMoreSheet, TeacherInbox, useTeacherThreads, absenceFor, istDateKey, useTodayNotes, ClassNoteSheet, ReportsDueCard, AtRiskCard, reportMonthKey } from "./TeacherExtras";
 import notify from "../utils/notify";
 import ToastHost from "./ToastHost";
+import ClassAttendanceCard from "./ClassAttendanceCard";
 import MonthlyAttendanceSummary, { PctCell, statsFor } from "./TeacherAttendanceSummary";
 import imageCompression from "browser-image-compression";
 import "./TeacherDashboard.css";
@@ -2557,6 +2558,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                 </div>
               </div>
               <AtRiskCard teacherId={currentUser._id} students={myStudents} onOpen={setProfileStudent} />
+              <ClassAttendanceCard teacherId={currentUser._id} />
               <h3 className="section-title">Today's Agenda</h3>
               {getTodayClasses().length === 0 ? (
                 <div className="empty-state">No classes scheduled today.</div>
