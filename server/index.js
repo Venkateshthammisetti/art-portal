@@ -29,7 +29,7 @@ const { router: chatbotRouter, signChatToken } = require("./chatbot");
 const https = require("https");
 
 const app = express();
-app.use(cors());
+app.use(cors({ exposedHeaders: ["X-Auth-Token"] })); // the app reads renewed login passes from this header
 // gzip JSON responses (user lists, galleries): several times smaller on phones
 app.use(require("compression")());
 app.use(express.json());

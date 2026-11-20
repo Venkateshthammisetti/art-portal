@@ -24,25 +24,39 @@ const signAuthToken = (user) => {
   return `${payload}.${sign(payload, secret)}`;
 };
 
-// { uid, role? } when valid, otherwise null. Accepts the chatbot pass too.
-const verifyToken = (token) => {
-  if (typeof token !== "string") return null;
+// Looks at a pass: { ok: true, data } when genuine and in date;
+// { ok: false, expired: true, data } when genuine but past its date;
+// { ok: false } when it isn't genuine. Accepts the chatbot pass too.
+const inspectToken = (token) => {
+  if (typeof token !== "string") return { ok: false };
   const [payload, sig] = token.split(".");
-  if (!payload || !sig) return null;
+  if (!payload || !sig) return { ok: false };
   const given = Buffer.from(sig);
-  const ok = secrets().some((s) => {
+  const genuine = secrets().some((s) => {
     const expected = Buffer.from(sign(payload, s));
     return expected.length === given.length && crypto.timingSafeEqual(expected, given);
   });
-  if (!ok) return null;
+  if (!genuine) return { ok: false };
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    if (!data.uid || !data.exp || Date.now() > data.exp) return null;
-    return data;
+    if (!data.uid || !data.exp) return { ok: false };
+    if (Date.now() > data.exp) return { ok: false, expired: true, data };
+    return { ok: true, data };
   } catch {
-    return null;
+    return { ok: false };
   }
 };
+// { uid, role? } when genuine and in date, otherwise null
+const verifyToken = (token) => {
+  const r = inspectToken(token);
+  return r.ok ? r.data : null;
+};
+
+// Passes are renewed while people use the app, so a family that stays logged
+// in for weeks never ends up with an expired pass. A genuine pass that ran out
+// less than RENEW_GRACE ago is renewed too (people who were away for a while).
+const RENEW_BEFORE_MS = 15 * 24 * 60 * 60 * 1000; // renew when under 15 days are left
+const RENEW_GRACE_MS = 60 * 24 * 60 * 60 * 1000;
 
 // ---------- planned rules ----------
 // "public"          anyone, signed in or not
@@ -127,6 +141,7 @@ const RULES = {
 
   "GET /api/admin/attention": [A],
   "GET /api/admin/auth-watch": [A],
+  "GET /api/admin/insights": [A],
   "GET /api/admin/reset-requests": [A],
   "PUT /api/admin/reset-requests/:id/resolve": [A],
   "GET /api/admin/payment-proofs": [A],
@@ -149,6 +164,15 @@ const RULES = {
   "DELETE /api/checkins/:studentId": [A, T],
 
   "POST /api/chatbot/": "any",
+
+  "GET /api/resources/": [A],
+  "POST /api/resources/": [A],
+  "PUT /api/resources/:id": [A],
+  "DELETE /api/resources/:id": [A],
+  "POST /api/resources/:id/items": [A],
+  "POST /api/resources/:id/upload": [A],
+  "PUT /api/resources/:id/items/:itemId": [A],
+  "DELETE /api/resources/:id/items/:itemId": [A],
 
   "GET /api/leads/": [A, C],
   "GET /api/leads/stats": [A, C],
@@ -187,6 +211,7 @@ const verdict = async (rule, auth, params) => {
   if (rule === undefined) return "no-rule";
   if (rule === "public") return null;
   if (!auth) return "no-token";
+  if (auth.expired) return "expired-token";
   if (auth.bad) return "bad-token";
   if (rule === "any") return null;
   const roles = Array.isArray(rule) ? rule : rule.roles;
@@ -240,26 +265,50 @@ const startFlushing = () => {
   timer.unref?.();
 };
 
-// Express middleware: reads the pass, then judges the request once it's done
-const middleware = (req, res, next) => {
+// Express middleware: reads the pass (renewing it when due), then judges the
+// request once it's done
+const middleware = async (req, res, next) => {
   const header = req.headers.authorization || "";
   const raw = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const data = raw ? verifyToken(raw) : null;
-  req.auth = raw ? (data ? { uid: String(data.uid), role: data.role || null } : { bad: true }) : null;
-  if (req.method === "OPTIONS") return next();
+  const pass = raw ? inspectToken(raw) : null;
+  const now = Date.now();
+  const renewable = pass && pass.data && (pass.ok || (pass.expired && now - pass.data.exp < RENEW_GRACE_MS));
+  if (!raw) req.auth = null;
+  else if (renewable) req.auth = { uid: String(pass.data.uid), role: pass.data.role || null };
+  else if (pass.expired) req.auth = { expired: true, uid: String(pass.data.uid) };
+  else req.auth = { bad: true };
+
+  // A fresh pass goes back in the X-Auth-Token header (the app saves it) when
+  // the old one is a chatbot pass, has under 15 days left, or has just run out
+  if (renewable && secrets().length && (!pass.data.role || !pass.ok || pass.data.exp - now < RENEW_BEFORE_MS)) {
+    try {
+      const who = await person(String(pass.data.uid));
+      if (who.role) {
+        req.auth.role = who.role;
+        res.setHeader("X-Auth-Token", signAuthToken({ _id: pass.data.uid, role: who.role }));
+      } else {
+        req.auth = { bad: true }; // the account no longer exists
+      }
+    } catch (err) {
+      console.error("Pass renewal error:", err.message);
+    }
+  }
+
+  if (req.method === "OPTIONS" || req.path === "/ping") return next(); // keep-awake pings aren't counted
   res.on("finish", () => {
     if (!req.route) return; // unknown URL (404)
     const route = `${req.baseUrl || ""}${req.route.path}`;
-    const method = req.method;
+    const method = req.method === "HEAD" ? "GET" : req.method; // HEAD is answered by the GET route
     const params = { ...req.params };
     const auth = req.auth;
     Promise.resolve()
       .then(async () => {
-        if (auth && !auth.bad && !auth.role) auth.role = (await person(auth.uid)).role; // chatbot pass: look the role up
+        if (auth && !auth.bad && !auth.expired && !auth.role) auth.role = (await person(auth.uid)).role; // chatbot pass: look the role up
         const reason = await verdict(RULES[`${method} ${route}`], auth, params);
         const day = istDay();
         bump({ day, method: "*", route: "*", reason: "checked", role: "*" });
-        if (reason) bump({ day, method, route, reason, role: auth && !auth.bad ? auth.role || "unknown" : "-", lastUser: auth && !auth.bad ? auth.uid : "" });
+        const known = auth && !auth.bad;
+        if (reason) bump({ day, method, route, reason, role: known && !auth.expired ? auth.role || "unknown" : "-", lastUser: known ? auth.uid : "" });
       })
       .catch((err) => console.error("Auth watch error:", err.message));
   });
@@ -270,7 +319,8 @@ const middleware = (req, res, next) => {
 // ---------- Admin: what the rules would have refused ----------
 const REASONS = {
   "no-token": "Not signed in with the new login pass (an older session, or a call from outside the app)",
-  "bad-token": "Login pass expired or not genuine",
+  "bad-token": "Login pass not genuine (altered, or signed with a different key)",
+  "expired-token": "Login pass expired long ago: they need to log in again",
   "wrong-role": "This role isn't allowed by the planned rule",
   "not-own": "Opening someone else's data",
   "no-rule": "No rule written for this route yet",
@@ -316,4 +366,4 @@ router.get("/admin/auth-watch", async (req, res) => {
   }
 });
 
-module.exports = { middleware, router, signAuthToken, verifyToken, verdict, RULES, flush, report };
+module.exports = { middleware, router, signAuthToken, verifyToken, inspectToken, verdict, RULES, flush, report, RENEW_BEFORE_MS, RENEW_GRACE_MS };
