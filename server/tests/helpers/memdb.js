@@ -291,7 +291,7 @@ const serve = (mount) => new Promise((resolve) => {
       const text = await r.text();
       let json = null;
       try { json = JSON.parse(text); } catch { /* not JSON */ }
-      return { status: r.status, json, text };
+      return { status: r.status, json, text, headers: r.headers };
     });
   });
 });

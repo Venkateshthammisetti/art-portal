@@ -9,12 +9,13 @@ const API = "https://art-portal-7n6r.onrender.com/api";
 const ROLE = { admin: "Admin", teacher: "Teacher", parent: "Parent", crm: "Admissions", "-": "Not signed in", unknown: "Unknown" };
 const HINT = {
   "no-token": "Usually fine: people still on a login from before this update. It fades as they log in again.",
-  "bad-token": "An old or altered login pass. A few are normal; many from one person are worth a look.",
+  "bad-token": "A login pass that isn't genuine (altered, or signed with a different key). Many of these are worth a look.",
+  "expired-token": "Someone away for over two months. Their pass is too old to renew, so they'll need to log in again.",
   "wrong-role": "If this is a normal screen for that role, the rule needs changing before protection goes on.",
   "not-own": "Someone opened another family's or teacher's data. Check it was expected.",
   "no-rule": "A new screen without a rule yet. A rule needs adding before protection goes on.",
 };
-const SHORT = { "no-token": "Old login", "bad-token": "Bad pass", "wrong-role": "Wrong role", "not-own": "Not their data", "no-rule": "No rule yet" };
+const SHORT = { "no-token": "Old login", "bad-token": "Not genuine", "expired-token": "Expired pass", "wrong-role": "Wrong role", "not-own": "Not their data", "no-rule": "No rule yet" };
 const when = (d) => (d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "");
 
 const SecurityWatch = () => {

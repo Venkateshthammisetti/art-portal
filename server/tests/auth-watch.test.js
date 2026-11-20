@@ -35,23 +35,30 @@ test("every API route has a planned rule", () => {
   const routes = [];
   const src = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
   for (const m of src.matchAll(/app\.(get|post|put|delete|patch)\(\s*["'`]([^"'`]+)["'`]/g)) routes.push(`${m[1].toUpperCase()} ${m[2]}`);
+  // Every router mounted in index.js, found automatically so new ones can't be missed
   const fakeUpload = { single: () => (req, res, next) => next() };
-  const mounted = [
-    ["/api", require("../parentSelf")(fakeUpload)],
-    ["/api", require("../classNotes")],
-    ["/api", require("../checkins")],
-    ["/api", watch.router],
-    ["/api/leads", require("../leads").router],
-    ["/api/chatbot", require("../chatbot").router],
-  ];
-  for (const [base, router] of mounted) {
+  const mounts = [...src.matchAll(/app\.use\(\s*["'`](\/api[^"'`]*)["'`]\s*,\s*require\(\s*["'`]\.\/([\w-]+)["'`]\s*\)(\.router)?(\(\s*upload\s*\))?/g)];
+  assert.ok(mounts.length >= 6, `found ${mounts.length} mounted routers`);
+  for (const [, base, file] of mounts) {
+    let mod = require(path.join("..", file));
+    if (typeof mod === "function" && !mod.stack) mod = mod(fakeUpload); // parentSelf(upload)
+    const router = mod.stack ? mod : mod.router;
+    assert.ok(router && router.stack, `${file} exports a router`);
     for (const layer of router.stack) {
       if (!layer.route) continue;
       for (const method of Object.keys(layer.route.methods)) routes.push(`${method.toUpperCase()} ${base}${layer.route.path}`);
     }
   }
-  assert.ok(routes.length > 80, `found ${routes.length} routes`);
-  const missing = routes.filter((r) => !(r in watch.RULES));
+  // routers mounted through a variable
+  for (const [base, router] of [["/api", watch.router], ["/api/chatbot", require("../chatbot").router]]) {
+    for (const layer of router.stack) {
+      if (!layer.route) continue;
+      for (const method of Object.keys(layer.route.methods)) routes.push(`${method.toUpperCase()} ${base}${layer.route.path}`);
+    }
+  }
+  assert.ok(routes.some((r) => r.startsWith("GET /api/resources")), "Academic Resources routes are checked");
+  assert.ok(routes.length > 90, `found ${routes.length} routes`);
+  const missing = [...new Set(routes)].filter((r) => !(r in watch.RULES));
   assert.deepEqual(missing, [], "add these to RULES in server/authWatch.js");
 });
 
@@ -109,4 +116,71 @@ test("watch mode never blocks, and the report lists what would be refused", asyn
   assert.equal(find("bad-token").count, 1);
   assert.equal(rep.wouldBlock, 4, "own family lookup is fine");
   assert.ok(find("not-own").reasonText.length > 10, "plain-language reason for Admin");
+});
+
+test("passes are renewed while people use the app; expired and forged ones are told apart", async () => {
+  await watch.flush(); // drop counts left over from the test before
+  const s = school();
+  const api = await t.serve((app) => {
+    app.use(watch.middleware);
+    app.use("/api", watch.router);
+    app.get("/api/users/:id/credentials", (req, res) => res.json({ ok: true }));
+    app.get("/ping", (req, res) => res.send("pong"));
+  });
+  const DAY = 86400000;
+  const crypto = require("crypto");
+  const tokenFor = (data, secret = process.env.AUTH_SECRET) => {
+    const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+    return `${payload}.${crypto.createHmac("sha256", secret).update(payload).digest("base64url")}`;
+  };
+  const admin = String(s.admin._id);
+  const hit = (token, method = "GET") => api(method, `/api/users/${s.aarav._id}/credentials`, undefined, token ? { Authorization: `Bearer ${token}` } : {});
+  const renewed = (r) => r.headers.get("x-auth-token");
+
+  // Fresh pass: nothing to renew
+  let r = await hit(watch.signAuthToken({ _id: admin, role: "admin" }));
+  assert.equal(r.status, 200);
+  assert.equal(renewed(r), null, "a pass with 30 days left isn't renewed");
+
+  // 10 days left: renewed, and the new one is genuine, for the same person, with the role
+  r = await hit(tokenFor({ uid: admin, role: "admin", exp: Date.now() + 10 * DAY }));
+  const fresh = watch.verifyToken(renewed(r));
+  assert.ok(fresh, "renewed pass is genuine");
+  assert.equal(fresh.uid, admin);
+  assert.equal(fresh.role, "admin");
+  assert.ok(fresh.exp - Date.now() > 29 * DAY, "good for another 30 days");
+
+  // Chatbot pass (no role, other key): renewed into a login pass with the role from the database
+  r = await hit(tokenFor({ uid: admin, exp: Date.now() + 3 * DAY }, process.env.CHATBOT_SECRET));
+  assert.equal(watch.verifyToken(renewed(r)).role, "admin");
+
+  // Ran out 20 days ago: still genuine, so renewed and treated as signed in
+  r = await hit(tokenFor({ uid: admin, exp: Date.now() - 20 * DAY }, process.env.CHATBOT_SECRET));
+  assert.ok(watch.verifyToken(renewed(r)), "recently expired pass is renewed");
+
+  // Ran out 90 days ago: not renewed, counted as expired
+  r = await hit(tokenFor({ uid: admin, role: "admin", exp: Date.now() - 90 * DAY }));
+  assert.equal(r.status, 200, "never blocked");
+  assert.equal(renewed(r), null);
+
+  // Signed with an unknown key: not genuine
+  r = await hit(tokenFor({ uid: admin, role: "admin", exp: Date.now() + 10 * DAY }, "some-other-key"));
+  assert.equal(renewed(r), null);
+
+  // Pass for an account that no longer exists: not renewed
+  r = await hit(tokenFor({ uid: "f".repeat(24), role: "admin", exp: Date.now() + 5 * DAY }));
+  assert.equal(renewed(r), null);
+
+  // Keep-awake pings are never counted
+  await api("HEAD", "/ping"); await api("GET", "/ping");
+  await t.wait(50);
+
+  r = await api("GET", "/api/admin/auth-watch", undefined, { Authorization: `Bearer ${watch.signAuthToken({ _id: admin, role: "admin" })}` });
+  const rows = r.json.rows;
+  const reasons = Object.fromEntries(Object.entries(r.json.byReason));
+  assert.equal(reasons["expired-token"], 1, "the 90-day-old pass");
+  assert.equal(reasons["bad-token"], 2, "unknown key + deleted account");
+  assert.ok(!rows.some((x) => x.route === "/ping"), "ping not listed");
+  assert.ok(!rows.some((x) => x.reason === "wrong-role"), "renewed admin passes count as admin");
+  assert.equal(r.json.checked, 7, "seven credential calls checked, pings left out");
 });
