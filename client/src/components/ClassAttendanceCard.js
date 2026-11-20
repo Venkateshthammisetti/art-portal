@@ -1,12 +1,12 @@
-// Attendance progress for each class in a month. Teacher home shows the
-// teacher's own classes; Admin overview shows all, with a teacher filter.
+// Class progress for a month: classes held, target and balance for each class.
+// Teacher home shows the teacher's own classes; Admin overview (at the bottom)
+// shows all, with a teacher filter.
 // Data: GET /api/attendance/class-summary (server/classAttendance.js).
 import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import "./ClassAttendanceCard.css";
 
 const API = "https://art-portal-7n6r.onrender.com/api";
-const LOW = 75;
 const istMonth = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 7);
 const shift = (ym, n) => {
   const [y, m] = ym.split("-").map(Number);
@@ -17,9 +17,8 @@ const label = (ym) => {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
 };
-const band = (rate) => (rate === null ? "none" : rate >= 85 ? "good" : rate >= LOW ? "ok" : "low");
 
-const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false, onOpenClass }) => {
+const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) => {
   const [month, setMonth] = useState(istMonth());
   const [teacher, setTeacher] = useState("all");
   const [data, setData] = useState(null);
@@ -40,15 +39,15 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false, onOp
 
   const classes = data?.classes || [];
   const teachers = data?.teachers || [];
-  const low = classes.filter((c) => c.rate !== null && c.rate < LOW).length;
+  const totals = data?.totals;
 
   return (
     <section className="ca-card" aria-labelledby="ca-title">
       <div className="ca-head">
         <div className="ca-title">
-          <h3 id="ca-title">Class attendance</h3>
-          {data && data.overall !== null && (
-            <p>{Math.round(data.overall)}% overall{low ? ` · ${low} ${low === 1 ? "class" : "classes"} below ${LOW}%` : ""}</p>
+          <h3 id="ca-title">Class progress</h3>
+          {totals && totals.target > 0 && (
+            <p>{totals.held} of {totals.target} classes held{totals.balance ? ` · ${totals.balance} to complete` : " · all complete"}</p>
           )}
         </div>
         <div className="ca-controls">
@@ -71,7 +70,7 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false, onOp
       </div>
 
       {error && !loading && (
-        <p className="ca-msg ca-err">Couldn't load class attendance. <button type="button" onClick={load}>Try again</button></p>
+        <p className="ca-msg ca-err">Couldn't load class progress. <button type="button" onClick={load}>Try again</button></p>
       )}
       {loading && !data && <div className="ca-skel" aria-label="Loading" />}
       {data && !error && classes.length === 0 && <p className="ca-msg">No classes yet.</p>}
@@ -79,37 +78,25 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false, onOp
       {data && classes.length > 0 && (
         <ul className={`ca-list${loading ? " is-loading" : ""}`}>
           {classes.map((c) => {
-            const b = band(c.rate);
-            const inner = (
-              <>
-                <div className="ca-row-top">
-                  <span className="ca-name">{c.className}</span>
-                  <span className="ca-val">
-                    {c.rate === null ? "Not marked" : `${Math.round(c.rate)}%`}
-                    {b === "low" && <em className="ca-flag"><span aria-hidden="true">⚠</span> Low</em>}
-                  </span>
-                </div>
-                <div
-                  className="ca-track"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={c.rate === null ? 0 : Math.round(c.rate)}
-                  aria-label={`${c.className} attendance`}
-                >
-                  {c.rate !== null && <span className={`ca-fill ${b}`} style={{ width: `${Math.max(2, c.rate)}%` }} />}
-                </div>
-                <div className="ca-meta">
-                  {showTeacherFilter && c.teacher && <span>{c.teacher}</span>}
-                  <span>{c.students} {c.students === 1 ? "student" : "students"}</span>
-                  <span>{c.sessions} {c.sessions === 1 ? "session" : "sessions"}</span>
-                  {c.marked > 0 && <span>{c.present} present · {c.absent + c.missed} missed</span>}
-                </div>
-              </>
-            );
+            const held = Number(c.held ?? c.sessions) || 0;
+            const target = Number(c.target) || 0;
+            const balance = Math.max(0, Number(c.balance ?? target - held) || 0);
+            const done = target > 0 && balance === 0;
+            const width = target > 0 ? Math.min(100, (held / target) * 100) : 0;
             return (
-              <li key={c.classId}>
-                {onOpenClass ? <button type="button" className="ca-row" onClick={() => onOpenClass(c)}>{inner}</button> : <div className="ca-row">{inner}</div>}
+              <li key={c.classId} className="ca-row">
+                <div className="ca-row-top">
+                  <span className="ca-name">{c.className}{showTeacherFilter && c.teacher ? <small>{c.teacher}</small> : null}</span>
+                  <span className="ca-val">{held}/{target}</span>
+                </div>
+                <div className="ca-track" role="progressbar" aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(held, target)} aria-label={`${c.className}: ${held} of ${target} classes held`}>
+                  {held > 0 && <span className={`ca-fill ${done ? "good" : "ok"}`} style={{ width: `${Math.max(2, width)}%` }} />}
+                </div>
+                <dl className="ca-nums">
+                  <div><dt>Held</dt><dd>{held}</dd></div>
+                  <div><dt>Target</dt><dd>{target}</dd></div>
+                  <div><dt>Balance</dt><dd className={done ? "done" : ""}>{done ? "Done" : balance}</dd></div>
+                </dl>
               </li>
             );
           })}
