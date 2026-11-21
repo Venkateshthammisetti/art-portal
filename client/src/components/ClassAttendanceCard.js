@@ -19,6 +19,19 @@ const label = (ym) => {
   return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
 };
 
+// Stacked bar: segments [{ n, cls }] laid out of `max` (at least the sum, so it never overflows).
+const StackBar = ({ segments, max, small, label: aria }) => {
+  const total = segments.reduce((s, x) => s + x.n, 0);
+  const scale = Math.max(max, total) || 1;
+  return (
+    <div className={`ca-track${small ? " ca-track-sm" : ""}`} role="img" aria-label={aria}>
+      {segments.filter((x) => x.n > 0).map((x) => (
+        <span key={x.cls} className={`ca-fill ${x.cls}`} style={{ width: `${Math.max(small ? 3 : 2, (x.n / scale) * 100)}%` }} />
+      ))}
+    </div>
+  );
+};
+
 const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) => {
   const [month, setMonth] = useState(istMonth());
   const [teacher, setTeacher] = useState("all");
@@ -85,7 +98,11 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
             const target = Number(c.target) || 0;
             const balance = Math.max(0, Number(c.balance ?? target - held) || 0);
             const done = target > 0 && balance === 0;
-            const width = target > 0 ? Math.min(100, (held / target) * 100) : 0;
+            // Split the held part of the bar by how the marks went (present / absent / missed).
+            const marks = Number(c.marked) || 0;
+            const cAbsent = Number(c.absent) || 0;
+            const cMissed = Number(c.missed) || 0;
+            const share = (n) => (marks > 0 ? (held * n) / marks : 0);
             const kids = Array.isArray(c.studentList) ? c.studentList : [];
             const isOpen = open.has(String(c.classId));
             const listId = `ca-kids-${c.classId}`;
@@ -101,12 +118,18 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
                     </button>
                   </span>
                 </div>
-                <div className="ca-track" role="progressbar" aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(held, target)} aria-label={`${c.className}: ${held} of ${target} classes held`}>
-                  {held > 0 && <span className={`ca-fill ${done ? "good" : "ok"}`} style={{ width: `${Math.max(2, width)}%` }} />}
-                </div>
+                <StackBar
+                  max={target}
+                  label={`${c.className}: ${held} of ${target} classes held, ${cAbsent} absences`}
+                  segments={marks > 0
+                    ? [{ n: share(marks - cAbsent - cMissed), cls: done ? "good" : "ok" }, { n: share(cAbsent), cls: "absent" }, { n: share(cMissed), cls: "low" }]
+                    : [{ n: held, cls: done ? "good" : "ok" }]}
+                />
                 <dl className="ca-nums">
                   <div><dt>Held</dt><dd>{held}</dd></div>
                   <div><dt>Target</dt><dd>{target}</dd></div>
+                  {cAbsent > 0 && <div><dt>Absent</dt><dd className="absent">{cAbsent}</dd></div>}
+                  {cMissed > 0 && <div><dt>Missed</dt><dd className="missed">{cMissed}</dd></div>}
                   <div><dt>Balance</dt><dd className={done ? "done" : ""}>{done ? "Done" : balance}</dd></div>
                 </dl>
                 {isOpen && (
@@ -116,7 +139,8 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
                         {kids.map((k) => {
                           const kt = Number(k.target) || 0;
                           const att = Number(k.attended) || 0;
-                          const left = Math.max(0, Number(k.balance ?? kt - att) || 0);
+                          // Balance = target - (attended + absent); worked out here so an older server's figure is ignored.
+                          const left = Math.max(0, kt - att - (Number(k.absent) || 0));
                           const kDone = kt > 0 && left === 0;
                           return (
                             <li key={k._id} className="ca-kid">
@@ -124,13 +148,20 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
                                 <span className="ca-kid-name">{k.name}</span>
                                 <span className="ca-kid-val">{att}/{kt}</span>
                               </div>
-                              <div className="ca-track ca-track-sm" role="progressbar" aria-valuemin={0} aria-valuemax={kt} aria-valuenow={Math.min(att, kt)} aria-label={`${k.name}: attended ${att} of ${kt}`}>
-                                {att > 0 && <span className={`ca-fill ${kDone ? "good" : "ok"}`} style={{ width: `${Math.max(3, kt ? Math.min(100, (att / kt) * 100) : 0)}%` }} />}
-                              </div>
+                              <StackBar
+                                small
+                                max={kt}
+                                label={`${k.name}: attended ${att}, absent ${Number(k.absent) || 0}, missed ${Number(k.missed) || 0}, target ${kt}`}
+                                segments={[
+                                  { n: att, cls: kDone ? "good" : "ok" },
+                                  { n: Number(k.absent) || 0, cls: "absent" },
+                                  { n: Number(k.missed) || 0, cls: "low" },
+                                ]}
+                              />
                               <div className="ca-kid-meta">
                                 <span>Attended <b>{att}</b></span>
-                                {Number(k.absent) > 0 && <span>Absent <b>{k.absent}</b></span>}
-                                {Number(k.missed) > 0 && <span>Missed <b>{k.missed}</b></span>}
+                                {Number(k.absent) > 0 && <span className="absent">Absent <b>{k.absent}</b></span>}
+                                {Number(k.missed) > 0 && <span className="missed">Missed <b>{k.missed}</b></span>}
                                 <span className={kDone ? "done" : ""}>{kDone ? "Done" : <>Balance <b>{left}</b></>}</span>
                               </div>
                             </li>
