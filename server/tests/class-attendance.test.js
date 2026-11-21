@@ -48,7 +48,7 @@ test("each class lists its students' own attendance, names only", async () => {
     ["a", 2, 0, 0, 8, 6],
   ], "most left first; inactive student and other months left out");
   const pt = r.classes.find((c) => c.className === "Painting");
-  assert.deepEqual(pt.studentList.map((s) => [s.name, s.attended, s.absent, s.target, s.balance]), [["c", 1, 1, 4, 3]]);
+  assert.deepEqual(pt.studentList.map((s) => [s.name, s.attended, s.absent, s.target, s.balance]), [["c", 1, 1, 4, 2]], "balance = target - attended - absent");
   assert.deepEqual(Object.keys(sk.studentList[0]).sort(), ["_id", "absent", "attended", "balance", "missed", "name", "target"], "no phone or other details");
   assert.deepEqual(r.classes.find((c) => c.className === "Clay").studentList, []);
 });

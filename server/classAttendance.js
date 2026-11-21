@@ -5,7 +5,7 @@
 //           active students, 8 when none is set)
 // balance = classes still to complete (target - held, never below 0)
 // studentList = each active student's attended / absent / missed, own target and
-//           balance (target - attended), most left first. Names only.
+//           balance (target - attended - absent), most left first. Names only.
 const express = require("express");
 const mongoose = require("mongoose");
 const Class = require("./models/Class");
@@ -51,7 +51,7 @@ const classSummary = async ({ month, teacherId } = {}) => {
         absent: away,
         missed: own.length - attended - away,
         target: goal,
-        balance: Math.max(0, goal - attended),
+        balance: Math.max(0, goal - attended - away),
       };
     }).sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
     return {
