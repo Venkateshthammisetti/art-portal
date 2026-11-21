@@ -4,6 +4,8 @@
 // target  = the class's "Classes / Month" (the most common target among its
 //           active students, 8 when none is set)
 // balance = classes still to complete (target - held, never below 0)
+// studentList = each active student's attended / absent / missed, own target and
+//           balance (target - attended), most left first. Names only.
 const express = require("express");
 const mongoose = require("mongoose");
 const Class = require("./models/Class");
@@ -20,8 +22,8 @@ const classSummary = async ({ month, teacherId } = {}) => {
   const classes = await Class.find(filter).populate("teacher", "fullName username").lean();
   const ids = classes.map((c) => c._id);
   const [recs, students] = await Promise.all([
-    Attendance.find({ classId: { $in: ids }, date: { $gte: `${m}-01`, $lte: `${m}-31` } }).select("classId date status").lean(),
-    User.find({ role: "parent", isActive: { $ne: false }, assignedClass: { $in: ids } }).select("assignedClass monthlyClassesTarget").lean(),
+    Attendance.find({ classId: { $in: ids }, date: { $gte: `${m}-01`, $lte: `${m}-31` } }).select("classId studentId date status").lean(),
+    User.find({ role: "parent", isActive: { $ne: false }, assignedClass: { $in: ids } }).select("assignedClass monthlyClassesTarget childName fullName username").lean(),
   ]);
   const targetOf = (kids) => {
     const counts = new Map();
@@ -36,6 +38,22 @@ const classSummary = async ({ month, teacherId } = {}) => {
     const target = targetOf(kids);
     const present = mine.filter((r) => r.status === "Present").length;
     const absent = mine.filter((r) => r.status === "Absent").length;
+    // Each student's month (name only: no contact details, teachers see this)
+    const studentList = kids.map((k) => {
+      const own = mine.filter((r) => String(r.studentId) === String(k._id));
+      const attended = own.filter((r) => r.status === "Present").length;
+      const away = own.filter((r) => r.status === "Absent").length;
+      const goal = Number(k.monthlyClassesTarget) > 0 ? Number(k.monthlyClassesTarget) : target;
+      return {
+        _id: k._id,
+        name: k.childName || k.fullName || k.username || "Student",
+        attended,
+        absent: away,
+        missed: own.length - attended - away,
+        target: goal,
+        balance: Math.max(0, goal - attended),
+      };
+    }).sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
     return {
       classId: c._id,
       className: c.className,
@@ -52,6 +70,7 @@ const classSummary = async ({ month, teacherId } = {}) => {
       absent,
       missed: mine.length - present - absent,
       rate: pct(present, mine.length),
+      studentList,
     };
   }).sort((a, b) => b.balance - a.balance || a.held / a.target - b.held / b.target || a.className.localeCompare(b.className));
   const marked = rows.reduce((s, r) => s + r.marked, 0);

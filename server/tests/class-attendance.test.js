@@ -39,6 +39,20 @@ test("classes held, target and balance for each class, most left to do first", a
   assert.equal(r.classes.find((c) => c.className === "Sketching").missed, 1);
 });
 
+test("each class lists its students' own attendance, names only", async () => {
+  build();
+  const r = await classSummary({ month: M });
+  const sk = r.classes.find((c) => c.className === "Sketching");
+  assert.deepEqual(sk.studentList.map((s) => [s.name, s.attended, s.absent, s.missed, s.target, s.balance]), [
+    ["b", 1, 0, 1, 8, 7],
+    ["a", 2, 0, 0, 8, 6],
+  ], "most left first; inactive student and other months left out");
+  const pt = r.classes.find((c) => c.className === "Painting");
+  assert.deepEqual(pt.studentList.map((s) => [s.name, s.attended, s.absent, s.target, s.balance]), [["c", 1, 1, 4, 3]]);
+  assert.deepEqual(Object.keys(sk.studentList[0]).sort(), ["_id", "absent", "attended", "balance", "missed", "name", "target"], "no phone or other details");
+  assert.deepEqual(r.classes.find((c) => c.className === "Clay").studentList, []);
+});
+
 test("one teacher's classes, and the endpoint", async () => {
   const { venky } = build();
   const r = await classSummary({ month: M, teacherId: String(venky._id) });
