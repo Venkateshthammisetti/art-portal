@@ -1,6 +1,7 @@
 // Class progress for a month: classes held, target and balance for each class.
 // Teacher home shows the teacher's own classes; Admin overview (at the bottom)
 // shows all, with a teacher filter.
+// The arrow on each class opens its students: attended / target, absent, missed, left.
 // Data: GET /api/attendance/class-summary (server/classAttendance.js).
 import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
@@ -24,6 +25,8 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(() => new Set());
+  const toggle = (id) => setOpen((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const thisMonth = istMonth();
   const forTeacher = teacherId || (teacher !== "all" ? teacher : "");
 
@@ -83,11 +86,20 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
             const balance = Math.max(0, Number(c.balance ?? target - held) || 0);
             const done = target > 0 && balance === 0;
             const width = target > 0 ? Math.min(100, (held / target) * 100) : 0;
+            const kids = Array.isArray(c.studentList) ? c.studentList : [];
+            const isOpen = open.has(String(c.classId));
+            const listId = `ca-kids-${c.classId}`;
             return (
-              <li key={c.classId} className="ca-row">
+              <li key={c.classId} className={`ca-row${isOpen ? " is-open" : ""}`}>
                 <div className="ca-row-top">
                   <span className="ca-name">{c.className}{showTeacherFilter && c.teacher ? <small>{c.teacher}</small> : null}</span>
-                  <span className="ca-val">{held}/{target}</span>
+                  <span className="ca-val">
+                    {held}/{target}
+                    <button type="button" className="ca-expand" aria-expanded={isOpen} aria-controls={listId} onClick={() => toggle(String(c.classId))}
+                      aria-label={`${isOpen ? "Hide" : "Show"} students in ${c.className}`} title={isOpen ? "Hide students" : "Show students"}>
+                      <span aria-hidden="true">▾</span>
+                    </button>
+                  </span>
                 </div>
                 <div className="ca-track" role="progressbar" aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(held, target)} aria-label={`${c.className}: ${held} of ${target} classes held`}>
                   {held > 0 && <span className={`ca-fill ${done ? "good" : "ok"}`} style={{ width: `${Math.max(2, width)}%` }} />}
@@ -97,6 +109,37 @@ const ClassAttendanceCard = ({ teacherId = null, showTeacherFilter = false }) =>
                   <div><dt>Target</dt><dd>{target}</dd></div>
                   <div><dt>Balance</dt><dd className={done ? "done" : ""}>{done ? "Done" : balance}</dd></div>
                 </dl>
+                {isOpen && (
+                  <div id={listId} className="ca-kids">
+                    {kids.length === 0 ? <p className="ca-msg">No active students in this class.</p> : (
+                      <ul>
+                        {kids.map((k) => {
+                          const kt = Number(k.target) || 0;
+                          const att = Number(k.attended) || 0;
+                          const left = Math.max(0, Number(k.balance ?? kt - att) || 0);
+                          const kDone = kt > 0 && left === 0;
+                          return (
+                            <li key={k._id} className="ca-kid">
+                              <div className="ca-kid-top">
+                                <span className="ca-kid-name">{k.name}</span>
+                                <span className="ca-kid-val">{att}/{kt}</span>
+                              </div>
+                              <div className="ca-track ca-track-sm" role="progressbar" aria-valuemin={0} aria-valuemax={kt} aria-valuenow={Math.min(att, kt)} aria-label={`${k.name}: attended ${att} of ${kt}`}>
+                                {att > 0 && <span className={`ca-fill ${kDone ? "good" : "ok"}`} style={{ width: `${Math.max(3, kt ? Math.min(100, (att / kt) * 100) : 0)}%` }} />}
+                              </div>
+                              <div className="ca-kid-meta">
+                                <span>Attended <b>{att}</b></span>
+                                {Number(k.absent) > 0 && <span>Absent <b>{k.absent}</b></span>}
+                                {Number(k.missed) > 0 && <span>Missed <b>{k.missed}</b></span>}
+                                <span className={kDone ? "done" : ""}>{kDone ? "Done" : <>Balance <b>{left}</b></>}</span>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}
