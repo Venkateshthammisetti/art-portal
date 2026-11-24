@@ -3714,6 +3714,13 @@
 .rm-form-panel { width: 380px; flex-shrink: 0; padding: 20px 25px; overflow-y: auto; border-right: 1px solid var(--border); }
 .rm-preview-panel { flex: 1; overflow-y: auto; padding: 25px; background: #e2e8f0; display: flex; justify-content: center; }
 .teacher-container[data-theme="dark"] .rm-preview-panel { background: #0b1220; }
+/* Report page: always one A4 page, shown scaled to the space available */
+.rm-preview-panel { flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; }
+.rm-page-fit { position: relative; flex-shrink: 0; overflow: hidden; }
+.rm-page-scaler { width: 210mm; transform-origin: top left; }
+.rm-page-note { margin: 0; max-width: 210mm; width: 100%; font-size: 0.82rem; font-weight: 600; line-height: 1.45; padding: 8px 12px; border-radius: 10px; background: #fef3c7; color: #78350f; }
+.rm-page-note.ok { background: #dcfce7; color: #14532d; }
+.rm-page-note.warn { background: #fee2e2; color: #7f1d1d; }
 
 .rm-field-group { margin-bottom: 22px; }
 .rm-field-group h4 { margin: 0 0 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
@@ -3756,6 +3763,7 @@
   border: 1px solid #e5e0d8;
   box-shadow: inset 0 0 0 2px #c5a059;
   min-height: 297mm;
+  box-sizing: border-box;
   padding: 40px 48px;
   display: flex;
   flex-direction: column;
@@ -3848,14 +3856,7 @@
   .report-maker-body { flex-direction: column; overflow-y: auto; }
   .rm-form-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
   .rm-preview-panel { padding: 15px; }
-  .rm-report-preview { width: 100%; min-height: auto; }
-  .rm-art-frame { min-height: auto; padding: 24px; }
-  .rm-content-grid { grid-template-columns: 1fr; gap: 20px; }
-  .rm-portfolio-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 480px) {
-  .rm-portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+  /* the report stays an A4 page on phones too (scaled down), so the PDF is the same everywhere */
 }
 
 /* iPhone home-screen app (black-translucent status bar + viewport-fit=cover):

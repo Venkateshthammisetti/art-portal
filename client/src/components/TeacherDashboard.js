@@ -7,6 +7,7 @@ import ToastHost from "./ToastHost";
 import ClassAttendanceCard from "./ClassAttendanceCard";
 import MonthlyAttendanceSummary, { PctCell, statsFor } from "./TeacherAttendanceSummary";
 import imageCompression from "browser-image-compression";
+import { makeOnePagePdf, usePageFit, fitRatio } from "../utils/onePagePdf";
 import "./TeacherDashboard.css";
 import BirthdayNotificationBell from "./BirthdayNotifications";
 import ListCountHeader from "./ListCountHeader";
@@ -1146,6 +1147,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
   const [rmStudentGallery, setRmStudentGallery] = useState([]);
   const [rmGalleryLoading, setRmGalleryLoading] = useState(false);
   const rmPreviewRef = useRef(null);
+  const rmPanelRef = useRef(null);
   const [attendanceReminders, setAttendanceReminders] = useState([]);
   const checkedAttendanceRef = useRef({});
   const [mobileNotifSwipeY, setMobileNotifSwipeY] = useState(0);
@@ -1902,6 +1904,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
       })
     : "";
 
+  const rmPageFit = usePageFit(rmPanelRef, rmPreviewRef, [activeTab, loading]);
+  const rmFitPct = Math.floor(fitRatio(rmPageFit.height) * 100);
+
   const buildRmPdfOptions = () => ({
     margin: 0,
     filename: `${(rmSelectedStudent?.childName || "report").replace(/\s+/g, "_")}-${rmForm.month}.pdf`,
@@ -1916,11 +1921,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
       setTimeout(() => setMsg(""), 3000);
       return;
     }
-    window
-      .html2pdf()
-      .set(buildRmPdfOptions())
-      .from(rmPreviewRef.current)
-      .save();
+    const opt = buildRmPdfOptions();
+    makeOnePagePdf(window.html2pdf, rmPreviewRef.current, opt)
+      .then((pdf) => pdf.save(opt.filename))
+      .catch(() => { setMsg("❌ Couldn't make the PDF, try again"); setTimeout(() => setMsg(""), 3000); });
   };
 
   const handleGenerateReport = async () => {
@@ -1937,11 +1941,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
     setRmGenerating(true);
     try {
       const opt = buildRmPdfOptions();
-      const pdfBlob = await window
-        .html2pdf()
-        .set(opt)
-        .from(rmPreviewRef.current)
-        .outputPdf("blob");
+      const pdfBlob = (await makeOnePagePdf(window.html2pdf, rmPreviewRef.current, opt)).output("blob");
 
       const formData = new FormData();
       formData.append("studentId", rmForm.studentId);
@@ -3963,8 +3963,19 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   </div>
                 </div>
 
-                {/* RIGHT: LIVE PREVIEW (this is what gets captured to PDF) */}
-                <div className="rm-preview-panel">
+                {/* RIGHT: LIVE PREVIEW (this is what gets captured to PDF).
+                    Always an A4 page, scaled down to fit narrow screens. */}
+                <div className="rm-preview-panel" ref={rmPanelRef}>
+                  {rmFitPct < 100 ? (
+                    <p className={`rm-page-note${rmFitPct < 75 ? " warn" : ""}`} role="status">
+                      A bit long for one page, so the PDF will be shrunk to {rmFitPct}% to fit.
+                      {rmFitPct < 85 ? " Remove a photo or shorten the text to keep it full size." : ""}
+                    </p>
+                  ) : (
+                    <p className="rm-page-note ok" role="status">✓ Fits on one page</p>
+                  )}
+                  <div className="rm-page-fit" style={{ width: `${Math.round(rmPageFit.scale * 794)}px`, height: `${Math.ceil(rmPageFit.height * rmPageFit.scale)}px` }}>
+                  <div className="rm-page-scaler" style={{ transform: `scale(${rmPageFit.scale})` }}>
                   <div className="rm-report-preview" ref={rmPreviewRef}>
                     <div className="rm-art-frame">
                       <header className="rm-report-header">
@@ -4092,6 +4103,8 @@ const TeacherDashboard = ({ user, onLogout }) => {
                         </div>
                       </footer>
                     </div>
+                  </div>
+                  </div>
                   </div>
                 </div>
               </div>
